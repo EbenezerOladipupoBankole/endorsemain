@@ -1,15 +1,12 @@
-import { cn } from "@/lib/utils";
+import { PenTool } from "lucide-react";
 
-interface LogoProps {
-  className?: string;
-}
-
-export const Logo = ({ className }: LogoProps) => {
+export const Logo = ({ className }: { className?: string }) => {
   return (
-    <img
-      src="/logo.svg"
-      alt="ENDORSE Logo"
-      className={cn("h-12 w-auto", className)}
-    />
+    <div className={`flex items-center gap-2.5 ${className}`}>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <PenTool className="h-5 w-5" />
+      </div>
+      <span className="font-display text-xl font-bold text-inherit">Endorse</span>
+    </div>
   );
 };
