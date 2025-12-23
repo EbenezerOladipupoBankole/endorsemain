@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { ArrowRight, FileSignature, Shield, Zap } from "lucide-react";
@@ -7,6 +8,15 @@ import { toast } from "sonner";
 
 const LandingPage = () => {
   const { user } = useAuth();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleDemoClick = () => {
     toast.info("Demo mode coming soon!");
@@ -15,11 +25,9 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background font-sans">
       {/* Navigation */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-10 w-auto" />
-          </Link>
+      <header className={`sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300 ${isScrolled ? "h-24" : "h-40"}`}>
+        <div className="container flex h-full items-center justify-between px-4 md:px-6">
+          <Logo className={`w-auto transition-all duration-300 ${isScrolled ? "h-20" : "h-36"}`} />
           <nav className="flex items-center gap-4">
             {user ? (
               <Link to="/dashboard">
