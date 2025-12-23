@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import Cropper from "react-easy-crop";
 import { httpsCallable } from "firebase/functions";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
 import { Label } from "@/components/ui/label";
-import { X, PenTool, Type, Download, RotateCcw, Send, Mail, Loader2, Upload, Check, Crop as CropIcon, Calendar } from "lucide-react";
+import { X, PenTool, Type, Download, RotateCcw, Send, Mail, Loader2, Upload, Check, Crop as CropIcon, Calendar, Eraser, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf"; 
 import QRCode from "qrcode";
@@ -30,6 +30,11 @@ interface SendDocumentPayload {
   recipientEmail: string;
   pdfBase64: string;
   documentName: string;
+}
+
+interface InviteToSignPayload {
+  documentId: string;
+  recipientEmail: string;
 }
 
 /**
@@ -246,6 +251,7 @@ const getCroppedImg = async (
 
 const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const [mode, setMode] = useState<"draw" | "type" | "upload">("draw");
+  const [isErasing, setIsErasing] = useState(false);
   const [typedSignature, setTypedSignature] = useState("");
   const [uploadedSignature, setUploadedSignature] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -258,12 +264,28 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const [recipientEmail, setRecipientEmail] = useState("");
   const [showSendForm, setShowSendForm] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
   const signatureRef = useRef<SignatureCanvas>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (mode === "draw" && signatureRef.current) {
+      const canvas = signatureRef.current.getCanvas();
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.globalCompositeOperation = isErasing ? "destination-out" : "source-over";
+        }
+      }
+    }
+  }, [isErasing, mode]);
 
   const clearSignature = () => {
     if (mode === "draw" && signatureRef.current) {
       signatureRef.current.clear();
+      setIsErasing(false);
     } else if (mode === "type") {
       setTypedSignature("");
     } else {
@@ -347,6 +369,10 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   };
 
   const handleSave = () => {
+    if (document.status === "pending" && !agreedToTerms) {
+      toast.error("Please agree to the terms and conditions to sign.");
+      return;
+    }
     const signatureData = getSignatureData();
     if (!signatureData) {
       toast.error("Please add your signature first");
@@ -401,6 +427,31 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
         setIsSending(false);
       }
     };
+  };
+
+  const handleInvite = async () => {
+    if (!inviteEmail) {
+      toast.error("Please enter the recipient's email.");
+      return;
+    }
+
+    setIsInviting(true);
+    const inviteToSign = httpsCallable<InviteToSignPayload, { success: boolean }>(functions, 'inviteToSign');
+    
+    try {
+      await inviteToSign({
+        documentId: document.id,
+        recipientEmail: inviteEmail,
+      });
+      toast.success(`Invitation sent to ${inviteEmail}!`);
+      setShowInviteForm(false);
+      setInviteEmail("");
+    } catch (error: any) {
+      console.error("Firebase function error (inviteToSign):", error);
+      toast.error(error.message || "Failed to send invitation.");
+    } finally {
+      setIsInviting(false);
+    }
   };
 
   return (
@@ -461,16 +512,39 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
               <div className="mb-4">
                 <Label className="mb-2 block text-sm">Your Signature</Label>
                 {mode === "draw" ? (
-                  <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-secondary/30">
+                  <div className="relative border-2 border-dashed border-border rounded-lg overflow-hidden bg-secondary/30">
                     <SignatureCanvas
                       ref={signatureRef}
                       canvasProps={{
-                        className: "w-full h-40 cursor-crosshair",
+                        className: `w-full h-40 ${isErasing ? "cursor-cell" : "cursor-crosshair"}`,
                         style: { width: "100%", height: "160px" }
                       }}
                       backgroundColor="transparent"
                       penColor="#1e293b"
                     />
+                    
+                    {/* Floating Tools */}
+                    <div className="absolute bottom-2 right-2 flex gap-1">
+                      <Button
+                        variant={isErasing ? "secondary" : "ghost"}
+                        size="sm"
+                        className={`h-8 px-2 backdrop-blur-sm ${isErasing ? "bg-white/80 text-primary shadow-sm" : "bg-white/40 text-muted-foreground hover:bg-white/60"}`}
+                        onClick={() => setIsErasing(!isErasing)}
+                        title={isErasing ? "Switch to Pen" : "Eraser"}
+                      >
+                        <Eraser className="w-4 h-4" />
+                        {isErasing && <span className="ml-1.5 text-xs">Erasing</span>}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 bg-white/40 text-muted-foreground hover:bg-white/60 backdrop-blur-sm"
+                        onClick={clearSignature}
+                        title="Clear Signature"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 ) : mode === "type" ? (
                   <div className="border-2 border-dashed border-border rounded-lg p-5 bg-secondary/30">
@@ -563,15 +637,20 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                     )}
                   </div>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 text-muted-foreground"
-                  onClick={clearSignature}
-                >
-                  <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                  Clear
-                </Button>
+              </div>
+
+              {/* Legal Consent */}
+              <div className="mt-6 flex items-start gap-3 px-1">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                />
+                <label htmlFor="terms" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                  I agree to be legally bound by this document and the <span className="text-primary hover:underline">Terms of Service</span> and <span className="text-primary hover:underline">Electronic Record and Signature Disclosure</span>.
+                </label>
               </div>
             </>
           ) : (
@@ -594,10 +673,37 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                 </div>
               </div>
 
+              {/* Invite Form */}
+              {showInviteForm && (
+                <div className="mb-5 p-4 bg-secondary/50 rounded-lg border border-border animate-fade-in">
+                  <Label className="mb-2 block text-sm font-semibold">Invite another person to sign</Label>
+                  <p className="text-xs text-muted-foreground mb-3">They will receive a fresh copy of this document to sign.</p>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        type="email"
+                        placeholder="signer@example.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="pl-9 h-9"
+                      />
+                    </div>
+                    <Button size="sm" className="h-9" onClick={handleInvite} disabled={isInviting}>
+                      {isInviting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Invite"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Send Form */}
               {showSendForm && (
-                <div className="mb-5 p-4 bg-secondary/50 rounded-lg border border-border">
-                  <Label className="mb-2 block text-sm">Recipient Email</Label>
+                <div className="mb-5 p-4 bg-secondary/50 rounded-lg border border-border animate-fade-in">
+                  <Label className="mb-2 block text-sm font-semibold">Send a signed copy</Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -617,22 +723,6 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                       )}
                     </Button>
                   </div>
-                </div>
-              )}
-
-              {/* Legal Consent */}
-              {document.status === "pending" && (
-                <div className="mt-6 flex items-start gap-3 px-1">
-                  <input
-                    type="checkbox"
-                    id="terms"
-                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  />
-                  <label htmlFor="terms" className="text-xs text-muted-foreground leading-tight cursor-pointer">
-                    I agree to be legally bound by this document and the <span className="text-primary hover:underline">Terms of Service</span> and <span className="text-primary hover:underline">Electronic Record and Signature Disclosure</span>.
-                  </label>
                 </div>
               )}
             </>
@@ -661,12 +751,27 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                 Download
               </Button>
               <Button 
+                variant="outline"
+                className="flex-1 h-9"
+                size="sm"
+                onClick={() => {
+                  setShowInviteForm(!showInviteForm);
+                  setShowSendForm(false);
+                }}
+              >
+                <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+                Invite
+              </Button>
+              <Button 
                 className="flex-1 h-9 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black"
                 size="sm"
-                onClick={() => setShowSendForm(!showSendForm)}
+                onClick={() => {
+                  setShowSendForm(!showSendForm);
+                  setShowInviteForm(false);
+                }}
               >
                 <Send className="w-3.5 h-3.5 mr-1.5" />
-                Send
+                Send Copy
               </Button>
             </>
           )}
