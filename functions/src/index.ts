@@ -17,6 +17,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const APP_URL = "https://endorse.onrender.com/dashboard"; // TODO: Replace with your actual dashboard URL
+
 interface InvitePayload {
   documentId: string;
   recipientEmail: string;
@@ -33,6 +35,7 @@ interface SendSignerInvitesPayload {
   documentName: string;
   uploaderName: string;
   uploaderEmail: string;
+  documentId: string;
 }
 
 // Function to invite a user to sign
@@ -79,13 +82,15 @@ export const inviteToSign = functions.https.onCall(async (request) => {
     // 3. Save to Firestore
     const newDocRef = await db.collection("documents").add(newDocumentData);
 
+    const documentLink = `${APP_URL}?documentId=${newDocRef.id}`;
+
     // 4. Send Invitation Email
     await transporter.sendMail({
       from: '"Endorse App" <ebenezerbankole7@gmail.com>',
       to: recipientEmail,
       subject: "You have been invited to sign a document",
-      text: `You have been invited to sign "${originalData?.name}". Log in to Endorse to view and sign it.`,
-      html: `<p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Log in to Endorse to view and sign it.</p>`,
+      text: `You have been invited to sign "${originalData?.name}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
+      html: `<p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
     });
 
     return { success: true, newDocumentId: newDocRef.id };
@@ -105,11 +110,14 @@ export const sendSignerInvites = functions.https.onCall(async (request) => {
   }
 
   const data = request.data as SendSignerInvitesPayload;
-  const { signers, documentName, uploaderName } = data;
+  const { signers, documentName, uploaderName, documentId } = data;
 
   if (!signers || !Array.isArray(signers) || signers.length === 0) {
     throw new functions.https.HttpsError("invalid-argument", "No signers provided.");
   }
+
+  const documentLink = documentId ? `${APP_URL}?documentId=${documentId}` : APP_URL;
+  console.log(`Sending invite email with link: ${documentLink}`);
 
   const results = [];
 
@@ -119,8 +127,8 @@ export const sendSignerInvites = functions.https.onCall(async (request) => {
         from: '"Endorse App" <ebenezerbankole7@gmail.com>',
         to: signer.email,
         subject: `${uploaderName} invited you to sign ${documentName}`,
-        text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease check your dashboard or contact the sender for the document link.\n\nBest,\nEndorse Team`,
-        html: `<p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please check your dashboard or contact the sender for the document link.</p><p>Best,<br>Endorse Team</p>`,
+        text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
+        html: `<p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
       });
       results.push({ email: signer.email, status: 'sent' });
     } catch (error: any) {
