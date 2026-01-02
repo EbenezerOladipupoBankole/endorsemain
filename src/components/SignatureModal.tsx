@@ -11,6 +11,7 @@ import { X, PenTool, Type, Download, RotateCcw, Send, Mail, Loader2, Upload, Che
 import { toast } from "sonner";
 import jsPDF from "jspdf"; 
 import QRCode from "qrcode";
+import { useAuth } from "@/components/AuthContext";
 
 interface Document {
   id: string;
@@ -301,6 +302,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const signatureRef = useRef<SignatureCanvas>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0]);
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     SIGNATURE_FONTS.forEach(font => {
@@ -480,6 +482,12 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const handleInvite = async () => {
     if (!inviteEmail) {
       toast.error("Please enter the recipient's email.");
+      return;
+    }
+
+    // Check if user is on a paid plan
+    if (userProfile?.plan !== 'pro' && userProfile?.plan !== 'business') {
+      toast.error("Inviting signers is a Pro feature. Please upgrade your plan.");
       return;
     }
 

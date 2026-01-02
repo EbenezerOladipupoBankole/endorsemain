@@ -31,7 +31,13 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  Trash2
+  Trash2,
+  Settings,
+  LayoutDashboard,
+  CreditCard,
+  Shield,
+  Menu,
+  X
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,7 +55,7 @@ interface SignaturePosition {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, userProfile, loading: authLoading, signOut } = useAuth();
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
@@ -59,6 +65,7 @@ const Dashboard = () => {
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
@@ -170,6 +177,12 @@ const Dashboard = () => {
       return;
     }
 
+    // Check if user is on a paid plan
+    if (userProfile?.plan !== 'pro' && userProfile?.plan !== 'business') {
+      toast.error("Inviting signers is a Pro feature. Please upgrade your plan.");
+      return;
+    }
+
     const promise = async () => {
       const functions = getFunctions();
       const sendInvites = httpsCallable(functions, 'sendSignerInvites');
@@ -226,6 +239,9 @@ const Dashboard = () => {
       <header className="bg-card/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={() => setIsMobileMenuOpen(true)}>
+              <Menu className="h-5 w-5" />
+            </Button>
             <Logo className="h-16 w-auto" />
           </div>
 
@@ -272,6 +288,13 @@ const Dashboard = () => {
                   <p className="text-sm font-medium">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/settings?tab=profile" className="cursor-pointer w-full flex items-center">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   <LogOut className="w-4 h-4 mr-2" />
                   Sign out
@@ -282,10 +305,110 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm lg:hidden" onClick={() => setIsMobileMenuOpen(false)}>
+          <div className="fixed inset-y-0 left-0 z-50 w-64 border-r bg-card p-6 shadow-lg animate-in slide-in-from-left" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-8">
+              <Logo className="h-8 w-auto" />
+              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="space-y-1">
+              <Button variant="secondary" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                <Link to="/dashboard">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Link>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                <Link to="/settings?tab=profile">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                <Link to="/settings?tab=billing">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Billing
+                </Link>
+              </Button>
+            </div>
+            <div className="mt-auto pt-8">
+              <Card>
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-primary" />
+                    {userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-2">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {userProfile?.plan === 'free' || !userProfile?.plan 
+                      ? 'Upgrade to unlock unlimited documents.' 
+                      : 'Your plan is active.'}
+                  </p>
+                  <Button size="sm" className="w-full text-xs" variant="outline" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                  <Link to="/settings?tab=billing">Manage Plan</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-6 py-8 flex items-start gap-8">
+        {/* Sidebar - Only show when not editing a PDF */}
+        {!pdfFile && (
+          <aside className="hidden lg:block w-64 shrink-0 space-y-6 sticky top-24">
+            <div className="space-y-1">
+              <Button variant="secondary" className="w-full justify-start" asChild>
+                <Link to="/dashboard">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Link>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start" asChild>
+                <Link to="/settings?tab=profile">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start" asChild>
+                <Link to="/settings?tab=billing">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Billing
+                </Link>
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  {userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-2">
+                <p className="text-xs text-muted-foreground mb-3">
+                  {userProfile?.plan === 'free' || !userProfile?.plan 
+                    ? 'Upgrade to unlock unlimited documents.' 
+                    : 'Your plan is active.'}
+                </p>
+                <Button size="sm" className="w-full text-xs" variant="outline" asChild>
+                <Link to="/settings?tab=billing">Manage Plan</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </aside>
+        )}
+
+        <main className="flex-1 min-w-0">
         {!pdfFile ? (
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <Card>
@@ -432,7 +555,8 @@ const Dashboard = () => {
             </div>
           </div>
         )}
-      </main>
+        </main>
+      </div>
       {showSignatureModal && pdfFile && (
         <SignatureModal
           document={{

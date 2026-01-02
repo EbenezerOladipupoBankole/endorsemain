@@ -8,6 +8,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SignDocument from "./pages/SignDocument";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +24,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/sign/:id" element={<SignDocument />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

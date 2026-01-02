@@ -2,6 +2,7 @@ import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./client";
 import { toast } from "sonner";
+import { useAuth } from "@/components/AuthContext";
 
 interface InviteUserFormProps {
   documentId: string;
@@ -10,11 +11,18 @@ interface InviteUserFormProps {
 export function InviteUserForm({ documentId }: InviteUserFormProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const { userProfile } = useAuth();
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       toast.error("Please enter an email address");
+      return;
+    }
+
+    // Check if user is on a paid plan
+    if (userProfile?.plan !== 'pro' && userProfile?.plan !== 'business') {
+      toast.error("Inviting signers is a Pro feature. Please upgrade your plan.");
       return;
     }
     

@@ -82,7 +82,7 @@ export const inviteToSign = functions.https.onCall(async (request) => {
     // 3. Save to Firestore
     const newDocRef = await db.collection("documents").add(newDocumentData);
 
-    const documentLink = `${APP_URL}?documentId=${newDocRef.id}`;
+    const documentLink = `${APP_URL}/sign/${newDocRef.id}`;
 
     // 4. Send Invitation Email
     await transporter.sendMail({
@@ -116,7 +116,7 @@ export const sendSignerInvites = functions.https.onCall(async (request) => {
     throw new functions.https.HttpsError("invalid-argument", "No signers provided.");
   }
 
-  const documentLink = documentId ? `${APP_URL}?documentId=${documentId}` : APP_URL;
+  const documentLink = documentId ? `${APP_URL}/sign/${documentId}` : APP_URL;
   console.log(`Sending invite email with link: ${documentLink}`);
 
   const results = [];
