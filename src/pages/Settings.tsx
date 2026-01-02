@@ -10,6 +10,8 @@ import { Logo } from "@/components/Logo";
 import { Link, useSearchParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/components/client";
 
 const Settings = () => {
   const { user, userProfile, loading } = useAuth();
@@ -97,9 +99,19 @@ const Settings = () => {
   const handleUpgrade = async (plan: string) => {
     setIsUpgrading(true);
     try {
-      // Simulate API call to payment provider
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      toast.success(`Redirecting to payment provider for ${plan} plan...`);
+      const createStripeCheckoutSession = httpsCallable(functions, 'createStripeCheckoutSession');
+      const { data }: any = await createStripeCheckoutSession({
+        plan,
+        successUrl: `${window.location.origin}/settings?tab=billing&success=true`,
+        cancelUrl: `${window.location.origin}/settings?tab=billing&canceled=true`,
+      });
+
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to initiate payment");
     } finally {
       setIsUpgrading(false);
     }

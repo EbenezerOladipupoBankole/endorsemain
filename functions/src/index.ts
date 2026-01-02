@@ -1,6 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
+import Stripe from "stripe";
 
 // Initialize Admin SDK
 if (admin.apps.length === 0) {
@@ -16,6 +17,10 @@ const transporter = nodemailer.createTransport({
     pass: "rslkarucyqbvtsbz",
   },
 });
+
+// Initialize Stripe
+// Make sure to set this in your environment variables or replace here:
+const stripe = new Stripe("sk_test_YOUR_STRIPE_SECRET_KEY", { apiVersion: "2023-10-16" });
 
 const APP_URL = "https://endorse.onrender.com"; // Changed to root to avoid 404s if server rewrites aren't configured
 
@@ -36,6 +41,12 @@ interface SendSignerInvitesPayload {
   uploaderName: string;
   uploaderEmail: string;
   documentId: string;
+}
+
+interface CreateCheckoutSessionPayload {
+  plan: "Pro" | "Business";
+  successUrl: string;
+  cancelUrl: string;
 }
 
 // Function to invite a user to sign
@@ -169,5 +180,52 @@ export const sendDocument = functions.https.onCall(async (request) => {
   } catch (error: any) {
     console.error("Send Document Error:", error);
     throw new functions.https.HttpsError("internal", error.message || "Failed to send document.");
+  }
+});
+
+// Function to create a Stripe Checkout Session
+export const createStripeCheckoutSession = functions.https.onCall(async (request) => {
+  if (!request.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const data = request.data as CreateCheckoutSessionPayload;
+  const { plan, successUrl, cancelUrl } = data;
+
+  // Map plans to Stripe Price IDs (Create these in your Stripe Dashboard)
+  const priceIds: Record<string, string> = {
+    "Pro": "price_YOUR_PRO_PRICE_ID",
+    "Business": "price_YOUR_BUSINESS_PRICE_ID",
+  };
+
+  const priceId = priceIds[plan];
+
+  if (!priceId) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid plan selected.");
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      customer_email: request.auth.token.email,
+      metadata: {
+        firebaseUID: request.auth.uid,
+        plan: plan
+      }
+    });
+
+    return { url: session.url };
+  } catch (error: any) {
+    console.error("Stripe Error:", error);
+    throw new functions.https.HttpsError("internal", error.message);
   }
 });

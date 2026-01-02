@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
-import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram } from "lucide-react";
+import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock } from "lucide-react";
 
 const Landing = () => {
   const [currency, setCurrency] = useState<"USD" | "NGN">("USD");
@@ -118,12 +118,84 @@ const Landing = () => {
                   <span className="text-sm text-muted-foreground font-medium">Endorse Dashboard</span>
                 </div>
               </div>
-              <div className="aspect-[16/9] bg-gradient-to-br from-secondary/30 to-secondary/60 flex items-center justify-center p-8">
-                <div className="text-center">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-primary mx-auto mb-4 flex items-center justify-center shadow-glow">
-                    <PenTool className="w-10 h-10 text-primary-foreground" />
+              <div className="aspect-[16/9] bg-background relative overflow-hidden flex text-left border-t border-border/50">
+                {/* Sidebar Mock */}
+                <div className="w-[25%] max-w-[200px] border-r border-border bg-card/30 p-3 hidden sm:flex flex-col gap-2">
+                  <div className="h-6 w-6 bg-primary/20 rounded-md mb-4" />
+                  
+                  <div className="flex items-center gap-2 px-2 py-1.5 bg-secondary rounded-md">
+                    <LayoutDashboard className="w-3 h-3 text-foreground" />
+                    <div className="h-1.5 w-16 bg-foreground/20 rounded-full" />
                   </div>
-                  <p className="text-muted-foreground font-medium">Your documents, signed faster</p>
+                  <div className="flex items-center gap-2 px-2 py-1.5">
+                    <Settings className="w-3 h-3 text-muted-foreground" />
+                    <div className="h-1.5 w-12 bg-muted-foreground/20 rounded-full" />
+                  </div>
+                  <div className="flex items-center gap-2 px-2 py-1.5">
+                    <CreditCard className="w-3 h-3 text-muted-foreground" />
+                    <div className="h-1.5 w-10 bg-muted-foreground/20 rounded-full" />
+                  </div>
+                  
+                  <div className="mt-auto p-2 bg-card border border-border rounded-md">
+                    <div className="h-1.5 w-12 bg-primary/20 rounded-full mb-1.5" />
+                    <div className="h-1 w-full bg-muted rounded-full" />
+                  </div>
+                </div>
+
+                {/* Main Content Mock */}
+                <div className="flex-1 p-4 bg-muted/5 flex flex-col gap-4 overflow-hidden">
+                  {/* Stats Grid Mock */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-card p-3 rounded-lg border border-border shadow-sm">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="h-1.5 w-16 bg-muted-foreground/20 rounded-full" />
+                        <FileText className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                      <div className="h-4 w-8 bg-foreground/20 rounded-md mb-1" />
+                    </div>
+                    <div className="bg-card p-3 rounded-lg border border-border shadow-sm">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="h-1.5 w-10 bg-muted-foreground/20 rounded-full" />
+                        <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      </div>
+                      <div className="h-4 w-8 bg-foreground/20 rounded-md mb-1" />
+                    </div>
+                    <div className="bg-card p-3 rounded-lg border border-border shadow-sm">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="h-1.5 w-12 bg-muted-foreground/20 rounded-full" />
+                        <AlertCircle className="w-3 h-3 text-orange-500" />
+                      </div>
+                      <div className="h-4 w-8 bg-foreground/20 rounded-md mb-1" />
+                    </div>
+                  </div>
+
+                  {/* Upload Area Mock */}
+                  <div className="border-2 border-dashed border-border rounded-lg bg-card/50 flex flex-col items-center justify-center py-6 gap-2">
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                      <Upload className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="h-1.5 w-32 bg-muted-foreground/20 rounded-full" />
+                  </div>
+
+                  {/* Recent Docs List Mock */}
+                  <div className="space-y-2 opacity-60">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-3 h-3 text-muted-foreground" />
+                      <div className="h-1.5 w-24 bg-foreground/10 rounded-full" />
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-md bg-card border border-border">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
+                          <FileText className="w-3 h-3 text-primary" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="h-1.5 w-20 bg-foreground/20 rounded-full" />
+                          <div className="h-1 w-12 bg-muted-foreground/20 rounded-full" />
+                        </div>
+                      </div>
+                      <div className="h-4 w-12 bg-green-500/10 rounded-full" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
