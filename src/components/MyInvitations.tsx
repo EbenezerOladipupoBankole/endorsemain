@@ -5,7 +5,7 @@ import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Link } from "react-router-dom";
-import { Loader2, FileSignature, Calendar, User } from "lucide-react";
+import { Loader2, FileSignature, Calendar, User, LogOut, Settings, ChevronDown } from "lucide-react";
 
 interface Document {
   id: string;
@@ -16,9 +16,10 @@ interface Document {
 }
 
 const MyInvitations = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [invitations, setInvitations] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     const fetchInvitations = async () => {
@@ -61,13 +62,52 @@ const MyInvitations = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background font-sans">
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <Logo className="h-10 w-auto" />
+        <div className="container flex h-32 items-center justify-between px-4 md:px-6">
+          <Logo className="h-[120px] w-auto" />
           <nav className="flex items-center gap-4">
             <Link to="/dashboard">
               <Button variant="ghost">Dashboard</Button>
             </Link>
             <Button variant="secondary" disabled>Invitations</Button>
+            
+            {/* Profile Dropdown */}
+            <div className="relative ml-2">
+              <Button 
+                variant="ghost" 
+                className="flex items-center gap-2 pl-2 pr-3"
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+              >
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+                <span className="hidden md:inline-block text-sm font-medium max-w-[100px] truncate">
+                  {user?.email?.split('@')[0]}
+                </span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
+              </Button>
+
+              {isProfileOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-60 rounded-xl border border-border bg-popover p-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-3 py-2.5 border-b border-border/50 mb-1">
+                      <p className="text-sm font-medium leading-none truncate">{user?.displayName || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground mt-1.5 truncate">{user?.email}</p>
+                    </div>
+                    <Link to="/profile" className="flex items-center px-2 py-2 text-sm rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsProfileOpen(false)}>
+                      <User className="mr-2 h-4 w-4" /> Profile
+                    </Link>
+                    <Link to="/settings" className="flex items-center px-2 py-2 text-sm rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsProfileOpen(false)}>
+                      <Settings className="mr-2 h-4 w-4" /> Settings
+                    </Link>
+                    <div className="h-px bg-border/50 my-1" />
+                    <button onClick={() => { if (logout) logout(); setIsProfileOpen(false); }} className="flex w-full items-center px-2 py-2 text-sm rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-destructive">
+                      <LogOut className="mr-2 h-4 w-4" /> Log out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </nav>
         </div>
       </header>

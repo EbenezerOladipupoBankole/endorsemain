@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const APP_URL = "https://endorse.onrender.com/dashboard"; // TODO: Replace with your actual dashboard URL
+const APP_URL = "https://endorse.onrender.com"; // Changed to root to avoid 404s if server rewrites aren't configured
 
 interface InvitePayload {
   documentId: string;
@@ -90,7 +90,7 @@ export const inviteToSign = functions.https.onCall(async (request) => {
       to: recipientEmail,
       subject: "You have been invited to sign a document",
       text: `You have been invited to sign "${originalData?.name}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-      html: `<p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+      html: `<div style="margin-bottom: 20px;"><img src="https://endorse.onrender.com/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
     });
 
     return { success: true, newDocumentId: newDocRef.id };
@@ -128,7 +128,7 @@ export const sendSignerInvites = functions.https.onCall(async (request) => {
         to: signer.email,
         subject: `${uploaderName} invited you to sign ${documentName}`,
         text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-        html: `<p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+        html: `<div style="margin-bottom: 20px;"><img src="https://endorse.onrender.com/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
       });
       results.push({ email: signer.email, status: 'sent' });
     } catch (error: any) {

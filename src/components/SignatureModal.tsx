@@ -26,6 +26,14 @@ interface SignatureModalProps {
   onSave: (signatureData: string, signatureType: "draw" | "type" | "upload") => void;
 }
 
+const SIGNATURE_FONTS = [
+  { id: 'font-dancing', name: 'Dancing Script', family: '"Dancing Script", cursive', url: 'https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap' },
+  { id: 'font-vibes', name: 'Great Vibes', family: '"Great Vibes", cursive', url: 'https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap' },
+  { id: 'font-sacramento', name: 'Sacramento', family: '"Sacramento", cursive', url: 'https://fonts.googleapis.com/css2?family=Sacramento&display=swap' },
+  { id: 'font-caveat', name: 'Caveat', family: '"Caveat", cursive', url: 'https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap' },
+  { id: 'font-apple', name: 'Homemade Apple', family: '"Homemade Apple", cursive', url: 'https://fonts.googleapis.com/css2?family=Homemade+Apple&display=swap' },
+];
+
 interface SendDocumentPayload {
   recipientEmail: string;
   pdfBase64: string;
@@ -35,6 +43,7 @@ interface SendDocumentPayload {
 interface InviteToSignPayload {
   documentId: string;
   recipientEmail: string;
+  signingLink: string;
 }
 
 /**
@@ -249,6 +258,28 @@ const getCroppedImg = async (
   return canvas.toDataURL("image/png");
 };
 
+const textToDataUrl = (text: string, font: string) => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  
+  const fontSize = 60;
+  ctx.font = `${fontSize}px ${font}`;
+  const textMetrics = ctx.measureText(text);
+  
+  // Add padding
+  const padding = 40;
+  canvas.width = textMetrics.width + (padding * 2);
+  canvas.height = fontSize * 2.5;
+  
+  ctx.font = `${fontSize}px ${font}`;
+  ctx.fillStyle = "#000000";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, padding, canvas.height / 2);
+  
+  return canvas.toDataURL("image/png");
+};
+
 const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const [mode, setMode] = useState<"draw" | "type" | "upload">("draw");
   const [isErasing, setIsErasing] = useState(false);
@@ -269,6 +300,19 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const [isInviting, setIsInviting] = useState(false);
   const signatureRef = useRef<SignatureCanvas>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0]);
+
+  useEffect(() => {
+    SIGNATURE_FONTS.forEach(font => {
+      if (!window.document.getElementById(font.id)) {
+        const link = window.document.createElement('link');
+        link.id = font.id;
+        link.href = font.url;
+        link.rel = 'stylesheet';
+        window.document.head.appendChild(link);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (mode === "draw" && signatureRef.current) {
@@ -362,7 +406,9 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       }
       return signatureRef.current?.toDataURL("image/png") || null;
     } else if (mode === "type") {
-      return typedSignature.trim() || null;
+      const text = typedSignature.trim();
+      if (!text) return null;
+      return textToDataUrl(text, selectedFont.family);
     } else {
       return uploadedSignature;
     }
@@ -378,19 +424,21 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       toast.error("Please add your signature first");
       return;
     }
-    onSave(signatureData, mode);
+    // If mode is type, we converted it to an image data URL, so treat it as 'upload' for PDF generation
+    const finalMode = mode === "type" ? "upload" : mode;
+    onSave(signatureData, finalMode);
   };
 
   const handleDownload = async () => {
-    const pdfBlob = await generatePdfBlob(document, getSignatureData(), mode);
+    const pdfBlob = await generatePdfBlob(document, getSignatureData(), mode === "type" ? "upload" : mode);
     if (pdfBlob) {
       const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
+      const a = window.document.createElement("a");
       a.href = url;
       a.download = `${document.name.replace(/\s+/g, "_")}_signed.pdf`;
-      document.body.appendChild(a);
+      window.document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      window.document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success("PDF downloaded!");
     }
@@ -402,7 +450,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       return;
     }
     
-    const pdfBlob = await generatePdfBlob(document, getSignatureData(), mode);
+    const pdfBlob = await generatePdfBlob(document, getSignatureData(), mode === "type" ? "upload" : mode);
     if (!pdfBlob) return;
 
     setIsSending(true);
@@ -442,6 +490,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       await inviteToSign({
         documentId: document.id,
         recipientEmail: inviteEmail,
+        signingLink: `${window.location.origin}/sign/${document.id}`,
       });
       toast.success(`Invitation sent to ${inviteEmail}!`);
       setShowInviteForm(false);
@@ -552,7 +601,8 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                       placeholder="Type your full name"
                       value={typedSignature}
                       onChange={(e) => setTypedSignature(e.target.value)}
-                      className="text-center text-lg font-serif italic border-0 bg-transparent focus-visible:ring-0 h-auto py-2"
+                      className="text-center text-2xl border-0 bg-transparent focus-visible:ring-0 h-auto py-2"
+                      style={{ fontFamily: selectedFont.family }}
                     />
                     <div className="flex justify-end mt-2">
                       <Button
@@ -567,10 +617,27 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                       </Button>
                     </div>
                     {typedSignature && (
-                      <p className="text-center font-serif text-3xl italic text-foreground mt-4 pb-2">
+                      <p className="text-center text-4xl text-foreground mt-6 pb-4" style={{ fontFamily: selectedFont.family }}>
                         {typedSignature}
                       </p>
                     )}
+                    
+                    {/* Font Selection */}
+                    <div className="flex flex-wrap justify-center gap-2 mt-4 pt-4 border-t border-border/50">
+                      {SIGNATURE_FONTS.map((font) => (
+                        <Button
+                          key={font.id}
+                          type="button"
+                          variant={selectedFont.id === font.id ? "secondary" : "ghost"}
+                          size="sm"
+                          onClick={() => setSelectedFont(font)}
+                          className="text-lg h-auto py-1 px-3 font-normal"
+                          style={{ fontFamily: font.family }}
+                        >
+                          Sign
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div 

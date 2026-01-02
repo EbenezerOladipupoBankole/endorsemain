@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '@/components/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
 import { PDFUploader } from '@/components/esign/PDFUploader';
 import { PDFViewer } from '@/components/esign/PDFViewer';
-import { SignaturePad } from '@/components/esign/SignaturePad';
 import { SignerManager } from '@/components/esign/SignerManager';
 import type { Signer } from '@/components/esign/SignerManager';
 import { embedSignatureInPDF, downloadPDF } from '@/lib/pdfUtils';
@@ -26,7 +28,10 @@ import {
   Moon,
   Clock,
   MoreVertical,
-  FileText
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -50,6 +55,8 @@ const Dashboard = () => {
   const [signature, setSignature] = useState<string | null>(null);
   const [signaturePosition, setSignaturePosition] = useState<SignaturePosition | null>(null);
   const [signers, setSigners] = useState<Signer[]>([]);
+  const [recentDocs, setRecentDocs] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -72,16 +79,39 @@ const Dashboard = () => {
     }
   }, [user, authLoading, navigate]);
 
+  useEffect(() => {
+    const fetchRecentDocs = async () => {
+      if (!user?.email) return;
+      
+      try {
+        const q = query(
+          collection(db, "documents"),
+          where("ownerEmail", "==", user.email),
+          orderBy("createdAt", "desc"),
+          limit(5)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const docs = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setRecentDocs(docs);
+      } catch (error) {
+        console.error("Error fetching recent docs:", error);
+      } finally {
+        setLoadingDocs(false);
+      }
+    };
+
+    fetchRecentDocs();
+  }, [user]);
+
   const handleFileSelect = (file: File) => {
     setPdfFile(file);
     setSignature(null);
     setSignaturePosition(null);
     setSigners([]);
-  };
-
-  const handleSignatureCreate = (signatureDataUrl: string) => {
-    setSignature(signatureDataUrl);
-    toast.success('Signature created! Click on the document to place it.');
   };
 
   const handleModalSave = (signatureData: string) => {
@@ -149,6 +179,7 @@ const Dashboard = () => {
         documentName: pdfFile.name,
         uploaderName: user?.email?.split('@')[0] || 'A user',
         uploaderEmail: user?.email,
+        signingLink: `${window.location.origin}/dashboard`,
       });
     };
 
@@ -167,6 +198,20 @@ const Dashboard = () => {
   };
 
 
+  const handleDeleteDoc = async (e: React.MouseEvent, docId: string) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this document?")) {
+      try {
+        await deleteDoc(doc(db, "documents", docId));
+        setRecentDocs((prev) => prev.filter((d) => d.id !== docId));
+        toast.success("Document deleted successfully");
+      } catch (error) {
+        console.error("Error deleting document:", error);
+        toast.error("Failed to delete document");
+      }
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen gradient-subtle flex items-center justify-center">
@@ -181,9 +226,7 @@ const Dashboard = () => {
       <header className="bg-card/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Link to="/">
-              <Logo className="h-10 w-auto" />
-            </Link>
+            <Logo className="h-16 w-auto" />
           </div>
 
           <div className="flex items-center gap-4">
@@ -243,6 +286,40 @@ const Dashboard = () => {
       <main className="container mx-auto px-6 py-8">
         {!pdfFile ? (
           <div className="max-w-2xl mx-auto">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">12</div>
+                  <p className="text-xs text-muted-foreground">+2 from last month</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Signed</CardTitle>
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">8</div>
+                  <p className="text-xs text-muted-foreground">66% completion rate</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">4</div>
+                  <p className="text-xs text-muted-foreground">Action required</p>
+                </CardContent>
+              </Card>
+            </div>
+
             <div className="text-center mb-8">
               <h1 className="font-display text-3xl font-bold mb-2">Upload Your Document</h1>
               <p className="text-muted-foreground">
@@ -258,11 +335,16 @@ const Dashboard = () => {
                 Recent Documents
               </h2>
               <div className="grid gap-4">
-                {[
-                  { id: '1', name: 'Service_Agreement_2024.pdf', date: '2 hrs ago', status: 'Signed' },
-                  { id: '2', name: 'NDA_External_Vendor.pdf', date: 'Yesterday', status: 'Pending' },
-                  { id: '3', name: 'Q1_Financial_Report.pdf', date: '3 days ago', status: 'Draft' },
-                ].map((doc) => (
+                {loadingDocs ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : recentDocs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl">
+                    No recent documents found
+                  </div>
+                ) : (
+                  recentDocs.map((doc) => (
                   <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border/50 hover:border-primary/50 transition-colors group cursor-pointer">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -270,23 +352,33 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <h3 className="font-medium">{doc.name}</h3>
-                        <p className="text-sm text-muted-foreground">{doc.date}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {doc.createdAt?.seconds 
+                            ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() 
+                            : 'Unknown date'}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        doc.status === 'Signed' ? 'bg-green-500/10 text-green-500' :
-                        doc.status === 'Pending' ? 'bg-orange-500/10 text-orange-500' :
+                        doc.status === 'Signed' || doc.status === 'completed' ? 'bg-green-500/10 text-green-500' :
+                        doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-500' :
                         'bg-slate-500/10 text-slate-500'
                       }`}>
-                        {doc.status}
+                        {doc.status || 'Draft'}
                       </span>
-                      <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreVertical className="w-4 h-4" />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => handleDeleteDoc(e, doc.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </div>
           </div>
@@ -316,7 +408,9 @@ const Dashboard = () => {
             {/* Signature Pad */}
             <div className="lg:col-span-1">
               <div className="sticky top-24">
-                <div className="space-y-6">
+                <Card className="border-border/60 shadow-sm">
+                  <CardContent className="p-6 space-y-6">
+                    <h3 className="font-semibold flex items-center gap-2"><PenTool className="w-4 h-4" /> Signature Tools</h3>
                   <Button onClick={() => setShowSignatureModal(true)} className="w-full" variant="outline">
                     <PenTool className="w-4 h-4 mr-2" />
                     Create Signature
@@ -330,10 +424,10 @@ const Dashboard = () => {
                       Clear Current Signature
                     </Button>
                   )}
-                  <SignaturePad onSignatureCreate={handleSignatureCreate} />
                   <Separator />
                   <SignerManager signers={signers} setSigners={setSigners} onSendInvites={handleSendInvites} />
-                </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>

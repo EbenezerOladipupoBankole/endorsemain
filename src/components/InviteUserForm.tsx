@@ -26,7 +26,8 @@ export function InviteUserForm({ documentId }: InviteUserFormProps) {
       // 2. Call the function with the document ID and email
       await inviteToSign({
         documentId: documentId,
-        recipientEmail: email
+        recipientEmail: email,
+        signingLink: `${window.location.origin}/sign/${documentId}`
       });
       
       toast.success("Invitation sent successfully!");
