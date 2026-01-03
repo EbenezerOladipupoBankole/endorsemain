@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
-import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock, ChevronRight, Globe, Lock, Mail, Smartphone, Calendar, Image, Type, Cookie } from "lucide-react";
+import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock, ChevronRight, Globe, Lock, Mail, Smartphone, Calendar, Image, Type, Cookie, PlayCircle, MessageSquare } from "lucide-react";
 
 const Landing = () => {
   const [currency, setCurrency] = useState<"USD" | "NGN">("USD");
@@ -11,7 +11,14 @@ const Landing = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCookieConsent, setShowCookieConsent] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const [language, setLanguage] = useState("en");
+  const [showChat, setShowChat] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    { text: "Hello! 👋 Thanks for visiting Endorse. How can we help you streamline your agreements today?", isUser: false, time: "Just now" }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
     const consent = localStorage.getItem("cookieConsent");
@@ -26,6 +33,24 @@ const Landing = () => {
     setShowCookieConsent(false);
   };
 
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const newMessage = { text: chatInput, isUser: true, time: "Just now" };
+    setChatMessages((prev) => [...prev, newMessage]);
+    setChatInput("");
+    setIsTyping(true);
+
+    // Simulate bot response
+    setTimeout(() => {
+      setIsTyping(false);
+      setChatMessages((prev) => [...prev, { text: "Thanks for reaching out! A member of our team will be with you shortly.", isUser: false, time: "Just now" }]);
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
+      audio.play().catch((e) => console.error("Audio play failed:", e));
+    }, 1500);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -37,14 +62,13 @@ const Landing = () => {
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#testimonials" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
             <Link to="/blog" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
           </div>
           <div className="hidden md:flex items-center gap-3">
             <Link to="/auth">
               <Button variant="ghost" className="font-medium text-base">Sign In</Button>
             </Link>
-            <Link to="/auth">
+            <Link to="/auth?mode=signup">
               <Button className="font-medium text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Get Started Free</Button>
             </Link>
           </div>
@@ -60,13 +84,12 @@ const Landing = () => {
           <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5">
             <a href="#features" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Features</a>
             <a href="#pricing" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</a>
-            <a href="#testimonials" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Testimonials</a>
             <Link to="/blog" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Blog</Link>
             <div className="flex flex-col gap-3 mt-2">
               <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
                 <Button variant="ghost" size="lg" className="w-full justify-start text-base">Sign In</Button>
               </Link>
-              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+              <Link to="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
                 <Button size="lg" className="w-full text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Get Started Free</Button>
               </Link>
             </div>
@@ -85,12 +108,6 @@ const Landing = () => {
             
             {/* Left Column: Content */}
             <div className="w-full lg:w-1/2 text-center lg:text-left z-10">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/50 border border-border text-sm font-medium text-foreground mb-8 animate-fade-up backdrop-blur-sm">
-                <Star className="w-3.5 h-3.5 fill-[#FFC83D] text-[#FFC83D]" />
-                <span className="opacity-80">Trusted by 50,000+ professionals</span>
-              </div>
-              
               {/* Headline */}
               <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight animate-fade-up-delay-1">
                 The Standard for <br />
@@ -109,7 +126,7 @@ const Landing = () => {
               
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-up-delay-3 mb-12">
-                <Link to="/auth">
+                <Link to="/auth?mode=signup">
                   <Button size="lg" className="w-full sm:w-auto text-lg h-14 px-8 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-semibold shadow-lg shadow-[#FFC83D]/20">
                     Start Free Trial
                     <ArrowRight className="w-5 h-5 ml-2" />
@@ -122,6 +139,15 @@ const Landing = () => {
                   onClick={() => setShowContactModal(true)}
                 >
                   Contact Sales
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="lg" 
+                  className="w-full sm:w-auto text-lg h-14 px-8 hover:bg-accent"
+                  onClick={() => setShowVideoModal(true)}
+                >
+                  <PlayCircle className="w-5 h-5 mr-2" />
+                  How it Works
                 </Button>
               </div>
 
@@ -266,17 +292,6 @@ const Landing = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Logo Strip - Bottom of Hero */}
-          <div className="mt-24 pt-10 border-t border-border/60">
-            <p className="text-xs font-semibold text-muted-foreground mb-6 uppercase tracking-widest text-center lg:text-left">Trusted by market leaders</p>
-            <div className="flex flex-wrap justify-center lg:justify-between gap-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-              <div className="flex items-center gap-2 font-bold text-xl text-foreground"><Globe className="w-6 h-6" /> GlobalTech</div>
-              <div className="flex items-center gap-2 font-bold text-xl text-foreground"><Zap className="w-6 h-6" /> FastCo</div>
-              <div className="flex items-center gap-2 font-bold text-xl text-foreground"><Shield className="w-6 h-6" /> SecureBank</div>
-              <div className="flex items-center gap-2 font-bold text-xl text-foreground"><LayoutDashboard className="w-6 h-6" /> CorpInc</div>
             </div>
           </div>
         </div>
@@ -520,39 +535,19 @@ const Landing = () => {
                   <span className="text-4xl font-bold">{currency === "USD" ? "$0" : "₦0"}</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
-                <p className="text-base text-muted-foreground mt-2">Perfect for individuals just getting started.</p>
+                <p className="text-base text-muted-foreground mt-2">For individuals starting out</p>
               </div>
               <ul className="space-y-4 mb-8 flex-1">
                 <li className="flex items-center gap-3 text-base">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  3 documents per month
+                  3 documents/mo
                 </li>
                 <li className="flex items-center gap-3 text-base">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Up to 2 signers per document
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Basic audit trail
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Endorse branding on documents
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Email signing only
-                </li>
-                <li className="flex items-center gap-3 text-base text-muted-foreground/60">
-                  <X className="w-4 h-4 flex-shrink-0" />
-                  No bulk send
-                </li>
-                <li className="flex items-center gap-3 text-base text-muted-foreground/60">
-                  <X className="w-4 h-4 flex-shrink-0" />
-                  No templates
+                  Basic signatures
                 </li>
               </ul>
-              <Link to="/auth">
+              <Link to="/auth?mode=signup">
                 <Button variant="outline" size="lg" className={`w-full ${selectedPlan === "Free" ? "animate-pulse" : ""}`}>Get Started</Button>
               </Link>
             </div>
@@ -570,42 +565,26 @@ const Landing = () => {
               <div className="mb-6">
                 <h3 className="font-display text-2xl font-bold text-foreground mb-2">Pro</h3>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">{currency === "USD" ? "$5" : "₦7,000"}</span>
+                  <span className="text-4xl font-bold">{currency === "USD" ? "$10" : "₦15,500"}</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
-                <p className="text-base text-muted-foreground mt-2">For professionals who need more power.</p>
+                <p className="text-base text-muted-foreground mt-2">For professionals</p>
               </div>
               <ul className="space-y-4 mb-8 flex-1">
                 <li className="flex items-center gap-3 text-base">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  25 documents/month
+                  Unlimited documents
                 </li>
                 <li className="flex items-center gap-3 text-base">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Unlimited signers
+                  Invite signers
                 </li>
                 <li className="flex items-center gap-3 text-base">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  No Endorse branding
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Document templates
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Email reminders
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Download audit trail
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Priority email support
+                  Audit trails
                 </li>
               </ul>
-              <Link to="/auth">
+              <Link to="/auth?mode=signup">
                 <Button size="lg" className={`w-full bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black ${selectedPlan === "Pro" ? "animate-pulse" : ""}`}>Start Free Trial</Button>
               </Link>
             </div>
@@ -620,39 +599,23 @@ const Landing = () => {
               <div className="mb-6">
                 <h3 className="font-display text-2xl font-bold text-foreground mb-2">Business</h3>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">{currency === "USD" ? "$10" : "₦15,000"}</span>
+                  <span className="text-4xl font-bold">{currency === "USD" ? "$25" : "₦34,000"}</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
-                <p className="text-base text-muted-foreground mt-2">For teams scaling their operations.</p>
+                <p className="text-base text-muted-foreground mt-2">For teams & organizations</p>
               </div>
               <ul className="space-y-4 mb-8 flex-1">
                 <li className="flex items-center gap-3 text-base">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Unlimited documents
+                  Everything in Pro
                 </li>
                 <li className="flex items-center gap-3 text-base">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Team accounts (5–10 users)
+                  Team management
                 </li>
                 <li className="flex items-center gap-3 text-base">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Shared templates
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Bulk send
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Team analytics
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Custom logo
-                </li>
-                <li className="flex items-center gap-3 text-base text-muted-foreground">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Cloud storage integrations (soon)
+                  Custom branding
                 </li>
               </ul>
               <Button 
@@ -720,50 +683,10 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section id="testimonials" className="py-24 px-6 bg-secondary/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Testimonials</p>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Loved by teams everywhere
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                quote: "Endorse has cut our contract turnaround time by 80%. It's become essential to our workflow.",
-                author: "Sarah Chen",
-                role: "Operations Lead, TechCorp"
-              },
-              {
-                quote: "The simplest e-signature solution we've used. Our team was onboarded in minutes.",
-                author: "Michael Ross",
-                role: "CEO, StartupXYZ"
-              },
-              {
-                quote: "Finally, a signing tool that doesn't feel like it was built in 2005. Clean, fast, and reliable.",
-                author: "Emily Watson",
-                role: "Legal Counsel, FinanceHub"
-              }
-            ].map((testimonial, index) => (
-              <div key={index} className="bg-card rounded-xl border border-border p-8 shadow-sm hover:shadow-md transition-all">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-warning text-warning" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-6 leading-relaxed">"{testimonial.quote}"</p>
-                <div>
-                  <p className="font-semibold text-foreground text-sm">{testimonial.author}</p>
-                  <p className="text-muted-foreground text-sm">{testimonial.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Social Proof - Temporarily Hidden */}
+      {/* 
+      <section id="testimonials" className="py-24 px-6 bg-secondary/30">...</section>
+      */}
 
       {/* CTA Section */}
       <section className="py-24 px-6">
@@ -777,7 +700,7 @@ const Landing = () => {
               <p className="text-primary-foreground/85 text-xl mb-8 max-w-xl mx-auto">
                 Join thousands of professionals who save hours every week with Endorse.
               </p>
-              <Link to="/auth">
+              <Link to="/auth?mode=signup">
                 <Button size="lg" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 font-semibold text-xl h-14 px-8">
                   Start Your Free Trial
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -812,7 +735,6 @@ const Landing = () => {
               <ul className="space-y-4 text-base text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
-                <li><a href="#testimonials" className="hover:text-foreground transition-colors">Testimonials</a></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">API Documentation</a></li>
               </ul>
             </div>
@@ -944,6 +866,84 @@ const Landing = () => {
           </div>
         </div>
       )}
+
+      {/* Video Modal */}
+      {showVideoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="absolute inset-0" onClick={() => setShowVideoModal(false)} />
+          <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl shadow-2xl overflow-hidden border border-border/50 animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowVideoModal(false)}
+              className="absolute right-4 top-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <iframe 
+              width="100%" 
+              height="100%" 
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1" 
+              title="Product Demo" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowFullScreen
+              className="w-full h-full"
+            ></iframe>
+          </div>
+        </div>
+      )}
+
+      {/* Live Chat Widget */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+        {showChat && (
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-80 sm:w-96 overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <div className="bg-[#FFC83D] p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
+                <span className="font-bold text-black">Endorse Support</span>
+              </div>
+              <button onClick={() => setShowChat(false)} className="text-black/80 hover:text-black transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="h-80 bg-background p-4 overflow-y-auto flex flex-col gap-4">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`p-3 rounded-lg max-w-[85%] border border-border ${msg.isUser ? 'bg-primary/10 self-end rounded-tr-none' : 'bg-secondary self-start rounded-tl-none'}`}>
+                  <p className="text-sm">{msg.text}</p>
+                  <span className="text-[10px] text-muted-foreground mt-1 block">{msg.time}</span>
+                </div>
+              ))}
+              {isTyping && (
+                <div className="bg-secondary p-4 rounded-lg rounded-tl-none max-w-[85%] self-start border border-border">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"></span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-border bg-background">
+              <form className="flex gap-2" onSubmit={handleChatSubmit}>
+                <Input 
+                  placeholder="Type a message..." 
+                  className="flex-1" 
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                />
+                <Button size="icon" type="submit" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
+                  <Send className="w-4 h-4" />
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+        <Button
+          size="lg"
+          className="h-14 w-14 rounded-full shadow-lg bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 transition-transform hover:scale-105"
+          onClick={() => setShowChat(!showChat)}
+        >
+          {showChat ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+        </Button>
+      </div>
     </div>
   );
 };

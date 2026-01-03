@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Loader2, Shield, Zap, CreditCard, User } from "lucide-react";
+import { Check, Loader2, Shield, Zap, CreditCard, User, Lock, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { Link, useSearchParams } from "react-router-dom";
@@ -24,12 +24,13 @@ const Settings = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
 
   const currentPlan = userProfile?.plan || "free";
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "billing" || tab === "profile") {
+    if (tab === "billing" || tab === "profile" || tab === "security") {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -117,6 +118,11 @@ const Settings = () => {
     }
   };
 
+  const handleToggle2FA = () => {
+    setIs2FAEnabled(!is2FAEnabled);
+    toast.success(`Two-Factor Authentication ${!is2FAEnabled ? 'enabled' : 'disabled'}`);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -166,6 +172,13 @@ const Settings = () => {
               Profile
             </Button>
             <Button 
+              variant={activeTab === "security" ? "default" : "ghost"} 
+              onClick={() => handleTabChange("security")}
+            >
+              <Lock className="w-4 h-4 mr-2" />
+              Security
+            </Button>
+            <Button 
               variant={activeTab === "billing" ? "default" : "ghost"} 
               onClick={() => handleTabChange("billing")}
             >
@@ -198,7 +211,9 @@ const Settings = () => {
                   </form>
                 </CardContent>
               </Card>
-
+            </div>
+          ) : activeTab === "security" ? (
+            <div className="grid gap-6 max-w-2xl animate-in fade-in slide-in-from-left-4 duration-300">
               <Card>
                 <CardHeader>
                   <CardTitle>Change Password</CardTitle>
@@ -245,8 +260,34 @@ const Settings = () => {
                   </form>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Two-Factor Authentication</CardTitle>
+                  <CardDescription>Add an extra layer of security to your account.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <Smartphone className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label className="text-base">Authenticator App</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Use an app like Google Authenticator to generate verification codes.
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant={is2FAEnabled ? "destructive" : "outline"}
+                    onClick={handleToggle2FA}
+                  >
+                    {is2FAEnabled ? "Disable" : "Enable"}
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
-          ) : (
+          ) : activeTab === "billing" ? (
             <div className="grid gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
              {/* Current Subscription */}
              <Card>
@@ -353,6 +394,8 @@ const Settings = () => {
                 </div>
              </div>
             </div>
+          ) : (
+            null
           )}
           </div>
       </main>

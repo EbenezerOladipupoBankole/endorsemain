@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, User, ArrowLeft, Loader2 } from "lucide-react";
+import { Mail, Lock, User, ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import {
@@ -16,11 +16,13 @@ import { auth } from "@/components/client";
 import { useAuth } from "@/components/AuthContext";
 
 const Auth = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -130,12 +132,34 @@ const Auth = () => {
             </p>
           </div>
 
+          {/* Security Check */}
+          <div className="mb-6 bg-secondary/30 p-4 rounded-lg border border-border/50">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5">
+                <input
+                  type="checkbox"
+                  id="security-check"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="h-4 w-4 rounded border-primary text-primary focus:ring-primary cursor-pointer accent-primary"
+                />
+              </div>
+              <label htmlFor="security-check" className="text-sm text-muted-foreground cursor-pointer select-none">
+                <span className="font-medium text-foreground flex items-center gap-1.5 mb-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                  Security Check
+                </span>
+                I confirm I am authorized to access this system and agree to the Terms of Service.
+              </label>
+            </div>
+          </div>
+
           {/* Google Sign In */}
           <Button
             variant="outline"
             className="w-full h-11 mb-6 font-medium"
             onClick={handleGoogleSignIn}
-            disabled={loading}
+            disabled={loading || !agreedToTerms}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path
@@ -220,7 +244,7 @@ const Auth = () => {
               </div>
             </div>
 
-            <Button type="submit" variant="hero" className="w-full h-11 font-medium" disabled={loading}>
+            <Button type="submit" variant="hero" className="w-full h-11 font-medium" disabled={loading || !agreedToTerms}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -242,14 +266,6 @@ const Auth = () => {
             >
               {isSignUp ? "Sign in" : "Sign up for free"}
             </button>
-          </p>
-
-          {/* Terms */}
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            By continuing, you agree to our{" "}
-            <a href="#" className="underline hover:text-foreground">Terms of Service</a>
-            {" "}and{" "}
-            <a href="#" className="underline hover:text-foreground">Privacy Policy</a>
           </p>
         </div>
       </div>

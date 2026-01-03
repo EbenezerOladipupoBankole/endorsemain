@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
-import { ChevronRight, FileText, Search, User } from "lucide-react";
+import { ChevronRight, FileText, Search, User, Share2 } from "lucide-react";
 
 const Blog = () => {
   useEffect(() => {
@@ -74,7 +74,6 @@ const Blog = () => {
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
             <Logo className="h-10 w-auto" />
-            <span className="font-display font-bold text-xl">Endorse</span>
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/auth">
@@ -170,8 +169,25 @@ const Blog = () => {
                       <User className="w-3 h-3" />
                       {post.author}
                     </div>
-                    <div className="flex items-center text-xs font-semibold text-foreground group-hover:translate-x-1 transition-transform">
-                      Read <ChevronRight className="w-3 h-3 ml-1" />
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (navigator.share) {
+                            navigator.share({
+                              title: post.title,
+                              text: post.excerpt,
+                              url: window.location.href,
+                            }).catch(() => {});
+                          }
+                        }}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center text-xs font-semibold text-foreground group-hover:translate-x-1 transition-transform">
+                        Read <ChevronRight className="w-3 h-3 ml-1" />
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -37,7 +37,11 @@ import {
   CreditCard,
   Shield,
   Menu,
-  X
+  X,
+  Bell,
+  HelpCircle,
+  MessageCircle,
+  Code
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -234,10 +238,10 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-subtle">
+    <div className="min-h-screen bg-gray-50/50 font-sans text-gray-900">
       {/* Header */}
-      <header className="bg-card/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 h-16">
+        <div className="container mx-auto px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={() => setIsMobileMenuOpen(true)}>
               <Menu className="h-5 w-5" />
@@ -249,6 +253,63 @@ const Dashboard = () => {
             <Button variant="ghost" size="sm" onClick={toggleTheme} className="w-9 h-9 p-0">
               {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="w-9 h-9">
+                  <HelpCircle className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild>
+                  <a href="#" className="cursor-pointer flex items-center">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Documentation
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#" className="cursor-pointer flex items-center">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Support
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#" className="cursor-pointer flex items-center">
+                    <Code className="w-4 h-4 mr-2" />
+                    API Reference
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative w-9 h-9">
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-red-500 border border-background" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
+                  <span className="font-semibold text-sm">Notifications</span>
+                  <span className="text-xs text-muted-foreground cursor-pointer hover:text-primary">Mark all as read</span>
+                </div>
+                {[
+                  { title: "Document Signed", desc: "Sarah Jenkins signed Service Agreement", time: "2 min ago", unread: true },
+                  { title: "New Feature", desc: "Try out the new bulk send feature", time: "1 hour ago", unread: false },
+                  { title: "Plan Update", desc: "Your pro plan will renew in 3 days", time: "2 days ago", unread: false },
+                ].map((notif, i) => (
+                  <DropdownMenuItem key={i} className="px-4 py-3 cursor-pointer flex flex-col items-start gap-1">
+                    <div className="flex items-center justify-between w-full">
+                      <span className={`font-medium text-sm ${notif.unread ? 'text-foreground' : 'text-muted-foreground'}`}>{notif.title}</span>
+                      <span className="text-[10px] text-muted-foreground">{notif.time}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{notif.desc}</p>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {pdfFile && signature && signaturePosition && (
               <Button
                 onClick={handleDownload}
@@ -273,12 +334,18 @@ const Dashboard = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
-                    <User className="w-4 h-4 text-accent-foreground" />
+                <Button variant="ghost" className="flex items-center gap-2 pl-0">
+                  <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center overflow-hidden border border-border ml-2">
+                    {user?.photoURL ? (
+                      <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-medium text-xs text-accent-foreground">
+                        {user?.email?.substring(0, 2).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <span className="hidden md:inline text-sm font-medium">
-                    {user?.email?.split('@')[0]}
+                    {user?.displayName || user?.email?.split('@')[0]}
                   </span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
@@ -308,7 +375,7 @@ const Dashboard = () => {
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm lg:hidden" onClick={() => setIsMobileMenuOpen(false)}>
-          <div className="fixed inset-y-0 left-0 z-50 w-64 border-r bg-card p-6 shadow-lg animate-in slide-in-from-left" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-y-0 left-0 z-50 w-64 border-r bg-white p-6 shadow-lg animate-in slide-in-from-left" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-8">
               <Logo className="h-8 w-auto" />
               <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
@@ -363,7 +430,7 @@ const Dashboard = () => {
       <div className="container mx-auto px-6 py-8 flex items-start gap-8">
         {/* Sidebar - Only show when not editing a PDF */}
         {!pdfFile && (
-          <aside className="hidden lg:block w-64 shrink-0 space-y-6 sticky top-24">
+          <aside className="hidden lg:block w-64 shrink-0 space-y-6 sticky top-24 text-sm">
             <div className="space-y-1">
               <Button variant="secondary" className="w-full justify-start" asChild>
                 <Link to="/dashboard">
@@ -385,7 +452,7 @@ const Dashboard = () => {
               </Button>
             </div>
 
-            <Card>
+            <Card className="bg-white shadow-sm border-gray-200">
               <CardHeader className="p-4 pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Shield className="h-4 w-4 text-primary" />
@@ -408,92 +475,115 @@ const Dashboard = () => {
 
         <main className="flex-1 min-w-0">
         {!pdfFile ? (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-5xl mx-auto space-y-8">
+            {/* Welcome & Actions */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+                <p className="text-gray-500">Manage your documents and signatures.</p>
+              </div>
+              <div className="flex gap-3">
+                 <Button variant="outline" className="bg-white">
+                   <Settings className="w-4 h-4 mr-2" /> Settings
+                 </Button>
+                 <label htmlFor="pdf-upload-hidden" className="cursor-pointer">
+                    <Button className="bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-medium pointer-events-none">
+                      <PenTool className="w-4 h-4 mr-2" />
+                      New Document
+                    </Button>
+                 </label>
+              </div>
+            </div>
+
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-white shadow-sm border-gray-200">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Total Documents</CardTitle>
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">12</div>
-                  <p className="text-xs text-muted-foreground">+2 from last month</p>
+                  <div className="text-2xl font-bold text-gray-900">12</div>
+                  <p className="text-xs text-green-600 font-medium mt-1">+2 from last month</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="bg-white shadow-sm border-gray-200">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Signed</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Signed</CardTitle>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">8</div>
-                  <p className="text-xs text-muted-foreground">66% completion rate</p>
+                  <div className="text-2xl font-bold text-gray-900">8</div>
+                  <p className="text-xs text-gray-500 mt-1">66% completion rate</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="bg-white shadow-sm border-gray-200">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
                   <AlertCircle className="h-4 w-4 text-orange-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">4</div>
-                  <p className="text-xs text-muted-foreground">Action required</p>
+                  <div className="text-2xl font-bold text-gray-900">4</div>
+                  <p className="text-xs text-orange-600 font-medium mt-1">Action required</p>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="text-center mb-8">
-              <h1 className="font-display text-3xl font-bold mb-2">Upload Your Document</h1>
-              <p className="text-muted-foreground">
-                Select a PDF file to get started with signing
-              </p>
-            </div>
-            <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} />
+            {/* Upload Area */}
+            <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors shadow-none">
+              <CardContent className="pt-6">
+                 <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} />
+              </CardContent>
+            </Card>
             
             {/* Recent Documents Section */}
-            <div className="mt-12">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Recent Documents
-              </h2>
-              <div className="grid gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-500" />
+                  Recent Documents
+                </h2>
+                <Button variant="ghost" size="sm" className="text-primary h-8 text-xs">View All</Button>
+              </div>
+              
+              <div className="divide-y divide-gray-100">
                 {loadingDocs ? (
                   <div className="flex justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : recentDocs.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl">
-                    No recent documents found
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                    <p>No recent documents found</p>
                   </div>
                 ) : (
                   recentDocs.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border/50 hover:border-primary/50 transition-colors group cursor-pointer">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-primary" />
+                  <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5 text-blue-600" />
                       </div>
-                      <div>
-                        <h3 className="font-medium">{doc.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {doc.createdAt?.seconds 
-                            ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() 
-                            : 'Unknown date'}
-                        </p>
+                      <div className="min-w-0">
+                        <h3 className="font-medium text-gray-900 truncate">{doc.name}</h3>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>{doc.createdAt?.seconds ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown date'}</span>
+                          <span>•</span>
+                          <span>{doc.ownerEmail}</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         doc.status === 'Signed' || doc.status === 'completed' ? 'bg-green-500/10 text-green-500' :
-                        doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-500' :
-                        'bg-slate-500/10 text-slate-500'
+                        doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-600' :
+                        'bg-gray-100 text-gray-600'
                       }`}>
                         {doc.status || 'Draft'}
                       </span>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 hover:bg-red-50"
                         onClick={(e) => handleDeleteDoc(e, doc.id)}
                       >
                         <Trash2 className="w-4 h-4" />
