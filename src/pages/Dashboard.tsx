@@ -1,18 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { db } from '@/components/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
 import { PDFUploader } from '@/components/esign/PDFUploader';
-import { PDFViewer } from '@/components/esign/PDFViewer';
 import { SignerManager } from '@/components/esign/SignerManager';
 import type { Signer } from '@/components/esign/SignerManager';
-import { embedSignatureInPDF, downloadPDF } from '@/lib/pdfUtils';
 import SignatureModal from '@/components/SignatureModal';
 import { Logo } from '@/components/Logo';
 import { 
@@ -51,6 +49,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// Lazy load heavy components to reduce initial bundle size
+const PDFViewer = lazy(() => import('@/components/esign/PDFViewer').then(module => ({ default: module.PDFViewer })));
+
 interface SignaturePosition {
   x: number;
   y: number;
@@ -66,6 +67,8 @@ const Dashboard = () => {
   const [signaturePosition, setSignaturePosition] = useState<SignaturePosition | null>(null);
   const [signers, setSigners] = useState<Signer[]>([]);
   const [recentDocs, setRecentDocs] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [stats, setStats] = useState({ total: 0, signed: 0, pending: 0 });
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
@@ -98,8 +101,7 @@ const Dashboard = () => {
         const q = query(
           collection(db, "documents"),
           where("ownerEmail", "==", user.email),
-          orderBy("createdAt", "desc"),
-          limit(5)
+          orderBy("createdAt", "desc")
         );
         
         const querySnapshot = await getDocs(q);
@@ -107,7 +109,13 @@ const Dashboard = () => {
           id: doc.id,
           ...doc.data()
         }));
-        setRecentDocs(docs);
+
+        const total = docs.length;
+        const signed = docs.filter((d: any) => ['signed', 'completed', 'Signed'].includes(d.status)).length;
+        const pending = total - signed;
+
+        setStats({ total, signed, pending });
+        setRecentDocs(docs.slice(0, 5));
       } catch (error) {
         console.error("Error fetching recent docs:", error);
       } finally {
@@ -117,6 +125,44 @@ const Dashboard = () => {
 
     fetchRecentDocs();
   }, [user]);
+
+  // Fetch Notifications
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const q = query(
+      collection(db, "notifications"),
+      where("recipientEmail", "==", user.email),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setNotifications(items);
+    }, (error) => {
+      console.log("Notifications error:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleMarkAllRead = async () => {
+    const batch = writeBatch(db);
+    const unread = notifications.filter(n => !n.read);
+    if (unread.length === 0) return;
+
+    unread.forEach(n => {
+      batch.update(doc(db, "notifications", n.id), { read: true });
+    });
+
+    try {
+      await batch.commit();
+      toast.success("Notifications marked as read");
+    } catch (error) {
+      console.error("Error marking read:", error);
+    }
+  };
 
   const handleFileSelect = (file: File) => {
     setPdfFile(file);
@@ -148,6 +194,8 @@ const Dashboard = () => {
 
     setIsDownloading(true);
     try {
+      // Dynamically import PDF utils only when the user clicks download
+      const { embedSignatureInPDF, downloadPDF } = await import('@/lib/pdfUtils');
       const signedPdfBytes = await embedSignatureInPDF(
         pdfFile,
         signature,
@@ -286,27 +334,33 @@ const Dashboard = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative w-9 h-9">
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-red-500 border border-background" />
+                  {notifications.some(n => !n.read) && (
+                    <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-red-500 border border-background" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
                 <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
                   <span className="font-semibold text-sm">Notifications</span>
-                  <span className="text-xs text-muted-foreground cursor-pointer hover:text-primary">Mark all as read</span>
+                  <span className="text-xs text-muted-foreground cursor-pointer hover:text-primary" onClick={handleMarkAllRead}>Mark all as read</span>
                 </div>
-                {[
-                  { title: "Document Signed", desc: "Sarah Jenkins signed Service Agreement", time: "2 min ago", unread: true },
-                  { title: "New Feature", desc: "Try out the new bulk send feature", time: "1 hour ago", unread: false },
-                  { title: "Plan Update", desc: "Your pro plan will renew in 3 days", time: "2 days ago", unread: false },
-                ].map((notif, i) => (
-                  <DropdownMenuItem key={i} className="px-4 py-3 cursor-pointer flex flex-col items-start gap-1">
-                    <div className="flex items-center justify-between w-full">
-                      <span className={`font-medium text-sm ${notif.unread ? 'text-foreground' : 'text-muted-foreground'}`}>{notif.title}</span>
-                      <span className="text-[10px] text-muted-foreground">{notif.time}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{notif.desc}</p>
-                  </DropdownMenuItem>
-                ))}
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+                    No notifications
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <DropdownMenuItem key={notif.id} className="px-4 py-3 cursor-pointer flex flex-col items-start gap-1">
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`font-medium text-sm ${!notif.read ? 'text-foreground' : 'text-muted-foreground'}`}>{notif.title}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{notif.message || notif.desc}</p>
+                    </DropdownMenuItem>
+                  ))
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -503,8 +557,8 @@ const Dashboard = () => {
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">12</div>
-                  <p className="text-xs text-green-600 font-medium mt-1">+2 from last month</p>
+                  <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                  <p className="text-xs text-gray-500 mt-1">All documents</p>
                 </CardContent>
               </Card>
               <Card className="bg-white shadow-sm border-gray-200">
@@ -513,8 +567,8 @@ const Dashboard = () => {
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">8</div>
-                  <p className="text-xs text-gray-500 mt-1">66% completion rate</p>
+                  <div className="text-2xl font-bold text-gray-900">{stats.signed}</div>
+                  <p className="text-xs text-gray-500 mt-1">Completed documents</p>
                 </CardContent>
               </Card>
               <Card className="bg-white shadow-sm border-gray-200">
@@ -523,7 +577,7 @@ const Dashboard = () => {
                   <AlertCircle className="h-4 w-4 text-orange-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">4</div>
+                  <div className="text-2xl font-bold text-gray-900">{stats.pending}</div>
                   <p className="text-xs text-orange-600 font-medium mt-1">Action required</p>
                 </CardContent>
               </Card>
@@ -607,13 +661,19 @@ const Dashboard = () => {
                   </h2>
                 </div>
                 <div className="p-4">
-                  <PDFViewer
-                    file={pdfFile}
-                    signatureImage={signature}
-                    signaturePosition={signaturePosition}
-                    onSignaturePlace={handleSignaturePlace}
-                    onSignatureMove={handleSignatureMove}
-                  />
+                  <Suspense fallback={
+                    <div className="h-[600px] flex items-center justify-center bg-muted/10 rounded-lg">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    </div>
+                  }>
+                    <PDFViewer
+                      file={pdfFile}
+                      signatureImage={signature}
+                      signaturePosition={signaturePosition}
+                      onSignaturePlace={handleSignaturePlace}
+                      onSignatureMove={handleSignatureMove}
+                    />
+                  </Suspense>
                 </div>
               </div>
             </div>

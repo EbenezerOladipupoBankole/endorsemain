@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { CheckCircle2, Globe, Heart, Shield, Users, Zap, Building2, Linkedin, Github, Mail } from "lucide-react";
+import builderImage from "@/assets/images/bankole.png";
 
 const About = () => {
   useEffect(() => {
@@ -73,23 +74,23 @@ const About = () => {
               <div>
                 <h2 className="font-display text-3xl md:text-4xl font-bold mb-6">Our Mission</h2>
                 <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                  Founded in 2024, Endorse started with a simple premise: paper contracts are a bottleneck to progress. In a world that moves at the speed of light, waiting days for a signature didn't make sense.
+                  Founded in 2024, Endorse started with a simple premise: paper contracts are a bottleneck to progress. We believe that agreements should be as fast and fluid as the rest of your work.
                 </p>
                 <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                  Today, we help thousands of individuals and enterprises automate their agreement process. From freelance contracts to billion-dollar mergers, Endorse provides the secure infrastructure that powers global business.
+                  We are at the beginning of our journey, building a platform for forward-thinking individuals and teams. Whether you're a freelancer or a growing startup, Endorse provides the secure infrastructure to help you scale.
                 </p>
                 <div className="flex gap-8">
                   <div>
-                    <div className="text-4xl font-bold text-primary mb-1">50k+</div>
-                    <div className="text-sm text-muted-foreground uppercase tracking-wider">Users</div>
+                    <div className="text-4xl font-bold text-primary mb-1">100%</div>
+                    <div className="text-sm text-muted-foreground uppercase tracking-wider">Committed</div>
                   </div>
                   <div>
-                    <div className="text-4xl font-bold text-primary mb-1">1M+</div>
-                    <div className="text-sm text-muted-foreground uppercase tracking-wider">Documents</div>
+                    <div className="text-4xl font-bold text-primary mb-1">Secure</div>
+                    <div className="text-sm text-muted-foreground uppercase tracking-wider">By Design</div>
                   </div>
                   <div>
-                    <div className="text-4xl font-bold text-primary mb-1">100+</div>
-                    <div className="text-sm text-muted-foreground uppercase tracking-wider">Countries</div>
+                    <div className="text-4xl font-bold text-primary mb-1">Global</div>
+                    <div className="text-sm text-muted-foreground uppercase tracking-wider">Vision</div>
                   </div>
                 </div>
               </div>
@@ -203,13 +204,13 @@ const About = () => {
                 <div className="aspect-[3/4] bg-muted relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
                   <img 
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=60" 
+                    src={builderImage}
                     alt="Bankole Ebenezer" 
                     className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 grayscale group-hover:grayscale-0"
                   />
                   <div className="absolute bottom-0 left-0 right-0 p-8 z-20 text-white text-center">
-                    <h3 className="font-bold text-2xl mb-2">Bankole Ebenezer</h3>
-                    <p className="text-[#FFC83D] font-medium mb-1">BSc, Software Development</p>
+                    <h3 className="font-bold text-2xl mb-2 text-[#FFC83D]">Bankole Ebenezer</h3>
+                    <p className="text-white font-medium mb-1">BSc, Software Development</p>
                     <p className="text-sm text-gray-300 mb-6">Brigham Young University - Idaho</p>
                     <div className="flex justify-center gap-4">
                       <a href="#" className="p-2 bg-white/10 rounded-full hover:bg-[#FFC83D] hover:text-black transition-all duration-300 backdrop-blur-sm">
