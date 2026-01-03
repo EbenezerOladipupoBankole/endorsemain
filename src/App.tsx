@@ -10,6 +10,8 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SignDocument from "./pages/SignDocument";
 import Settings from "./pages/Settings";
+import Blog from "./pages/Blog";
+import About from "./pages/About";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +24,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/about" element={<About />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sign/:id" element={<SignDocument />} />

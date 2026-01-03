@@ -1,14 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
-import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock } from "lucide-react";
+import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock, ChevronRight, Globe, Lock, Mail, Smartphone, Calendar, Image, Type, Cookie } from "lucide-react";
 
 const Landing = () => {
   const [currency, setCurrency] = useState<"USD" | "NGN">("USD");
   const [selectedPlan, setSelectedPlan] = useState<"Free" | "Pro" | "Business">("Pro");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showCookieConsent, setShowCookieConsent] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [language, setLanguage] = useState("en");
+
+  useEffect(() => {
+    const consent = localStorage.getItem("cookieConsent");
+    if (!consent) {
+      const timer = setTimeout(() => setShowCookieConsent(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const acceptCookies = () => {
+    localStorage.setItem("cookieConsent", "true");
+    setShowCookieConsent(false);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,6 +38,7 @@ const Landing = () => {
             <a href="#features" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <a href="#testimonials" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
+            <Link to="/blog" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
           </div>
           <div className="hidden md:flex items-center gap-3">
             <Link to="/auth">
@@ -44,6 +61,7 @@ const Landing = () => {
             <a href="#features" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Features</a>
             <a href="#pricing" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</a>
             <a href="#testimonials" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Testimonials</a>
+            <Link to="/blog" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Blog</Link>
             <div className="flex flex-col gap-3 mt-2">
               <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
                 <Button variant="ghost" size="lg" className="w-full justify-start text-base">Sign In</Button>
@@ -57,213 +75,395 @@ const Landing = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-36 pb-32 px-6 bg-gradient-mesh relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent/40 via-background to-background" />
+      <section className="pt-32 pb-20 px-6 bg-background relative overflow-hidden">
+        {/* Grid Background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-accent/20 via-background to-background" />
         
-        <div className="container mx-auto max-w-6xl relative">
-          <div className="text-center">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent border border-border text-sm font-medium text-accent-foreground mb-10 animate-fade-up">
-              <Star className="w-3.5 h-3.5 fill-current text-[#FFC83D]" />
-              Trusted by 50,000+ professionals worldwide
-            </div>
+        <div className="container mx-auto max-w-7xl relative">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             
-            {/* Headline */}
-            <h1 className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-foreground mb-10 leading-[1.1] tracking-tight animate-fade-up-delay-1">
-              Document Signing<br />
-              <span className="text-gradient">Made Effortless</span>
-            </h1>
-            
-            {/* Subheadline */}
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-14 leading-relaxed animate-fade-up-delay-2">
-              The modern way to sign, send, and manage documents. 
-              Create legally binding signatures in seconds with our intuitive platform.
-            </p>
-            
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-5 justify-center animate-fade-up-delay-3">
-              <Link to="/auth">
-                <Button size="lg" className="w-full sm:w-auto group text-xl h-14 px-8 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">
-                  Start Free Trial
-                  <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+            {/* Left Column: Content */}
+            <div className="w-full lg:w-1/2 text-center lg:text-left z-10">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/50 border border-border text-sm font-medium text-foreground mb-8 animate-fade-up backdrop-blur-sm">
+                <Star className="w-3.5 h-3.5 fill-[#FFC83D] text-[#FFC83D]" />
+                <span className="opacity-80">Trusted by 50,000+ professionals</span>
+              </div>
+              
+              {/* Headline */}
+              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight animate-fade-up-delay-1">
+                The Standard for <br />
+                <span className="text-primary relative inline-block">
+                  Electronic Signatures
+                  <svg className="absolute w-full h-3 -bottom-1 left-0 text-[#FFC83D] opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
+                    <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                  </svg>
+                </span>
+              </h1>
+              
+              {/* Subheadline */}
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-10 leading-relaxed animate-fade-up-delay-2">
+                Accelerate business with the world's most trusted e-signature solution. Secure, compliant, and easy to use.
+              </p>
+              
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-up-delay-3 mb-12">
+                <Link to="/auth">
+                  <Button size="lg" className="w-full sm:w-auto text-lg h-14 px-8 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-semibold shadow-lg shadow-[#FFC83D]/20">
+                    Start Free Trial
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="w-full sm:w-auto text-lg h-14 px-8 bg-background/50 backdrop-blur-sm"
+                  onClick={() => setShowContactModal(true)}
+                >
+                  Contact Sales
                 </Button>
-              </Link>
-              <Button variant="outline" size="lg" className="w-full sm:w-auto text-xl h-14 px-8">
-                Watch Demo
-              </Button>
+              </div>
+
+              {/* Trust Indicators (Mini) */}
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-8 gap-y-4 text-sm text-muted-foreground animate-fade-up-delay-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <span>ESIGN Compliant</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <span>Bank-Level Security</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <span>No Credit Card</span>
+                </div>
+              </div>
             </div>
 
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 mt-16 pt-10 border-t border-border/50">
-              {["No credit card required", "Free 14-day trial", "Cancel anytime"].map((item, i) => (
-                <div key={i} className="flex items-center gap-2 text-base text-muted-foreground">
-                  <Check className="w-4 h-4 text-success" />
-                  {item}
+            {/* Right Column: Visual */}
+            <div className="w-full lg:w-1/2 relative animate-fade-in duration-1000 delay-300">
+              <div className="relative">
+                {/* Glow effect */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
+                
+                <div className="relative mx-auto w-full max-w-[600px] lg:max-w-none">
+                  {/* Main Interface Window */}
+                  <div className="bg-background rounded-xl border border-border shadow-2xl overflow-hidden relative">
+                    {/* Window Header */}
+                    <div className="bg-muted/30 px-4 py-3 border-b border-border flex items-center gap-4">
+                      <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
+                        <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
+                        <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+                      </div>
+                      <div className="flex-1 flex justify-center">
+                        <div className="bg-background border border-border/50 rounded-md px-3 py-1 text-xs text-muted-foreground flex items-center gap-2">
+                          <Lock className="w-3 h-3" /> endorse.com/sign/contract-2024
+                        </div>
+                      </div>
+                      <div className="w-16" />
+                    </div>
+
+                    {/* Window Content - Split View */}
+                    <div className="flex h-[400px] sm:h-[500px] md:h-[600px]">
+                      {/* Left Sidebar (Tools) */}
+                      <div className="w-12 md:w-20 border-r border-border bg-muted/10 flex flex-col items-center py-4 md:py-6 gap-4 md:gap-6">
+                        {[PenTool, Type, Image, Calendar].map((Icon, i) => (
+                          <div key={i} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                            <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Main Document Area */}
+                      <div className="flex-1 bg-muted/5 p-4 md:p-8 overflow-y-auto flex justify-center relative">
+                        <div className="bg-white text-black shadow-lg w-full max-w-[600px] min-h-[600px] md:min-h-[800px] p-6 md:p-12 relative mx-auto">
+                          {/* Document Content Mock */}
+                          <div className="flex justify-between items-start mb-8 md:mb-12">
+                            <div className="flex items-center gap-2 font-bold text-lg md:text-xl">
+                              <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white flex items-center justify-center rounded text-sm md:text-base">E</div>
+                              <span className="text-sm md:text-base">ENDORSE</span>
+                            </div>
+                            <div className="text-right text-[10px] md:text-sm text-gray-500">
+                              <p>Date: Oct 24, 2024</p>
+                              <p>Ref: #8839-22</p>
+                            </div>
+                          </div>
+
+                          <h2 className="text-lg md:text-2xl font-bold mb-4 md:mb-6">Service Agreement</h2>
+                          <div className="space-y-3 md:space-y-4 text-[10px] md:text-sm text-gray-600 leading-relaxed">
+                            <p>This Service Agreement ("Agreement") is entered into by and between the undersigned parties.</p>
+                            <div className="h-3 md:h-4 bg-gray-100 rounded w-full" />
+                            <div className="h-3 md:h-4 bg-gray-100 rounded w-5/6" />
+                            <div className="h-3 md:h-4 bg-gray-100 rounded w-full" />
+                            
+                            <h3 className="text-sm md:text-lg font-bold text-black mt-6 md:mt-8 mb-2 md:mb-4">1. Scope of Services</h3>
+                            <div className="h-3 md:h-4 bg-gray-100 rounded w-full" />
+                            <div className="h-3 md:h-4 bg-gray-100 rounded w-11/12" />
+                            
+                            <h3 className="text-sm md:text-lg font-bold text-black mt-6 md:mt-8 mb-2 md:mb-4">2. Terms & Conditions</h3>
+                            <div className="h-3 md:h-4 bg-gray-100 rounded w-full" />
+                            <div className="h-3 md:h-4 bg-gray-100 rounded w-4/5" />
+                          </div>
+
+                          {/* Signature Zone */}
+                          <div className="mt-8 md:mt-16 pt-6 md:pt-8 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                            <div>
+                              <p className="text-[10px] md:text-xs font-bold uppercase text-gray-400 mb-2">Signed by Client</p>
+                              <div className="h-10 md:h-16 border-b border-black flex items-end pb-2 font-handwriting text-lg md:text-2xl relative group cursor-pointer">
+                                <span className="text-blue-600">Sarah Jenkins</span>
+                                <div className="absolute -top-3 -right-3 bg-[#FFC83D] text-black text-[10px] font-bold px-2 py-1 rounded shadow-sm animate-bounce">
+                                  SIGNED
+                                </div>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[10px] md:text-xs font-bold uppercase text-gray-400 mb-2">Date</p>
+                              <div className="h-10 md:h-16 border-b border-gray-300 flex items-end pb-2 text-gray-600 text-xs md:text-base">
+                                Oct 24, 2024
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Sidebar (Signers) */}
+                      <div className="w-56 border-l border-border bg-background hidden lg:block p-4">
+                        <h4 className="font-semibold text-sm mb-4">Signers</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3 p-2 rounded-lg bg-accent/50 border border-border">
+                            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-bold">SJ</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">Sarah Jenkins</p>
+                              <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Completed</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-2 rounded-lg opacity-60">
+                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-xs font-bold">JD</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">John Doe</p>
+                              <p className="text-xs text-muted-foreground">Waiting...</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Floating Elements */}
+                  <div className="absolute -right-4 top-20 bg-background p-4 rounded-xl shadow-xl border border-border animate-in slide-in-from-bottom-10 duration-1000 delay-500 hidden md:block">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-green-500/10 p-2 rounded-full">
+                        <Check className="w-5 h-5 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm">Document Completed</p>
+                        <p className="text-xs text-muted-foreground">Just now</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
 
-          {/* Hero Visual */}
-          <div className="mt-24 relative">
-            <div className="absolute -inset-4 bg-gradient-primary opacity-5 blur-3xl rounded-3xl" />
-            <div className="relative bg-card rounded-2xl shadow-card border border-border overflow-hidden">
-              <div className="bg-secondary/50 px-4 py-3 border-b border-border flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-destructive/70" />
-                  <div className="w-3 h-3 rounded-full bg-warning/70" />
-                  <div className="w-3 h-3 rounded-full bg-success/70" />
-                </div>
-                <div className="flex-1 text-center">
-                  <span className="text-sm text-muted-foreground font-medium">Endorse Dashboard</span>
-                </div>
-              </div>
-              <div className="aspect-[16/9] bg-background relative overflow-hidden flex text-left border-t border-border/50">
-                {/* Sidebar Mock */}
-                <div className="w-[25%] max-w-[200px] border-r border-border bg-card/30 p-3 hidden sm:flex flex-col gap-2">
-                  <div className="h-6 w-6 bg-primary/20 rounded-md mb-4" />
-                  
-                  <div className="flex items-center gap-2 px-2 py-1.5 bg-secondary rounded-md">
-                    <LayoutDashboard className="w-3 h-3 text-foreground" />
-                    <div className="h-1.5 w-16 bg-foreground/20 rounded-full" />
-                  </div>
-                  <div className="flex items-center gap-2 px-2 py-1.5">
-                    <Settings className="w-3 h-3 text-muted-foreground" />
-                    <div className="h-1.5 w-12 bg-muted-foreground/20 rounded-full" />
-                  </div>
-                  <div className="flex items-center gap-2 px-2 py-1.5">
-                    <CreditCard className="w-3 h-3 text-muted-foreground" />
-                    <div className="h-1.5 w-10 bg-muted-foreground/20 rounded-full" />
-                  </div>
-                  
-                  <div className="mt-auto p-2 bg-card border border-border rounded-md">
-                    <div className="h-1.5 w-12 bg-primary/20 rounded-full mb-1.5" />
-                    <div className="h-1 w-full bg-muted rounded-full" />
-                  </div>
-                </div>
-
-                {/* Main Content Mock */}
-                <div className="flex-1 p-4 bg-muted/5 flex flex-col gap-4 overflow-hidden">
-                  {/* Stats Grid Mock */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-card p-3 rounded-lg border border-border shadow-sm">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="h-1.5 w-16 bg-muted-foreground/20 rounded-full" />
-                        <FileText className="w-3 h-3 text-muted-foreground" />
-                      </div>
-                      <div className="h-4 w-8 bg-foreground/20 rounded-md mb-1" />
-                    </div>
-                    <div className="bg-card p-3 rounded-lg border border-border shadow-sm">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="h-1.5 w-10 bg-muted-foreground/20 rounded-full" />
-                        <CheckCircle2 className="w-3 h-3 text-green-500" />
-                      </div>
-                      <div className="h-4 w-8 bg-foreground/20 rounded-md mb-1" />
-                    </div>
-                    <div className="bg-card p-3 rounded-lg border border-border shadow-sm">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="h-1.5 w-12 bg-muted-foreground/20 rounded-full" />
-                        <AlertCircle className="w-3 h-3 text-orange-500" />
-                      </div>
-                      <div className="h-4 w-8 bg-foreground/20 rounded-md mb-1" />
-                    </div>
-                  </div>
-
-                  {/* Upload Area Mock */}
-                  <div className="border-2 border-dashed border-border rounded-lg bg-card/50 flex flex-col items-center justify-center py-6 gap-2">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      <Upload className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div className="h-1.5 w-32 bg-muted-foreground/20 rounded-full" />
-                  </div>
-
-                  {/* Recent Docs List Mock */}
-                  <div className="space-y-2 opacity-60">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="w-3 h-3 text-muted-foreground" />
-                      <div className="h-1.5 w-24 bg-foreground/10 rounded-full" />
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-md bg-card border border-border">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                          <FileText className="w-3 h-3 text-primary" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="h-1.5 w-20 bg-foreground/20 rounded-full" />
-                          <div className="h-1 w-12 bg-muted-foreground/20 rounded-full" />
-                        </div>
-                      </div>
-                      <div className="h-4 w-12 bg-green-500/10 rounded-full" />
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {/* Logo Strip - Bottom of Hero */}
+          <div className="mt-24 pt-10 border-t border-border/60">
+            <p className="text-xs font-semibold text-muted-foreground mb-6 uppercase tracking-widest text-center lg:text-left">Trusted by market leaders</p>
+            <div className="flex flex-wrap justify-center lg:justify-between gap-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+              <div className="flex items-center gap-2 font-bold text-xl text-foreground"><Globe className="w-6 h-6" /> GlobalTech</div>
+              <div className="flex items-center gap-2 font-bold text-xl text-foreground"><Zap className="w-6 h-6" /> FastCo</div>
+              <div className="flex items-center gap-2 font-bold text-xl text-foreground"><Shield className="w-6 h-6" /> SecureBank</div>
+              <div className="flex items-center gap-2 font-bold text-xl text-foreground"><LayoutDashboard className="w-6 h-6" /> CorpInc</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-24 px-6">
+      {/* How It Works Section */}
+      <section className="py-20 bg-secondary/20 border-y border-border/50">
+        <div className="container mx-auto max-w-6xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">How Endorse Works</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Get your documents signed in minutes, not days. A simple workflow designed for speed.</p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 relative">
+            {/* Connecting line for desktop */}
+            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-border via-primary/20 to-border -z-10" />
+            
+            {[
+              { title: "Upload", desc: "Upload any PDF or Word document from your computer or cloud storage.", icon: Upload },
+              { title: "Sign & Send", desc: "Add your signature fields and send to recipients via email.", icon: PenTool },
+              { title: "Track", desc: "Get real-time updates when your document is viewed and signed.", icon: CheckCircle2 }
+            ].map((step, i) => (
+              <div key={i} className="group flex flex-col items-center text-center bg-background p-8 rounded-2xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
+                <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center mb-6 shadow-inner relative z-10 group-hover:scale-110 transition-transform duration-300">
+                  <step.icon className="w-10 h-10 text-primary" />
+                  <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#FFC83D] flex items-center justify-center font-bold text-black text-sm border-2 border-background">
+                    {i + 1}
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-foreground">{step.title}</h3>
+                <p className="text-muted-foreground leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Deep Dive Features (Alternating Layout) */}
+      <section id="features" className="py-24 px-6 overflow-hidden">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <p className="text-base font-semibold text-primary uppercase tracking-wider mb-3">Features</p>
             <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
               Everything you need to manage signatures
             </h2>
-            <p className="text-muted-foreground text-xl max-w-xl mx-auto">
-              Powerful features designed for modern teams and professionals
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              {
-                icon: PenTool,
-                title: "Draw or Type",
-                description: "Create your signature naturally by drawing or choose from elegant typed fonts"
-              },
-              {
-                icon: FileText,
-                title: "Instant PDF Export",
-                description: "Download professionally formatted signed documents as PDFs instantly"
-              },
-              {
-                icon: Send,
-                title: "Send & Track",
-                description: "Share documents and track views, opens, and signature completion in real-time"
-              },
-              {
-                icon: Shield,
-                title: "Bank-Level Security",
-                description: "256-bit encryption and SOC 2 compliance keep your documents safe"
-              },
-              {
-                icon: Users,
-                title: "Team Collaboration",
-                description: "Invite team members, set permissions, and manage workflows together"
-              },
-              {
-                icon: Zap,
-                title: "Lightning Fast",
-                description: "Sign documents in under 30 seconds. No printing, scanning, or faxing required"
-              }
-            ].map((feature, index) => (
-              <div 
-                key={index}
-                className="group p-6 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-card transition-all duration-300"
-              >
-                <div className="w-11 h-11 rounded-lg bg-accent flex items-center justify-center mb-4 group-hover:bg-[#FFC83D] group-hover:shadow-md transition-all duration-300">
-                  <feature.icon className="w-5 h-5 text-[#FFC83D] group-hover:text-black transition-colors" />
+          {/* Feature 1: Signing Experience */}
+          <div className="flex flex-col md:flex-row items-center gap-12 mb-24">
+            <div className="w-full md:w-1/2 order-2 md:order-1">
+              <div className="relative rounded-2xl bg-gradient-to-br from-secondary to-background border border-border p-8 shadow-lg">
+                {/* Mock Document Interface */}
+                <div className="bg-white rounded-lg shadow-sm border border-border/50 p-8 min-h-[300px] relative">
+                  <div className="h-4 w-1/3 bg-gray-200 rounded mb-6"></div>
+                  <div className="space-y-3 mb-8">
+                    <div className="h-2 w-full bg-gray-100 rounded"></div>
+                    <div className="h-2 w-full bg-gray-100 rounded"></div>
+                    <div className="h-2 w-2/3 bg-gray-100 rounded"></div>
+                  </div>
+                  
+                  {/* Signature Box */}
+                  <div className="border-2 border-dashed border-[#FFC83D] bg-[#FFC83D]/5 rounded-lg p-4 relative group cursor-pointer">
+                    <div className="absolute -top-3 left-4 bg-[#FFC83D] text-black text-xs font-bold px-2 py-0.5 rounded">Sign Here</div>
+                    <div className="font-handwriting text-3xl text-black opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-y-2 group-hover:translate-y-0">
+                      John Doe
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 opacity-100 group-hover:opacity-0 transition-opacity">Click to sign</p>
+                  </div>
                 </div>
-                <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-muted-foreground text-base leading-relaxed">
-                  {feature.description}
-                </p>
+                
+                {/* Floating Badge */}
+                <div className="absolute -right-4 top-10 bg-background border border-border shadow-xl rounded-lg p-3 flex items-center gap-3 animate-bounce duration-[3000ms]">
+                  <div className="bg-green-100 p-2 rounded-full"><Check className="w-4 h-4 text-green-600" /></div>
+                  <div>
+                    <p className="text-xs font-bold">Legally Binding</p>
+                    <p className="text-[10px] text-muted-foreground">ESIGN Compliant</p>
+                  </div>
+                </div>
               </div>
-            ))}
+            </div>
+            <div className="w-full md:w-1/2 order-1 md:order-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFC83D]/10 text-[#FFC83D] text-sm font-medium mb-4">
+                <PenTool className="w-4 h-4" />
+                Intuitive Signing
+              </div>
+              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Sign documents anywhere, on any device.</h3>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                Experience a signing process that feels natural. Whether you're on a desktop in the office or a mobile phone on the go, Endorse adapts to your screen.
+              </p>
+              <ul className="space-y-3">
+                {["Draw, type, or upload signatures", "Mobile-responsive interface", "No account required for signers"].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                    <span className="text-foreground">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Feature 2: Tracking */}
+          <div className="flex flex-col md:flex-row items-center gap-12 mb-24">
+            <div className="w-full md:w-1/2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-sm font-medium mb-4">
+                <Clock className="w-4 h-4" />
+                Real-time Tracking
+              </div>
+              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Never wonder about status again.</h3>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                Stay in the loop with instant notifications. Know exactly when your document is opened, viewed, and signed.
+              </p>
+              <Link to="/auth">
+                <Button variant="outline" className="group">
+                  Explore Features <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            </div>
+            <div className="w-full md:w-1/2">
+              <div className="relative rounded-2xl bg-card border border-border p-6 shadow-lg">
+                <div className="space-y-4">
+                  {[
+                    { user: "Sarah Chen", action: "viewed the document", time: "2 mins ago", icon: Users, color: "bg-blue-100 text-blue-600" },
+                    { user: "Mike Ross", action: "signed the contract", time: "Just now", icon: PenTool, color: "bg-green-100 text-green-600" },
+                    { user: "System", action: "sent copy to all parties", time: "Just now", icon: Mail, color: "bg-purple-100 text-purple-600" }
+                  ].map((notif, i) => (
+                    <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-background border border-border/50 shadow-sm">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${notif.color}`}>
+                        <notif.icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">
+                          <span className="font-bold">{notif.user}</span> {notif.action}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{notif.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Decorative Elements */}
+                <div className="absolute -z-10 -bottom-4 -right-4 w-full h-full bg-secondary/50 rounded-2xl"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature 3: Security */}
+          <div className="flex flex-col md:flex-row items-center gap-12">
+            <div className="w-full md:w-1/2 order-2 md:order-1">
+              <div className="relative rounded-2xl bg-[#1a1f2c] p-8 shadow-2xl overflow-hidden text-white">
+                <div className="absolute top-0 right-0 p-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none"></div>
+                
+                <div className="relative z-10 flex flex-col items-center justify-center text-center py-10">
+                  <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-6 backdrop-blur-md border border-white/20">
+                    <Lock className="w-10 h-10 text-[#FFC83D]" />
+                  </div>
+                  <h4 className="text-2xl font-bold mb-2">Bank-Level Security</h4>
+                  <p className="text-gray-400 mb-8">256-bit SSL Encryption</p>
+                  
+                  <div className="grid grid-cols-2 gap-4 w-full">
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                      <div className="text-[#FFC83D] font-bold text-lg">SOC 2</div>
+                      <div className="text-xs text-gray-400">Compliant</div>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                      <div className="text-[#FFC83D] font-bold text-lg">99.9%</div>
+                      <div className="text-xs text-gray-400">Uptime</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="w-full md:w-1/2 order-1 md:order-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-600 text-sm font-medium mb-4">
+                <Shield className="w-4 h-4" />
+                Enterprise Grade
+              </div>
+              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Secure, compliant, and legally binding.</h3>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                We take security seriously. Your documents are protected by industry-leading encryption and compliance standards.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {["Audit Trails", "Two-Factor Auth", "Data Encryption", "GDPR Compliant"].map((tag, i) => (
+                  <span key={i} className="px-3 py-1 bg-secondary rounded-md text-sm font-medium text-secondary-foreground border border-border">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -455,9 +655,17 @@ const Landing = () => {
                   Cloud storage integrations (soon)
                 </li>
               </ul>
-              <Link to="/auth">
-                <Button variant="outline" size="lg" className={`w-full ${selectedPlan === "Business" ? "animate-pulse" : ""}`}>Contact Sales</Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className={`w-full ${selectedPlan === "Business" ? "animate-pulse" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowContactModal(true);
+                }}
+              >
+                Contact Sales
+              </Button>
             </div>
           </div>
         </div>
@@ -513,7 +721,7 @@ const Landing = () => {
       </section>
 
       {/* Social Proof */}
-      {/* <section id="testimonials" className="py-24 px-6 bg-secondary/30">
+      <section id="testimonials" className="py-24 px-6 bg-secondary/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Testimonials</p>
@@ -540,7 +748,7 @@ const Landing = () => {
                 role: "Legal Counsel, FinanceHub"
               }
             ].map((testimonial, index) => (
-              <div key={index} className="bg-card rounded-xl border border-border p-6">
+              <div key={index} className="bg-card rounded-xl border border-border p-8 shadow-sm hover:shadow-md transition-all">
                 <div className="flex gap-1 mb-4">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="w-4 h-4 fill-warning text-warning" />
@@ -555,7 +763,7 @@ const Landing = () => {
             ))}
           </div>
         </div>
-      </section> */}
+      </section>
 
       {/* CTA Section */}
       <section className="py-24 px-6">
@@ -612,9 +820,9 @@ const Landing = () => {
             <div>
               <h4 className="font-semibold text-lg text-foreground mb-6">Company</h4>
               <ul className="space-y-4 text-base text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">About Us</a></li>
+                <li><Link to="/about" className="hover:text-foreground transition-colors">About Us</Link></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Blog</a></li>
+                <li><Link to="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
               </ul>
             </div>
@@ -632,9 +840,24 @@ const Landing = () => {
           </div>
 
           <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-muted-foreground text-base">
-              © {new Date().getFullYear()} Endorse. All rights reserved.
-            </p>
+            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
+              <p className="text-muted-foreground text-base">
+                © {new Date().getFullYear()} Endorse. All rights reserved.
+              </p>
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-muted-foreground" />
+                <select 
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="bg-transparent border-none text-sm text-muted-foreground hover:text-foreground focus:ring-0 cursor-pointer outline-none"
+                >
+                  <option value="en">English (US)</option>
+                  <option value="fr">Français</option>
+                  <option value="es">Español</option>
+                  <option value="de">Deutsch</option>
+                </select>
+              </div>
+            </div>
             <div className="flex gap-8 text-base text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
@@ -643,6 +866,84 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      {/* Cookie Consent Banner */}
+      {showCookieConsent && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-full duration-500">
+          <div className="container mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-full hidden sm:block">
+                <Cookie className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground text-center sm:text-left">
+                We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => setShowCookieConsent(false)}>
+                Decline
+              </Button>
+              <Button size="sm" className="flex-1 sm:flex-none bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90" onClick={acceptCookies}>
+                Accept
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Sales Modal */}
+      {showContactModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowContactModal(false)} />
+          <div className="relative z-50 w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl p-6 animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowContactModal(false)}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </button>
+            <div className="flex flex-col space-y-1.5 text-center sm:text-left mb-6">
+              <h2 className="text-lg font-semibold leading-none tracking-tight">Contact Sales</h2>
+              <p className="text-sm text-muted-foreground">
+                Get a custom quote for your team. We'll get back to you within 24 hours.
+              </p>
+            </div>
+            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setShowContactModal(false); }}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="first-name" className="text-sm font-medium leading-none">First name</label>
+                  <Input id="first-name" placeholder="John" required />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="last-name" className="text-sm font-medium leading-none">Last name</label>
+                  <Input id="last-name" placeholder="Doe" required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium leading-none">Work Email</label>
+                <Input id="email" type="email" placeholder="john@company.com" required />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="company" className="text-sm font-medium leading-none">Company Name</label>
+                <Input id="company" placeholder="Acme Inc." required />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="message" className="text-sm font-medium leading-none">Message</label>
+                <textarea 
+                  id="message" 
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Tell us about your needs..."
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-3">
+                <Button variant="outline" type="button" onClick={() => setShowContactModal(false)}>Cancel</Button>
+                <Button type="submit" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Send Request</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
