@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Loader2, Shield, Zap, CreditCard, User, Lock, Smartphone } from "lucide-react";
+import { Check, Loader2, Shield, Zap, CreditCard, User, Lock, Smartphone, Copy, X } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { Link, useSearchParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
-import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, multiFactor, TotpMultiFactorGenerator, TotpSecret } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "@/components/client";
+import { functions, auth } from "@/components/client";
 
 const Settings = () => {
   const { user, userProfile, loading } = useAuth();
@@ -25,6 +25,9 @@ const Settings = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [totpSecret, setTotpSecret] = useState<TotpSecret | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
 
   const currentPlan = userProfile?.plan || "free";
 
@@ -39,6 +42,8 @@ const Settings = () => {
     if (user?.displayName) {
       setDisplayName(user.displayName);
     }
+    // Check if 2FA is already enabled
+    setIs2FAEnabled(user?.multiFactor?.enrolledFactors.length > 0);
   }, [user]);
 
   const handleTabChange = (tab: string) => {
@@ -118,9 +123,65 @@ const Settings = () => {
     }
   };
 
-  const handleToggle2FA = () => {
-    setIs2FAEnabled(!is2FAEnabled);
-    toast.success(`Two-Factor Authentication ${!is2FAEnabled ? 'enabled' : 'disabled'}`);
+  const handleToggle2FA = async () => {
+    if (is2FAEnabled) {
+      // Disable 2FA
+      if (!window.confirm("Are you sure you want to disable 2FA? Your account will be less secure.")) return;
+      try {
+        const enrolledFactors = multiFactor(user!).enrolledFactors;
+        // Unenroll all TOTP factors
+        for (const factor of enrolledFactors) {
+           await multiFactor(user!).unenroll(factor);
+        }
+        setIs2FAEnabled(false);
+        toast.success("Two-Factor Authentication disabled");
+      } catch (error: any) {
+        console.error(error);
+        toast.error("Failed to disable 2FA");
+      }
+    } else {
+      // Enable 2FA - Start Enrollment
+      try {
+        const multiFactorSession = await multiFactor(user!).getSession();
+        const secret = await TotpMultiFactorGenerator.generateSecret(multiFactorSession);
+        setTotpSecret(secret);
+        setShow2FASetup(true);
+      } catch (error: any) {
+        console.error(error);
+        if (error.code === 'auth/requires-recent-login') {
+           toast.error("Please sign out and sign in again to enable 2FA.");
+        } else {
+           toast.error("Failed to start 2FA setup. Ensure you have upgraded to Identity Platform in Firebase Console.");
+        }
+      }
+    }
+  };
+
+  const handleVerifyAndEnroll = async () => {
+    if (!totpSecret || !verificationCode) return;
+    
+    try {
+      const multiFactorAssertion = TotpMultiFactorGenerator.assertionForEnrollment(
+        totpSecret, 
+        verificationCode
+      );
+      
+      await multiFactor(user!).enroll(multiFactorAssertion, "Authenticator App");
+      
+      setIs2FAEnabled(true);
+      setShow2FASetup(false);
+      setTotpSecret(null);
+      setVerificationCode("");
+      toast.success("Two-Factor Authentication enabled successfully!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Invalid verification code. Please try again.");
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
   };
 
   if (loading) {
@@ -286,6 +347,45 @@ const Settings = () => {
                   </Button>
                 </CardContent>
               </Card>
+
+              {/* 2FA Setup Modal/Overlay */}
+              {show2FASetup && totpSecret && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+                  <Card className="w-full max-w-md relative">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="absolute right-4 top-4" 
+                      onClick={() => setShow2FASetup(false)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                    <CardHeader>
+                      <CardTitle>Set up Authenticator</CardTitle>
+                      <CardDescription>Scan the QR code or enter the key manually in your authenticator app.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="p-4 bg-secondary rounded-lg break-all font-mono text-sm flex items-center justify-between gap-2">
+                        <span>{totpSecret.secretKey}</span>
+                        <Button variant="ghost" size="icon" onClick={() => copyToClipboard(totpSecret.secretKey)}>
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Verification Code</Label>
+                        <Input 
+                          placeholder="Enter 6-digit code" 
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        />
+                      </div>
+                      <Button className="w-full" onClick={handleVerifyAndEnroll} disabled={verificationCode.length !== 6}>
+                        Verify & Activate
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
           ) : activeTab === "billing" ? (
             <div className="grid gap-6 animate-in fade-in slide-in-from-right-4 duration-300">

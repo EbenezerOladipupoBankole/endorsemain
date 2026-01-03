@@ -11,6 +11,9 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  getMultiFactorResolver,
+  TotpMultiFactorGenerator,
+  MultiFactorError
 } from "firebase/auth";
 import { auth } from "@/components/client";
 import { useAuth } from "@/components/AuthContext";
@@ -23,6 +26,9 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaResolver, setMfaResolver] = useState<any>(null);
+  const [verificationCode, setVerificationCode] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -49,7 +55,13 @@ const Auth = () => {
         navigate("/dashboard");
       }
     } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+      if (error.code === 'auth/multi-factor-auth-required') {
+        setMfaRequired(true);
+        setMfaResolver(getMultiFactorResolver(auth, error as MultiFactorError));
+        toast.info("Two-factor authentication required.");
+      } else {
+        toast.error(error.message || "An error occurred");
+      }
     } finally {
       setLoading(false);
     }
@@ -62,7 +74,33 @@ const Auth = () => {
       await signInWithPopup(auth, provider);
       navigate("/dashboard");
     } catch (error: any) {
-      toast.error(error.message || "Failed to sign in with Google");
+      if (error.code === 'auth/multi-factor-auth-required') {
+        setMfaRequired(true);
+        setMfaResolver(getMultiFactorResolver(auth, error as MultiFactorError));
+        toast.info("Two-factor authentication required.");
+      } else {
+        toast.error(error.message || "Failed to sign in with Google");
+      }
+      setLoading(false);
+    }
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const hint = mfaResolver.hints[0];
+      const assertion = TotpMultiFactorGenerator.assertionForSignIn(
+        hint.uid,
+        verificationCode
+      );
+      
+      await mfaResolver.resolveSignIn(assertion);
+      toast.success("Welcome back!");
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Invalid verification code.");
       setLoading(false);
     }
   };
@@ -122,16 +160,51 @@ const Auth = () => {
           {/* Form Header */}
           <div className="mb-8">
             <h2 className="font-display text-2xl font-bold text-foreground mb-2">
-              {isSignUp ? "Create your account" : "Welcome back"}
+              {mfaRequired ? "Two-Factor Authentication" : isSignUp ? "Create your account" : "Welcome back"}
             </h2>
             <p className="text-muted-foreground">
-              {isSignUp 
+              {mfaRequired
+                ? "Enter the 6-digit code from your authenticator app"
+                : isSignUp 
                 ? "Start your free 14-day trial today" 
                 : "Sign in to continue to your dashboard"
               }
             </p>
           </div>
 
+          {/* MFA Form */}
+          {mfaRequired ? (
+            <form onSubmit={handleMfaVerify} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="code" className="text-sm font-medium">Verification Code</Label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="code"
+                    type="text"
+                    placeholder="000000"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="pl-10 h-11 tracking-widest"
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" variant="hero" className="w-full h-11 font-medium" disabled={loading || verificationCode.length !== 6}>
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Verify"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                className="w-full" 
+                onClick={() => { setMfaRequired(false); setVerificationCode(""); }}
+              >
+                Back to Login
+              </Button>
+            </form>
+          ) : (
+          <>
           {/* Security Check */}
           <div className="mb-6 bg-secondary/30 p-4 rounded-lg border border-border/50">
             <div className="flex items-start gap-3">
@@ -267,6 +340,8 @@ const Auth = () => {
               {isSignUp ? "Sign in" : "Sign up for free"}
             </button>
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>
