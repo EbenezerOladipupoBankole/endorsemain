@@ -289,22 +289,22 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50/50 font-sans text-gray-900">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 h-16">
-        <div className="container mx-auto px-6 h-full flex items-center justify-between">
+        <div className="container mx-auto px-4 md:px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={() => setIsMobileMenuOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <Logo className="h-16 w-auto" />
+            <Logo className="h-12 md:h-16 w-auto" />
           </div>
 
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={toggleTheme} className="w-9 h-9 p-0">
+          <div className="flex items-center gap-2 md:gap-4">
+            <Button variant="ghost" size="sm" onClick={toggleTheme} className="w-9 h-9 p-0 hidden md:inline-flex">
               {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="w-9 h-9">
+                <Button variant="ghost" size="icon" className="w-9 h-9 hidden md:inline-flex">
                   <HelpCircle className="w-5 h-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -388,7 +388,7 @@ const Dashboard = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 pl-0">
+                <Button variant="ghost" className="flex items-center gap-2 pl-0 hover:bg-transparent md:hover:bg-accent">
                   <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center overflow-hidden border border-border ml-2">
                     {user?.photoURL ? (
                       <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
@@ -481,7 +481,7 @@ const Dashboard = () => {
       )}
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-8 flex items-start gap-8">
+      <div className="container mx-auto px-4 md:px-6 py-8 flex items-start gap-8">
         {/* Sidebar - Only show when not editing a PDF */}
         {!pdfFile && (
           <aside className="hidden lg:block w-64 shrink-0 space-y-6 sticky top-24 text-sm">
@@ -592,7 +592,7 @@ const Dashboard = () => {
             
             {/* Recent Documents Section */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                 <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-500" />
                   Recent Documents
@@ -613,7 +613,7 @@ const Dashboard = () => {
                 ) : (
                   recentDocs.map((doc) => (
                   <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
                       <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                         <FileText className="w-5 h-5 text-blue-600" />
                       </div>
@@ -626,7 +626,7 @@ const Dashboard = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 md:gap-4 pl-2">
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         doc.status === 'Signed' || doc.status === 'completed' ? 'bg-green-500/10 text-green-500' :
                         doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-600' :

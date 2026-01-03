@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { CheckCircle2, Globe, Heart, Shield, Users, Zap, Building2, Linkedin, Github, Mail } from "lucide-react";
+import { CheckCircle2, Globe, Heart, Shield, Users, Zap, Building2, Linkedin, Github, Mail, Quote } from "lucide-react";
 import builderImage from "@/assets/images/bankole.png";
 
 const About = () => {
@@ -15,13 +15,16 @@ const About = () => {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/40">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <Logo className="h-10 w-auto" />
+          <Link to="/" className="flex items-center gap-2.5" aria-label="Endorse">
+            <Logo className="h-14 w-auto drop-shadow-sm" />
           </Link>
+          <div className="hidden md:flex items-center gap-8">
+            <Link to="/#features" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Product</Link>
+            <Link to="/#pricing" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Pricing</Link>
+            <Link to="/blog" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Resources</Link>
+            <Link to="/about" className="font-sans text-sm font-semibold tracking-tight text-foreground transition-colors">Company</Link>
+          </div>
           <div className="flex items-center gap-4">
-            <Link to="/auth">
-              <Button variant="ghost">Sign In</Button>
-            </Link>
             <Link to="/auth">
               <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
             </Link>
@@ -31,13 +34,13 @@ const About = () => {
 
       <main className="pt-32">
         {/* Hero Section */}
-        <section className="px-6 pb-20 text-center">
+        <section className="px-4 md:px-6 pb-16 md:pb-20 text-center">
           <div className="container mx-auto max-w-4xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
               <Building2 className="w-4 h-4" />
               Our Company
             </div>
-            <h1 className="font-display text-5xl md:text-7xl font-bold mb-8 tracking-tight text-foreground">
+            <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold mb-8 tracking-tight text-foreground">
               We're changing the way <br />
               <span className="text-gradient">the world agrees.</span>
             </h1>
@@ -48,9 +51,9 @@ const About = () => {
         </section>
 
         {/* Image / Visual Break */}
-        <section className="px-6 mb-24">
+        <section className="px-4 md:px-6 mb-16 md:mb-24">
           <div className="container mx-auto max-w-6xl">
-            <div className="aspect-[21/9] rounded-3xl overflow-hidden relative bg-secondary">
+            <div className="aspect-video md:aspect-[21/9] rounded-3xl overflow-hidden relative bg-secondary">
                {/* Abstract Enterprise Visual */}
                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-secondary" />
                <div className="absolute inset-0 flex items-center justify-center">
@@ -68,7 +71,7 @@ const About = () => {
         </section>
 
         {/* Mission & Story */}
-        <section className="px-6 py-20 bg-secondary/20">
+        <section className="px-4 md:px-6 py-16 md:py-20 bg-secondary/20">
           <div className="container mx-auto max-w-6xl">
             <div className="grid md:grid-cols-2 gap-16 items-center">
               <div>
@@ -119,7 +122,7 @@ const About = () => {
         </section>
 
         {/* Values */}
-        <section className="px-6 py-24">
+        <section className="px-4 md:px-6 py-16 md:py-24">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-16">
               <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">Our Core Values</h2>
@@ -161,7 +164,7 @@ const About = () => {
         </section>
 
         {/* Remote First / Global Team */}
-        <section className="px-6 py-24 bg-[#1a1f2c] text-white relative overflow-hidden">
+        <section className="px-4 md:px-6 py-16 md:py-24 bg-[#1a1f2c] text-white relative overflow-hidden">
            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay" />
            <div className="container mx-auto max-w-6xl relative z-10">
              <div className="flex flex-col md:flex-row items-center justify-between gap-12">
@@ -190,7 +193,7 @@ const About = () => {
         </section>
 
         {/* Builder Section */}
-        <section className="px-6 py-24">
+        <section className="px-4 md:px-6 py-16 md:py-24">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-16">
               <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">Meet the Builder</h2>
@@ -199,30 +202,50 @@ const About = () => {
               </p>
             </div>
 
-            <div className="flex justify-center">
-              <div className="group relative overflow-hidden rounded-2xl bg-card border border-border max-w-sm w-full shadow-lg">
-                <div className="aspect-[3/4] bg-muted relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
-                  <img 
-                    src={builderImage}
-                    alt="Bankole Ebenezer" 
-                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 grayscale group-hover:grayscale-0"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 p-8 z-20 text-white text-center">
-                    <h3 className="font-bold text-2xl mb-2 text-[#FFC83D]">Bankole Ebenezer</h3>
-                    <p className="text-white font-medium mb-1">BSc, Software Development</p>
-                    <p className="text-sm text-gray-300 mb-6">Brigham Young University - Idaho</p>
-                    <div className="flex justify-center gap-4">
-                      <a href="#" className="p-2 bg-white/10 rounded-full hover:bg-[#FFC83D] hover:text-black transition-all duration-300 backdrop-blur-sm">
-                        <Linkedin className="w-5 h-5" />
-                      </a>
-                      <a href="#" className="p-2 bg-white/10 rounded-full hover:bg-[#FFC83D] hover:text-black transition-all duration-300 backdrop-blur-sm">
-                        <Github className="w-5 h-5" />
-                      </a>
-                      <a href="mailto:contact@endorse.com" className="p-2 bg-white/10 rounded-full hover:bg-[#FFC83D] hover:text-black transition-all duration-300 backdrop-blur-sm">
-                        <Mail className="w-5 h-5" />
-                      </a>
-                    </div>
+            <div className="bg-card border border-border rounded-3xl p-6 md:p-12 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+                <Quote className="w-64 h-64" />
+              </div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row gap-10 items-center">
+                {/* Image Side */}
+                <div className="shrink-0 relative">
+                   <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
+                   <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-background shadow-2xl">
+                    <img 
+                      src={builderImage}
+                      alt="Bankole Ebenezer" 
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Text Side */}
+                <div className="flex-1 text-center md:text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-6">
+                    <Building2 className="w-3 h-3" />
+                    Lead Developer & Architect
+                  </div>
+                  
+                  <h3 className="font-display text-3xl font-bold mb-6">Bankole Ebenezer</h3>
+                  
+                  <div className="relative">
+                    <Quote className="w-8 h-8 text-primary/20 absolute -top-4 -left-4 -z-10" />
+                    <p className="text-lg text-muted-foreground leading-relaxed mb-8 relative z-10">
+                      With a foundation in Software Development from <span className="text-foreground font-medium">Brigham Young University - Idaho</span>, Bankole is the visionary architect behind Endorse. His passion lies in crafting elegant, user-centric solutions that solve real-world problems at scale.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-center md:justify-start gap-4">
+                    <a href="#" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors">
+                      <Linkedin className="w-5 h-5" />
+                    </a>
+                    <a href="#" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors">
+                      <Github className="w-5 h-5" />
+                    </a>
+                    <a href="mailto:contact@endorse.com" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors">
+                      <Mail className="w-5 h-5" />
+                    </a>
                   </div>
                 </div>
               </div>
@@ -231,7 +254,7 @@ const About = () => {
         </section>
 
         {/* CTA */}
-        <section className="py-24 px-6">
+        <section className="py-16 md:py-24 px-4 md:px-6">
           <div className="container mx-auto max-w-4xl text-center">
             <h2 className="font-display text-4xl font-bold mb-6">Join the movement</h2>
             <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">

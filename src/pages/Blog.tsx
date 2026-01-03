@@ -72,13 +72,16 @@ const Blog = () => {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/40">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <Logo className="h-10 w-auto" />
+          <Link to="/" className="flex items-center gap-2.5" aria-label="Endorse">
+            <Logo className="h-14 w-auto drop-shadow-sm" />
           </Link>
+          <div className="hidden md:flex items-center gap-8">
+            <Link to="/#features" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Product</Link>
+            <Link to="/#pricing" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Pricing</Link>
+            <Link to="/blog" className="font-sans text-sm font-semibold tracking-tight text-foreground transition-colors">Resources</Link>
+            <Link to="/about" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Company</Link>
+          </div>
           <div className="flex items-center gap-4">
-            <Link to="/auth">
-              <Button variant="ghost">Sign In</Button>
-            </Link>
             <Link to="/auth">
               <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
             </Link>
@@ -86,7 +89,7 @@ const Blog = () => {
         </div>
       </nav>
 
-      <main className="pt-32 pb-20 px-6">
+      <main className="pt-24 md:pt-32 pb-16 md:pb-20 px-4 md:px-6">
         <div className="container mx-auto max-w-6xl">
           {/* Header */}
           <div className="text-center mb-20">
@@ -94,7 +97,7 @@ const Blog = () => {
               <FileText className="w-4 h-4" />
               The Endorse Blog
             </div>
-            <h1 className="font-display text-4xl md:text-6xl font-bold mb-6 tracking-tight">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold mb-6 tracking-tight">
               Insights for the <br/>
               <span className="text-gradient">Modern Workflow</span>
             </h1>
@@ -118,7 +121,7 @@ const Blog = () => {
                     <FileText className="w-20 h-20 text-primary/20 group-hover:scale-110 transition-transform duration-700" />
                  </div>
               </div>
-              <div className="p-8 md:p-12 flex flex-col justify-center">
+              <div className="p-6 md:p-12 flex flex-col justify-center">
                 <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
                   <span className="text-primary font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-xs uppercase tracking-wide">Featured</span>
                   <span>•</span>
@@ -196,7 +199,7 @@ const Blog = () => {
           </div>
           
           {/* Newsletter CTA */}
-          <div className="mt-24 rounded-2xl bg-secondary/30 border border-border p-8 md:p-12 text-center">
+          <div className="mt-16 md:mt-24 rounded-2xl bg-secondary/30 border border-border p-6 md:p-12 text-center">
             <h3 className="font-display text-2xl md:text-3xl font-bold mb-4">Subscribe to our newsletter</h3>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
               Get the latest articles, resources, and product updates delivered directly to your inbox.
@@ -210,7 +213,7 @@ const Blog = () => {
       </main>
 
       {/* Footer (Simple) */}
-      <footer className="bg-background border-t border-border py-12 px-6">
+      <footer className="bg-background border-t border-border py-12 px-4 md:px-6">
         <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center justify-between gap-6">
           <p className="text-muted-foreground text-sm">
             © {new Date().getFullYear()} Endorse. All rights reserved.

@@ -132,8 +132,8 @@ const SignDocument = () => {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Logo className="h-8 w-auto" />
           <Button onClick={handleCompleteSigning} disabled={!signature || !signaturePosition || isSubmitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <PenTool className="w-4 h-4 mr-2" />}
-            Finish Signing
+            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin md:mr-2" /> : <PenTool className="w-4 h-4 md:mr-2" />}
+            <span className="hidden md:inline">Finish Signing</span>
           </Button>
         </div>
       </header>

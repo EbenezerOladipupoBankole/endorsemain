@@ -54,20 +54,18 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass-strong">
-        <div className="container mx-auto px-6 h-32 flex items-center justify-between">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
+        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <Logo className="h-[120px] w-auto" />
+            <Logo className="h-14 w-auto drop-shadow-sm" />
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <Link to="/blog" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
+            <a href="#features" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Product</a>
+            <a href="#pricing" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Pricing</a>
+            <Link to="/blog" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Resources</Link>
+            <Link to="/about" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Company</Link>
           </div>
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/auth">
-              <Button variant="ghost" className="font-medium text-base">Sign In</Button>
-            </Link>
             <Link to="/auth?mode=signup">
               <Button className="font-medium text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Get Started Free</Button>
             </Link>
@@ -82,13 +80,11 @@ const Landing = () => {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5">
-            <a href="#features" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Features</a>
-            <a href="#pricing" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</a>
-            <Link to="/blog" className="text-base font-medium p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Blog</Link>
+            <a href="#features" className="font-sans text-sm font-semibold tracking-tight p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Product</a>
+            <a href="#pricing" className="font-sans text-sm font-semibold tracking-tight p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</a>
+            <Link to="/blog" className="font-sans text-sm font-semibold tracking-tight p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Resources</Link>
+            <Link to="/about" className="font-sans text-sm font-semibold tracking-tight p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
             <div className="flex flex-col gap-3 mt-2">
-              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="ghost" size="lg" className="w-full justify-start text-base">Sign In</Button>
-              </Link>
               <Link to="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
                 <Button size="lg" className="w-full text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Get Started Free</Button>
               </Link>
@@ -98,7 +94,7 @@ const Landing = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 bg-background relative overflow-hidden">
+      <section className="pt-24 pb-16 md:pt-32 md:pb-20 px-4 md:px-6 bg-background relative overflow-hidden">
         {/* Grid Background */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-accent/20 via-background to-background" />
@@ -109,7 +105,7 @@ const Landing = () => {
             {/* Left Column: Content */}
             <div className="w-full lg:w-1/2 text-center lg:text-left z-10">
               {/* Headline */}
-              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight animate-fade-up-delay-1">
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight animate-fade-up-delay-1">
                 The Standard for <br />
                 <span className="text-primary relative inline-block">
                   Electronic Signatures
@@ -120,7 +116,7 @@ const Landing = () => {
               </h1>
               
               {/* Subheadline */}
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-10 leading-relaxed animate-fade-up-delay-2">
+              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-8 md:mb-10 leading-relaxed animate-fade-up-delay-2">
                 Accelerate business with the world's most trusted e-signature solution. Secure, compliant, and easy to use.
               </p>
               
@@ -169,104 +165,128 @@ const Landing = () => {
             </div>
 
             {/* Right Column: Visual */}
-            <div className="w-full lg:w-1/2 relative animate-fade-in duration-1000 delay-300">
-              <div className="relative">
+            <div className="w-full lg:w-1/2 relative animate-fade-in duration-1000 delay-300 perspective-1000">
+              <div className="relative transform transition-transform hover:scale-[1.01] duration-500">
                 {/* Glow effect */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-primary/20 blur-[120px] rounded-full pointer-events-none opacity-50" />
                 
                 <div className="relative mx-auto w-full max-w-[600px] lg:max-w-none">
                   {/* Main Interface Window */}
-                  <div className="bg-background rounded-xl border border-border shadow-2xl overflow-hidden relative">
+                  <div className="bg-background/95 backdrop-blur rounded-2xl border border-border/60 shadow-2xl overflow-hidden relative ring-1 ring-white/10">
                     {/* Window Header */}
-                    <div className="bg-muted/30 px-4 py-3 border-b border-border flex items-center gap-4">
-                      <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
-                        <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
-                        <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+                    <div className="bg-muted/50 px-4 py-3 border-b border-border/60 flex items-center gap-4">
+                      <div className="flex gap-2">
+                        <div className="w-3 h-3 rounded-full bg-[#FF5F57] border border-[#E0443E]" />
+                        <div className="w-3 h-3 rounded-full bg-[#FEBC2E] border border-[#D89E24]" />
+                        <div className="w-3 h-3 rounded-full bg-[#28C840] border border-[#1AAB29]" />
                       </div>
                       <div className="flex-1 flex justify-center">
-                        <div className="bg-background border border-border/50 rounded-md px-3 py-1 text-xs text-muted-foreground flex items-center gap-2">
-                          <Lock className="w-3 h-3" /> endorse.com/sign/contract-2024
+                        <div className="bg-background/80 border border-border/40 rounded-md px-4 py-1.5 text-xs text-muted-foreground flex items-center gap-2 w-full max-w-[240px] justify-center shadow-sm">
+                          <Lock className="w-3 h-3 opacity-70" /> 
+                          <span className="opacity-70">endorse.com/sign/contract</span>
                         </div>
                       </div>
-                      <div className="w-16" />
+                      <div className="w-16 flex justify-end gap-2">
+                         <div className="w-6 h-6 rounded-full bg-muted border border-border/50" />
+                      </div>
                     </div>
 
                     {/* Window Content - Split View */}
-                    <div className="flex h-[400px] sm:h-[500px] md:h-[600px]">
+                    <div className="flex h-[400px] sm:h-[500px] md:h-[600px] bg-muted/10">
                       {/* Left Sidebar (Tools) */}
-                      <div className="w-12 md:w-20 border-r border-border bg-muted/10 flex flex-col items-center py-4 md:py-6 gap-4 md:gap-6">
+                      <div className="w-14 md:w-16 border-r border-border/60 bg-background/50 flex flex-col items-center py-6 gap-6 backdrop-blur-sm">
                         {[PenTool, Type, Image, Calendar].map((Icon, i) => (
-                          <div key={i} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                            <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                          <div key={i} className={`p-2.5 rounded-xl transition-all cursor-pointer ${i === 0 ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
+                            <Icon className="w-5 h-5" />
                           </div>
                         ))}
                       </div>
 
                       {/* Main Document Area */}
-                      <div className="flex-1 bg-muted/5 p-4 md:p-8 overflow-y-auto flex justify-center relative">
-                        <div className="bg-white text-black shadow-lg w-full max-w-[600px] min-h-[600px] md:min-h-[800px] p-6 md:p-12 relative mx-auto">
+                      <div className="flex-1 bg-muted/10 p-2 md:p-8 overflow-hidden relative flex flex-col items-center">
+                        {/* Toolbar Mock */}
+                        <div className="w-full max-w-[500px] h-10 bg-background rounded-lg border border-border/40 shadow-sm mb-6 flex items-center px-4 gap-4 opacity-80">
+                           <div className="h-2 w-24 bg-muted rounded-full" />
+                           <div className="h-4 w-px bg-border" />
+                           <div className="flex gap-2">
+                              <div className="h-4 w-4 bg-muted rounded" />
+                              <div className="h-4 w-4 bg-muted rounded" />
+                              <div className="h-4 w-4 bg-muted rounded" />
+                           </div>
+                        </div>
+
+                        {/* The Paper */}
+                        <div className="bg-white text-black shadow-xl w-full max-w-[500px] h-full rounded-t-lg p-8 md:p-10 relative mx-auto transform transition-transform hover:-translate-y-1 duration-500 border border-black/5">
                           {/* Document Content Mock */}
-                          <div className="flex justify-between items-start mb-8 md:mb-12">
-                            <div className="flex items-center gap-2 font-bold text-lg md:text-xl">
-                              <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white flex items-center justify-center rounded text-sm md:text-base">E</div>
-                              <span className="text-sm md:text-base">ENDORSE</span>
+                          <div className="flex justify-between items-start mb-10">
+                            <div className="flex items-center gap-2 font-bold text-lg">
+                              <div className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-lg text-sm font-display">E</div>
+                              <span className="tracking-tight">ENDORSE</span>
                             </div>
-                            <div className="text-right text-[10px] md:text-sm text-gray-500">
-                              <p>Date: Oct 24, 2024</p>
-                              <p>Ref: #8839-22</p>
+                            <div className="text-right text-[10px] text-gray-400 font-mono">
+                              <p>ID: 8839-22</p>
                             </div>
                           </div>
 
-                          <h2 className="text-lg md:text-2xl font-bold mb-4 md:mb-6">Service Agreement</h2>
-                          <div className="space-y-3 md:space-y-4 text-[10px] md:text-sm text-gray-600 leading-relaxed">
+                          <h2 className="text-xl font-bold mb-6 text-gray-900">Service Agreement</h2>
+                          <div className="space-y-4 text-[11px] md:text-xs text-gray-600 leading-relaxed">
+                            <div className="flex gap-2 mb-6">
+                               <div className="w-1/2 space-y-2">
+                                  <p className="font-semibold text-gray-900">Between:</p>
+                                  <div className="h-2 w-24 bg-gray-100 rounded" />
+                                  <div className="h-2 w-32 bg-gray-100 rounded" />
+                               </div>
+                               <div className="w-1/2 space-y-2">
+                                  <p className="font-semibold text-gray-900">And:</p>
+                                  <div className="h-2 w-24 bg-gray-100 rounded" />
+                                  <div className="h-2 w-32 bg-gray-100 rounded" />
+                               </div>
+                            </div>
+
                             <p>This Service Agreement ("Agreement") is entered into by and between the undersigned parties.</p>
-                            <div className="h-3 md:h-4 bg-gray-100 rounded w-full" />
-                            <div className="h-3 md:h-4 bg-gray-100 rounded w-5/6" />
-                            <div className="h-3 md:h-4 bg-gray-100 rounded w-full" />
+                            <div className="h-2 bg-gray-100 rounded w-full" />
+                            <div className="h-2 bg-gray-100 rounded w-11/12" />
+                            <div className="h-2 bg-gray-100 rounded w-full" />
                             
-                            <h3 className="text-sm md:text-lg font-bold text-black mt-6 md:mt-8 mb-2 md:mb-4">1. Scope of Services</h3>
-                            <div className="h-3 md:h-4 bg-gray-100 rounded w-full" />
-                            <div className="h-3 md:h-4 bg-gray-100 rounded w-11/12" />
-                            
-                            <h3 className="text-sm md:text-lg font-bold text-black mt-6 md:mt-8 mb-2 md:mb-4">2. Terms & Conditions</h3>
-                            <div className="h-3 md:h-4 bg-gray-100 rounded w-full" />
-                            <div className="h-3 md:h-4 bg-gray-100 rounded w-4/5" />
+                            <h3 className="text-sm font-bold text-black mt-8 mb-3">1. Scope of Services</h3>
+                            <div className="h-2 bg-gray-100 rounded w-full" />
+                            <div className="h-2 bg-gray-100 rounded w-10/12" />
+                            <div className="h-2 bg-gray-100 rounded w-full" />
                           </div>
 
                           {/* Signature Zone */}
-                          <div className="mt-8 md:mt-16 pt-6 md:pt-8 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                            <div>
-                              <p className="text-[10px] md:text-xs font-bold uppercase text-gray-400 mb-2">Signed by Client</p>
-                              <div className="h-10 md:h-16 border-b border-black flex items-end pb-2 font-handwriting text-lg md:text-2xl relative group cursor-pointer">
-                                <span className="text-blue-600">Sarah Jenkins</span>
-                                <div className="absolute -top-3 -right-3 bg-[#FFC83D] text-black text-[10px] font-bold px-2 py-1 rounded shadow-sm animate-bounce">
-                                  SIGNED
-                                </div>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-[10px] md:text-xs font-bold uppercase text-gray-400 mb-2">Date</p>
-                              <div className="h-10 md:h-16 border-b border-gray-300 flex items-end pb-2 text-gray-600 text-xs md:text-base">
-                                Oct 24, 2024
-                              </div>
+                          <div className="mt-12 p-4 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/30 relative group cursor-pointer hover:bg-blue-50/50 transition-colors">
+                            <div className="flex justify-between items-end">
+                               <div>
+                                  <p className="text-[10px] font-bold uppercase text-blue-400 mb-1">Signature</p>
+                                  <div className="font-handwriting text-2xl text-blue-600 transform -rotate-2 origin-left">
+                                    Sarah Jenkins
+                                  </div>
+                               </div>
+                               <div className="text-right">
+                                  <div className="bg-[#FFC83D] text-black text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                                  </div>
+                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {/* Right Sidebar (Signers) */}
-                      <div className="w-56 border-l border-border bg-background hidden lg:block p-4">
-                        <h4 className="font-semibold text-sm mb-4">Signers</h4>
+                      <div className="w-60 border-l border-border/60 bg-background/50 hidden xl:block p-5 backdrop-blur-sm">
+                        <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-4">Participants</h4>
                         <div className="space-y-3">
-                          <div className="flex items-center gap-3 p-2 rounded-lg bg-accent/50 border border-border">
-                            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-bold">SJ</div>
+                          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-background border border-border/50 shadow-sm">
+                            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-bold ring-2 ring-white">SJ</div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">Sarah Jenkins</p>
-                              <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Completed</p>
+                              <p className="text-[10px] text-green-600 flex items-center gap-1 font-medium">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Signed
+                              </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 p-2 rounded-lg opacity-60">
+                          <div className="flex items-center gap-3 p-2.5 rounded-xl border border-transparent opacity-60">
                             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-xs font-bold">JD</div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">John Doe</p>
@@ -274,19 +294,35 @@ const Landing = () => {
                             </div>
                           </div>
                         </div>
+
+                        <div className="mt-8">
+                           <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-4">Activity</h4>
+                           <div className="space-y-4 pl-2 border-l border-border/50">
+                              <div className="relative pl-4">
+                                 <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-green-500 ring-4 ring-background" />
+                                 <p className="text-xs text-foreground">Document signed</p>
+                                 <p className="text-[10px] text-muted-foreground">2 mins ago</p>
+                              </div>
+                              <div className="relative pl-4 opacity-60">
+                                 <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-gray-300 ring-4 ring-background" />
+                                 <p className="text-xs text-foreground">Viewed by Sarah</p>
+                                 <p className="text-[10px] text-muted-foreground">15 mins ago</p>
+                              </div>
+                           </div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Floating Elements */}
-                  <div className="absolute -right-4 top-20 bg-background p-4 rounded-xl shadow-xl border border-border animate-in slide-in-from-bottom-10 duration-1000 delay-500 hidden md:block">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-green-500/10 p-2 rounded-full">
+                  <div className="absolute -right-6 top-24 bg-background/90 backdrop-blur p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-border/50 animate-in slide-in-from-bottom-10 duration-1000 delay-500 hidden md:block max-w-[200px]">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-green-500/10 p-2 rounded-full shrink-0">
                         <Check className="w-5 h-5 text-green-500" />
                       </div>
                       <div>
-                        <p className="font-bold text-sm">Document Completed</p>
-                        <p className="text-xs text-muted-foreground">Just now</p>
+                        <p className="font-bold text-sm leading-tight mb-1">Legally Binding</p>
+                        <p className="text-xs text-muted-foreground leading-snug">Compliant with ESIGN & eIDAS</p>
                       </div>
                     </div>
                   </div>
@@ -298,7 +334,7 @@ const Landing = () => {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 bg-secondary/20 border-y border-border/50">
+      <section className="py-16 md:py-20 bg-secondary/20 border-y border-border/50">
         <div className="container mx-auto max-w-6xl px-6">
           <div className="text-center mb-16">
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">How Endorse Works</h2>
@@ -330,7 +366,7 @@ const Landing = () => {
       </section>
 
       {/* Deep Dive Features (Alternating Layout) */}
-      <section id="features" className="py-24 px-6 overflow-hidden">
+      <section id="features" className="py-16 md:py-24 px-4 md:px-6 overflow-hidden">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <p className="text-base font-semibold text-primary uppercase tracking-wider mb-3">Features</p>
@@ -340,7 +376,7 @@ const Landing = () => {
           </div>
 
           {/* Feature 1: Signing Experience */}
-          <div className="flex flex-col md:flex-row items-center gap-12 mb-24">
+          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-16 md:mb-24">
             <div className="w-full md:w-1/2 order-2 md:order-1">
               <div className="relative rounded-2xl bg-gradient-to-br from-secondary to-background border border-border p-8 shadow-lg">
                 {/* Mock Document Interface */}
@@ -378,7 +414,7 @@ const Landing = () => {
                 Intuitive Signing
               </div>
               <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Sign documents anywhere, on any device.</h3>
-              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+              <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
                 Experience a signing process that feels natural. Whether you're on a desktop in the office or a mobile phone on the go, Endorse adapts to your screen.
               </p>
               <ul className="space-y-3">
@@ -393,7 +429,7 @@ const Landing = () => {
           </div>
 
           {/* Feature 2: Tracking */}
-          <div className="flex flex-col md:flex-row items-center gap-12 mb-24">
+          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-16 md:mb-24">
             <div className="w-full md:w-1/2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-sm font-medium mb-4">
                 <Clock className="w-4 h-4" />
@@ -437,7 +473,7 @@ const Landing = () => {
           </div>
 
           {/* Feature 3: Security */}
-          <div className="flex flex-col md:flex-row items-center gap-12">
+          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
             <div className="w-full md:w-1/2 order-2 md:order-1">
               <div className="relative rounded-2xl bg-[#1a1f2c] p-8 shadow-2xl overflow-hidden text-white">
                 <div className="absolute top-0 right-0 p-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none"></div>
@@ -484,7 +520,7 @@ const Landing = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 px-6 bg-secondary/30">
+      <section id="pricing" className="py-16 md:py-24 px-4 md:px-6 bg-secondary/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <p className="text-base font-semibold text-primary uppercase tracking-wider mb-3">Pricing</p>
@@ -525,7 +561,7 @@ const Landing = () => {
             {/* Free Plan */}
             <div 
               onClick={() => setSelectedPlan("Free")}
-              className={`bg-card rounded-2xl p-10 flex flex-col transition-all duration-300 cursor-pointer ${
+              className={`bg-card rounded-2xl p-6 md:p-10 flex flex-col transition-all duration-300 cursor-pointer ${
                 selectedPlan === "Free" ? "border-2 border-primary shadow-xl md:scale-105 z-10 ring-4 ring-primary/10" : "border border-border hover:border-primary/50"
               }`}
             >
@@ -555,7 +591,7 @@ const Landing = () => {
             {/* Pro Plan */}
             <div 
               onClick={() => setSelectedPlan("Pro")}
-              className={`bg-card rounded-2xl p-10 flex flex-col relative transition-all duration-300 cursor-pointer ${
+              className={`bg-card rounded-2xl p-6 md:p-10 flex flex-col relative transition-all duration-300 cursor-pointer ${
                 selectedPlan === "Pro" ? "border-2 border-[#FFC83D] shadow-xl md:scale-105 z-10 ring-4 ring-[#FFC83D]/10" : "border border-border hover:border-[#FFC83D]/50"
               }`}
             >
@@ -592,7 +628,7 @@ const Landing = () => {
             {/* Business Plan */}
             <div 
               onClick={() => setSelectedPlan("Business")}
-              className={`bg-card rounded-2xl p-10 flex flex-col transition-all duration-300 cursor-pointer ${
+              className={`bg-card rounded-2xl p-6 md:p-10 flex flex-col transition-all duration-300 cursor-pointer ${
                 selectedPlan === "Business" ? "border-2 border-primary shadow-xl md:scale-105 z-10 ring-4 ring-primary/10" : "border border-border hover:border-primary/50"
               }`}
             >
@@ -635,7 +671,7 @@ const Landing = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-24 px-6">
+      <section className="py-16 md:py-24 px-4 md:px-6">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-16">
             <p className="text-base font-semibold text-primary uppercase tracking-wider mb-3">FAQ</p>
@@ -689,9 +725,9 @@ const Landing = () => {
       */}
 
       {/* CTA Section */}
-      <section className="py-24 px-6">
+      <section className="py-16 md:py-24 px-4 md:px-6">
         <div className="container mx-auto max-w-4xl">
-          <div className="relative rounded-2xl bg-gradient-primary p-10 md:p-14 text-center overflow-hidden">
+          <div className="relative rounded-2xl bg-gradient-primary p-8 md:p-14 text-center overflow-hidden">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
             <div className="relative z-10">
               <h2 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground mb-4">
@@ -712,7 +748,7 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-background border-t border-border pt-16 pb-8 px-6">
+      <footer className="bg-background border-t border-border pt-12 md:pt-16 pb-8 px-4 md:px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
             <div className="lg:col-span-1">
