@@ -3,7 +3,13 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
-import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock, ChevronRight, Globe, Lock, Mail, Smartphone, Calendar, Image, Type, Cookie, PlayCircle, MessageSquare } from "lucide-react";
+import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock, ChevronRight, Globe, Lock, Mail, Smartphone, Calendar, Image, Type, Cookie, PlayCircle, MessageSquare, ChevronDown, FileType, HelpCircle, Code } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Landing = () => {
   const [currency, setCurrency] = useState<"USD" | "NGN">("USD");
@@ -60,10 +66,87 @@ const Landing = () => {
             <Logo className="h-14 w-auto drop-shadow-sm" />
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Product</a>
-            <a href="#pricing" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Pricing</a>
-            <Link to="/blog" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Resources</Link>
-            <Link to="/about" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Company</Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors flex items-center gap-1 outline-none group">
+                Product <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[340px] p-3">
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <a href="#features" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <PenTool className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">eSign</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Create, send, and track legally binding electronic signatures.
+                      </span>
+                    </div>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
+                  <a href="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <FileType className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">File Conversion</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Transform documents between PDF, Word, and other formats.
+                      </span>
+                    </div>
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <a href="#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Pricing</a>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors flex items-center gap-1 outline-none group">
+                Resources <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[340px] p-3">
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="/blog" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">Blog</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Latest updates, articles, and insights.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <HelpCircle className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">Help Center</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Guides, tutorials, and support documentation.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <Code className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">API Docs</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Complete reference for developers.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Company</Link>
           </div>
           <div className="hidden md:flex items-center gap-3">
             <Link to="/auth?mode=signup">
@@ -72,7 +155,7 @@ const Landing = () => {
           </div>
 
           {/* Mobile Menu Toggle */}
-          <button className="md:hidden text-foreground p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <button className="md:hidden text-foreground p-2" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu">
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
@@ -80,10 +163,10 @@ const Landing = () => {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5">
-            <a href="#features" className="font-sans text-sm font-semibold tracking-tight p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Product</a>
-            <a href="#pricing" className="font-sans text-sm font-semibold tracking-tight p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</a>
-            <Link to="/blog" className="font-sans text-sm font-semibold tracking-tight p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Resources</Link>
-            <Link to="/about" className="font-sans text-sm font-semibold tracking-tight p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
+            <a href="#features" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Product</a>
+            <a href="#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</a>
+            <Link to="/blog" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Resources</Link>
+            <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
             <div className="flex flex-col gap-3 mt-2">
               <Link to="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
                 <Button size="lg" className="w-full text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Get Started Free</Button>
@@ -399,7 +482,7 @@ const Landing = () => {
                 </div>
                 
                 {/* Floating Badge */}
-                <div className="absolute -right-4 top-10 bg-background border border-border shadow-xl rounded-lg p-3 flex items-center gap-3 animate-bounce duration-[3000ms]">
+                <div className="absolute -right-4 top-10 bg-background border border-border shadow-xl rounded-lg p-3 flex items-center gap-3 animate-in slide-in-from-bottom-4 duration-1000 delay-500">
                   <div className="bg-green-100 p-2 rounded-full"><Check className="w-4 h-4 text-green-600" /></div>
                   <div>
                     <p className="text-xs font-bold">Legally Binding</p>
@@ -759,10 +842,10 @@ const Landing = () => {
                 The professional way to sign and endorse documents securely online.
               </p>
               <div className="flex gap-4">
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors"><Twitter className="w-5 h-5" /></a>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin className="w-5 h-5" /></a>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors"><Facebook className="w-5 h-5" /></a>
-                <a href="https://www.instagram.com/e.ndorse?igsh=MWs2MnltaGdxbDU3eA%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><Instagram className="w-5 h-5" /></a>
+                <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Twitter"><Twitter className="w-5 h-5" /></a>
+                <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="LinkedIn"><Linkedin className="w-5 h-5" /></a>
+                <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Facebook"><Facebook className="w-5 h-5" /></a>
+                <a href="https://www.instagram.com/e.ndorse?igsh=MWs2MnltaGdxbDU3eA%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Instagram"><Instagram className="w-5 h-5" /></a>
               </div>
             </div>
             
@@ -791,7 +874,7 @@ const Landing = () => {
                 Subscribe to our newsletter for the latest updates and features.
               </p>
               <div className="flex flex-col gap-3">
-                <Input placeholder="Enter your email" className="bg-background" />
+                <Input placeholder="Enter your email" className="bg-background" aria-label="Email address" />
                 <Button size="lg" className="w-full text-base">Subscribe</Button>
               </div>
             </div>
@@ -808,6 +891,7 @@ const Landing = () => {
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   className="bg-transparent border-none text-sm text-muted-foreground hover:text-foreground focus:ring-0 cursor-pointer outline-none"
+                  aria-label="Select language"
                 >
                   <option value="en">English (US)</option>
                   <option value="fr">Français</option>
@@ -857,6 +941,7 @@ const Landing = () => {
             <button 
               onClick={() => setShowContactModal(false)}
               className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
@@ -911,6 +996,7 @@ const Landing = () => {
             <button 
               onClick={() => setShowVideoModal(false)}
               className="absolute right-4 top-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
+              aria-label="Close video"
             >
               <X className="w-5 h-5" />
             </button>
@@ -936,7 +1022,7 @@ const Landing = () => {
                 <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
                 <span className="font-bold text-black">Endorse Support</span>
               </div>
-              <button onClick={() => setShowChat(false)} className="text-black/80 hover:text-black transition-colors">
+              <button onClick={() => setShowChat(false)} className="text-black/80 hover:text-black transition-colors" aria-label="Close chat">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -964,6 +1050,7 @@ const Landing = () => {
                   className="flex-1" 
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
+                  aria-label="Type a message"
                 />
                 <Button size="icon" type="submit" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
                   <Send className="w-4 h-4" />
@@ -976,6 +1063,7 @@ const Landing = () => {
           size="lg"
           className="h-14 w-14 rounded-full shadow-lg bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 transition-transform hover:scale-105"
           onClick={() => setShowChat(!showChat)}
+          aria-label="Open chat"
         >
           {showChat ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
         </Button>

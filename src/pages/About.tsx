@@ -2,8 +2,14 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { CheckCircle2, Globe, Heart, Shield, Users, Zap, Building2, Linkedin, Github, Mail, Quote } from "lucide-react";
+import { CheckCircle2, Globe, Heart, Shield, Users, Zap, Building2, Linkedin, Github, Mail, Quote, ChevronDown, PenTool, FileType, FileText, HelpCircle, Code } from "lucide-react";
 import builderImage from "@/assets/images/bankole.png";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const About = () => {
   useEffect(() => {
@@ -19,10 +25,87 @@ const About = () => {
             <Logo className="h-14 w-auto drop-shadow-sm" />
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/#features" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Product</Link>
-            <Link to="/#pricing" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Pricing</Link>
-            <Link to="/blog" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Resources</Link>
-            <Link to="/about" className="font-sans text-sm font-semibold tracking-tight text-foreground transition-colors">Company</Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors flex items-center gap-1 outline-none group">
+                Product <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[340px] p-3">
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="/#features" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <PenTool className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">eSign</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Create, send, and track legally binding electronic signatures.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <FileType className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">File Conversion</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Transform documents between PDF, Word, and other formats.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link to="/#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Pricing</Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors flex items-center gap-1 outline-none group">
+                Resources <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[340px] p-3">
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="/blog" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">Blog</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Latest updates, articles, and insights.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <HelpCircle className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">Help Center</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Guides, tutorials, and support documentation.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <Code className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">API Docs</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Complete reference for developers.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground transition-colors">Company</Link>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/auth">
@@ -237,13 +320,13 @@ const About = () => {
                   </div>
 
                   <div className="flex items-center justify-center md:justify-start gap-4">
-                    <a href="#" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors">
+                    <a href="#" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors" aria-label="LinkedIn">
                       <Linkedin className="w-5 h-5" />
                     </a>
-                    <a href="#" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors">
+                    <a href="#" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors" aria-label="GitHub">
                       <Github className="w-5 h-5" />
                     </a>
-                    <a href="mailto:contact@endorse.com" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors">
+                    <a href="mailto:contact@endorse.com" className="p-2 bg-secondary hover:bg-primary hover:text-primary-foreground rounded-full transition-colors" aria-label="Email">
                       <Mail className="w-5 h-5" />
                     </a>
                   </div>

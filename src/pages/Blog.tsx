@@ -3,7 +3,13 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
-import { ChevronRight, FileText, Search, User, Share2 } from "lucide-react";
+import { ChevronRight, FileText, Search, User, Share2, ChevronDown, PenTool, FileType, HelpCircle, Code } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Blog = () => {
   useEffect(() => {
@@ -70,16 +76,93 @@ const Blog = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/40">
+      <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b bordercab yo-border/40">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5" aria-label="Endorse">
             <Logo className="h-14 w-auto drop-shadow-sm" />
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/#features" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Product</Link>
-            <Link to="/#pricing" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Pricing</Link>
-            <Link to="/blog" className="font-sans text-sm font-semibold tracking-tight text-foreground transition-colors">Resources</Link>
-            <Link to="/about" className="font-sans text-sm font-semibold tracking-tight text-muted-foreground hover:text-primary transition-colors">Company</Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors flex items-center gap-1 outline-none group">
+                Product <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[340px] p-3">
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="/#features" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <PenTool className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">eSign</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Create, send, and track legally binding electronic signatures.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <FileType className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">File Conversion</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Transform documents between PDF, Word, and other formats.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link to="/#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Pricing</Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="font-sans text-sm font-bold tracking-tight text-foreground transition-colors flex items-center gap-1 outline-none group">
+                Resources <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[340px] p-3">
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="/blog" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">Blog</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Latest updates, articles, and insights.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <HelpCircle className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">Help Center</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Guides, tutorials, and support documentation.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <Code className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">API Docs</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Complete reference for developers.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Company</Link>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/auth">
@@ -108,7 +191,7 @@ const Blog = () => {
             {/* Search Bar */}
             <div className="max-w-md mx-auto relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input placeholder="Search articles..." className="pl-10 h-12 bg-secondary/50 border-border focus:ring-primary" />
+              <Input placeholder="Search articles..." className="pl-10 h-12 bg-secondary/50 border-border focus:ring-primary" aria-label="Search articles" />
             </div>
           </div>
 
@@ -185,6 +268,7 @@ const Blog = () => {
                           }
                         }}
                         className="text-muted-foreground hover:text-primary transition-colors"
+                        aria-label="Share post"
                       >
                         <Share2 className="w-4 h-4" />
                       </button>
@@ -205,7 +289,7 @@ const Blog = () => {
               Get the latest articles, resources, and product updates delivered directly to your inbox.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <Input placeholder="Enter your email" className="bg-background" />
+              <Input placeholder="Enter your email" className="bg-background" aria-label="Email address" />
               <Button>Subscribe</Button>
             </div>
           </div>
