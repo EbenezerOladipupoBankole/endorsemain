@@ -25,6 +25,8 @@ const Landing = () => {
     { text: "Hello! 👋 Thanks for visiting Endorse. How can we help you streamline your agreements today?", isUser: false, time: "Just now" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [mobileProductOpen, setMobileProductOpen] = useState(false);
+  const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
 
   useEffect(() => {
     const consent = localStorage.getItem("cookieConsent");
@@ -162,10 +164,48 @@ const Landing = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5">
-            <a href="#features" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Product</a>
+          <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5 h-[calc(100vh-4rem)] overflow-y-auto">
+            {/* Product Mobile Dropdown */}
+            <div className="flex flex-col">
+              <button 
+                className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
+                onClick={() => setMobileProductOpen(!mobileProductOpen)}
+              >
+                Product 
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileProductOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {mobileProductOpen && (
+                <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
+                  <a href="#features" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}>
+                    <PenTool className="w-4 h-4" /> eSign
+                  </a>
+                  <a href="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}>
+                    <FileType className="w-4 h-4" /> File Conversion
+                  </a>
+                </div>
+              )}
+            </div>
+
             <a href="#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</a>
-            <Link to="/blog" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Resources</Link>
+            
+            {/* Resources Mobile Dropdown */}
+            <div className="flex flex-col">
+              <button 
+                className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
+                onClick={() => setMobileResourcesOpen(!mobileResourcesOpen)}
+              >
+                Resources 
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileResourcesOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {mobileResourcesOpen && (
+                <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
+                  <Link to="/blog" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileText className="w-4 h-4" /> Blog</Link>
+                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
+                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
+                </div>
+              )}
+            </div>
+
             <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
             <div className="flex flex-col gap-3 mt-2">
               <Link to="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>

@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { CheckCircle2, Globe, Heart, Shield, Users, Zap, Building2, Linkedin, Github, Mail, Quote, ChevronDown, PenTool, FileType, FileText, HelpCircle, Code } from "lucide-react";
+import { CheckCircle2, Globe, Heart, Shield, Users, Zap, Building2, Linkedin, Github, Mail, Quote, ChevronDown, PenTool, FileType, FileText, HelpCircle, Code, Menu, X } from "lucide-react";
 import builderImage from "@/assets/images/bankole.png";
 import {
   DropdownMenu,
@@ -12,6 +12,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const About = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mobileProductOpen, setMobileProductOpen] = useState(false);
+  const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -112,7 +116,56 @@ const About = () => {
               <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
             </Link>
           </div>
+
+          {/* Mobile Menu Toggle */}
+          <button className="md:hidden text-foreground p-2" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu">
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5 h-[calc(100vh-4rem)] overflow-y-auto">
+            <div className="flex flex-col">
+              <button 
+                className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
+                onClick={() => setMobileProductOpen(!mobileProductOpen)}
+              >
+                Product 
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileProductOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {mobileProductOpen && (
+                <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
+                  <Link to="/#features" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><PenTool className="w-4 h-4" /> eSign</Link>
+                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileType className="w-4 h-4" /> File Conversion</Link>
+                </div>
+              )}
+            </div>
+            <Link to="/#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</Link>
+            <div className="flex flex-col">
+              <button 
+                className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
+                onClick={() => setMobileResourcesOpen(!mobileResourcesOpen)}
+              >
+                Resources 
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileResourcesOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {mobileResourcesOpen && (
+                <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
+                  <Link to="/blog" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileText className="w-4 h-4" /> Blog</Link>
+                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
+                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
+                </div>
+              )}
+            </div>
+            <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
+            <div className="flex flex-col gap-3 mt-2">
+              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                <Button className="w-full bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="pt-32">
