@@ -251,23 +251,31 @@ const Landing = () => {
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  className="w-full sm:w-auto text-lg h-14 px-8 bg-background/50 backdrop-blur-sm"
-                  onClick={() => setShowContactModal(true)}
-                >
-                  Contact Sales
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="lg" 
-                  className="w-full sm:w-auto text-lg h-14 px-8 hover:bg-accent"
+                
+                <div 
+                  className="group flex items-center gap-3 pl-2 pr-6 py-2 rounded-full bg-background/50 border border-border/50 hover:border-primary/50 hover:bg-background/80 backdrop-blur-sm transition-all cursor-pointer shadow-sm hover:shadow-md h-14 w-full sm:w-auto"
                   onClick={() => setShowVideoModal(true)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Watch product demo"
                 >
-                  <PlayCircle className="w-5 h-5 mr-2" />
-                  How it Works
-                </Button>
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-muted shrink-0">
+                    <img 
+                      src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=100&h=100&fit=crop&q=80" 
+                      alt="Demo thumbnail" 
+                      className="w-full h-full object-cover opacity-90 group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                      <div className="w-6 h-6 bg-white/90 rounded-full flex items-center justify-center shadow-sm">
+                        <PlayCircle className="w-4 h-4 text-primary" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold leading-none text-foreground">Watch Demo</p>
+                    <p className="text-[11px] text-muted-foreground font-medium mt-0.5">See how it works</p>
+                  </div>
+                </div>
               </div>
 
               {/* Trust Indicators (Mini) */}
@@ -1032,7 +1040,7 @@ const Landing = () => {
       {showVideoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="absolute inset-0" onClick={() => setShowVideoModal(false)} />
-          <div className="relative w-full max-w-5xl aspect-video bg-zinc-900 rounded-xl shadow-2xl overflow-hidden border border-border/50 animate-in zoom-in-95 duration-200 flex flex-col items-center justify-center text-center p-8">
+          <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl shadow-2xl overflow-hidden border border-border/50 animate-in zoom-in-95 duration-200">
             <button 
               onClick={() => setShowVideoModal(false)}
               className="absolute right-4 top-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
@@ -1040,20 +1048,15 @@ const Landing = () => {
             >
               <X className="w-5 h-5" />
             </button>
-            
-            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 backdrop-blur-sm border border-white/10">
-              <PlayCircle className="w-10 h-10 text-[#FFC83D]" />
-            </div>
-            <h3 className="text-3xl font-display font-bold text-white mb-3">Product Demo Coming Soon</h3>
-            <p className="text-zinc-400 max-w-lg text-lg mb-8">
-              We're putting the finishing touches on our product tour. 
-              The best way to understand Endorse is to experience it.
-            </p>
-            <Link to="/auth?mode=signup" onClick={() => setShowVideoModal(false)}>
-              <Button size="lg" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 font-semibold">
-                Start Free Trial
-              </Button>
-            </Link>
+            <iframe 
+              width="100%" 
+              height="100%" 
+              src="https://www.youtube.com/embed/STt-r1SlO74?autoplay=1" 
+              title="Product Demo" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowFullScreen
+              className="w-full h-full"
+            ></iframe>
           </div>
         </div>
       )}
