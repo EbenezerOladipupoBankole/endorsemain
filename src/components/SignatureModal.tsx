@@ -259,12 +259,11 @@ const getCroppedImg = async (
   return canvas.toDataURL("image/png");
 };
 
-const textToDataUrl = (text: string, font: string) => {
+const textToDataUrl = (text: string, font: string, fontSize: number = 60) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   
-  const fontSize = 60;
   ctx.font = `${fontSize}px ${font}`;
   const textMetrics = ctx.measureText(text);
   
@@ -302,6 +301,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const signatureRef = useRef<SignatureCanvas>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0]);
+  const [fontSize, setFontSize] = useState(60);
   const { userProfile } = useAuth();
 
   useEffect(() => {
@@ -410,7 +410,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
     } else if (mode === "type") {
       const text = typedSignature.trim();
       if (!text) return null;
-      return textToDataUrl(text, selectedFont.family);
+      return textToDataUrl(text, selectedFont.family, fontSize);
     } else {
       return uploadedSignature;
     }
@@ -625,11 +625,28 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                       </Button>
                     </div>
                     {typedSignature && (
-                      <p className="text-center text-4xl text-foreground mt-6 pb-4" style={{ fontFamily: selectedFont.family }}>
-                        {typedSignature}
-                      </p>
+                      <div className="mt-6 pb-4 overflow-x-auto flex justify-center">
+                        <p className="text-center text-foreground whitespace-nowrap" style={{ fontFamily: selectedFont.family, fontSize: `${fontSize}px` }}>
+                          {typedSignature}
+                        </p>
+                      </div>
                     )}
                     
+                    {/* Font Size Slider */}
+                    <div className="flex items-center gap-3 px-2 mt-2">
+                      <span className="text-xs text-muted-foreground w-12">Size</span>
+                      <input
+                        type="range"
+                        min="24"
+                        max="100"
+                        step="2"
+                        value={fontSize}
+                        onChange={(e) => setFontSize(Number(e.target.value))}
+                        className="flex-1 h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                      <span className="text-xs text-muted-foreground w-8 text-right">{fontSize}px</span>
+                    </div>
+
                     {/* Font Selection */}
                     <div className="flex flex-wrap justify-center gap-2 mt-4 pt-4 border-t border-border/50">
                       {SIGNATURE_FONTS.map((font) => (
