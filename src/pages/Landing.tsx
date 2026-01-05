@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
@@ -10,8 +10,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/components/AuthContext";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/components/client";
+import { toast } from "sonner";
 
 const Landing = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [currency, setCurrency] = useState<"USD" | "NGN">("USD");
   const [selectedPlan, setSelectedPlan] = useState<"Free" | "Pro" | "Business">("Pro");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -39,6 +45,31 @@ const Landing = () => {
   const acceptCookies = () => {
     localStorage.setItem("cookieConsent", "true");
     setShowCookieConsent(false);
+  };
+
+  const handleUpgrade = async (plan: string) => {
+    if (!user) {
+      navigate("/auth?mode=signup");
+      return;
+    }
+
+    const toastId = toast.loading("Initializing payment...");
+    try {
+      const createPaystackTransaction = httpsCallable(functions, 'createPaystackTransaction');
+      const { data }: any = await createPaystackTransaction({
+        plan,
+        callbackUrl: `${window.location.origin}/dashboard?payment=success`,
+      });
+
+      if (data?.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        toast.error("Failed to initialize payment", { id: toastId });
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to initiate payment", { id: toastId });
+    }
   };
 
   const handleChatSubmit = (e: React.FormEvent) => {
@@ -785,16 +816,12 @@ const Landing = () => {
                   Custom branding
                 </li>
               </ul>
-              <Button 
-                variant="outline" 
+              <Button
                 size="lg" 
                 className={`w-full ${selectedPlan === "Business" ? "animate-pulse" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowContactModal(true);
-                }}
+                onClick={() => handleUpgrade('Business')}
               >
-                Contact Sales
+                Get Started
               </Button>
             </div>
           </div>

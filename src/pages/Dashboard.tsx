@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
@@ -60,6 +60,7 @@ interface SignaturePosition {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -92,6 +93,13 @@ const Dashboard = () => {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    const paymentSuccess = searchParams.get("payment") === "success" || searchParams.get("reference");
+    if (paymentSuccess) {
+      toast.success("Payment successful! Your plan has been updated.");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchRecentDocs = async () => {
@@ -409,13 +417,6 @@ const Dashboard = () => {
                   <p className="text-sm font-medium">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/settings?tab=profile" className="cursor-pointer w-full flex items-center">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   <LogOut className="w-4 h-4 mr-2" />
                   Sign out
@@ -443,18 +444,6 @@ const Dashboard = () => {
                   Dashboard
                 </Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
-                <Link to="/settings?tab=profile">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
-                <Link to="/settings?tab=billing">
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Billing
-                </Link>
-              </Button>
             </div>
             <div className="mt-auto pt-8">
               <Card>
@@ -470,9 +459,6 @@ const Dashboard = () => {
                       ? 'Upgrade to unlock unlimited documents.' 
                       : 'Your plan is active.'}
                   </p>
-                  <Button size="sm" className="w-full text-xs" variant="outline" asChild onClick={() => setIsMobileMenuOpen(false)}>
-                  <Link to="/settings?tab=billing">Manage Plan</Link>
-                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -492,18 +478,6 @@ const Dashboard = () => {
                   Dashboard
                 </Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start" asChild>
-                <Link to="/settings?tab=profile">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start" asChild>
-                <Link to="/settings?tab=billing">
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Billing
-                </Link>
-              </Button>
             </div>
 
             <Card className="bg-white shadow-sm border-gray-200">
@@ -519,9 +493,6 @@ const Dashboard = () => {
                     ? 'Upgrade to unlock unlimited documents.' 
                     : 'Your plan is active.'}
                 </p>
-                <Button size="sm" className="w-full text-xs" variant="outline" asChild>
-                <Link to="/settings?tab=billing">Manage Plan</Link>
-                </Button>
               </CardContent>
             </Card>
           </aside>

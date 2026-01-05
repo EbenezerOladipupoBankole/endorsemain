@@ -97,9 +97,6 @@ const MyInvitations = () => {
                     <Link to="/profile" className="flex items-center px-2 py-2 text-sm rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsProfileOpen(false)}>
                       <User className="mr-2 h-4 w-4" /> Profile
                     </Link>
-                    <Link to="/settings" className="flex items-center px-2 py-2 text-sm rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setIsProfileOpen(false)}>
-                      <Settings className="mr-2 h-4 w-4" /> Settings
-                    </Link>
                     <div className="h-px bg-border/50 my-1" />
                     <button onClick={() => { if (logout) logout(); setIsProfileOpen(false); }} className="flex w-full items-center px-2 py-2 text-sm rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-destructive">
                       <LogOut className="mr-2 h-4 w-4" /> Log out

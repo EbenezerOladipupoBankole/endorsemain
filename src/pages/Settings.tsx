@@ -36,7 +36,19 @@ const Settings = () => {
     if (tab === "billing" || tab === "profile" || tab === "security") {
       setActiveTab(tab);
     }
-  }, [searchParams]);
+
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+    const reference = searchParams.get("reference");
+
+    if (success || reference) {
+      toast.success("Subscription updated successfully!");
+      setSearchParams({ tab: "billing" });
+    } else if (canceled) {
+      toast.info("Payment cancelled.");
+      setSearchParams({ tab: "billing" });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (user?.displayName) {
@@ -105,19 +117,36 @@ const Settings = () => {
   const handleUpgrade = async (plan: string) => {
     setIsUpgrading(true);
     try {
-      const createStripeCheckoutSession = httpsCallable(functions, 'createStripeCheckoutSession');
-      const { data }: any = await createStripeCheckoutSession({
+      const createPaystackTransaction = httpsCallable(functions, 'createPaystackTransaction');
+      const { data }: any = await createPaystackTransaction({
         plan,
-        successUrl: `${window.location.origin}/settings?tab=billing&success=true`,
-        cancelUrl: `${window.location.origin}/settings?tab=billing&canceled=true`,
+        callbackUrl: `${window.location.origin}/settings?tab=billing`,
       });
 
+      if (data?.authorization_url) {
+        window.location.href = data.authorization_url;
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to initiate payment");
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+
+  const handleManageBilling = async () => {
+    setIsUpgrading(true);
+    try {
+      const managePaystackSubscription = httpsCallable(functions, 'managePaystackSubscription');
+      const { data }: any = await managePaystackSubscription({
+        returnUrl: window.location.href,
+      });
       if (data?.url) {
         window.location.href = data.url;
       }
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Failed to initiate payment");
+      toast.error("Failed to load billing portal.");
     } finally {
       setIsUpgrading(false);
     }
@@ -414,6 +443,30 @@ const Settings = () => {
                         </span>
                     </div>
                  </div>
+               </CardContent>
+             </Card>
+
+             {/* Payment Method */}
+             <Card>
+               <CardHeader>
+                 <CardTitle>Payment Method</CardTitle>
+                 <CardDescription>Manage your payment details and billing history.</CardDescription>
+               </CardHeader>
+               <CardContent className="flex items-center justify-between">
+                 <div className="flex items-center gap-4">
+                   <div className="p-2 bg-primary/10 rounded-full">
+                     <CreditCard className="w-6 h-6 text-primary" />
+                   </div>
+                   <div className="space-y-0.5">
+                     <Label className="text-base">Payment Details</Label>
+                     <p className="text-sm text-muted-foreground">
+                       Update your credit card or billing address via the secure portal.
+                     </p>
+                   </div>
+                 </div>
+                 <Button variant="outline" onClick={handleManageBilling} disabled={isUpgrading}>
+                   {isUpgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Manage Billing"}
+                 </Button>
                </CardContent>
              </Card>
 
