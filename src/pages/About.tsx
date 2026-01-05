@@ -360,7 +360,7 @@ const About = () => {
                 <div className="flex-1 text-center md:text-left">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-6">
                     <Building2 className="w-3 h-3" />
-                    Lead Developer & Architect
+                    Builder
                   </div>
                   
                   <h3 className="font-display text-3xl font-bold mb-6">Bankole Ebenezer</h3>
@@ -368,7 +368,7 @@ const About = () => {
                   <div className="relative">
                     <Quote className="w-8 h-8 text-primary/20 absolute -top-4 -left-4 -z-10" />
                     <p className="text-lg text-muted-foreground leading-relaxed mb-8 relative z-10">
-                      With a foundation in Software Development from <span className="text-foreground font-medium">Brigham Young University - Idaho</span>, Bankole is the visionary architect behind Endorse. His passion lies in crafting elegant, user-centric solutions that solve real-world problems at scale.
+                      I built Endorse to solve a problem I had for myself signing documents quickly and easily. Now, it’s a tool I love using every day, and I designed it so others can sign, send, and manage documents without the hassle.
                     </p>
                   </div>
 
