@@ -132,7 +132,7 @@ const Auth = () => {
                 ))}
               </div>
               <p className="text-primary-foreground/80 text-sm">
-                <span className="font-semibold text-primary-foreground">4.9/5</span> from 2,000+ reviews
+        
               </p>
             </div>
           </div>
