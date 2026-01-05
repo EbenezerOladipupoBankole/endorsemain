@@ -120,7 +120,7 @@ const Auth = () => {
               Sign documents<br />with confidence
             </h1>
             <p className="text-primary-foreground/80 text-lg max-w-md leading-relaxed">
-              Join over 50,000 professionals who trust Endorse for secure, 
+              Join who trust Endorse for secure, 
               legally binding electronic signatures.
             </p>
             <div className="flex items-center gap-4 pt-4">

@@ -94,7 +94,7 @@ const Landing = () => {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
             <Logo className="h-14 w-auto drop-shadow-sm" />
           </Link>
@@ -259,7 +259,7 @@ const Landing = () => {
             {/* Left Column: Content */}
             <div className="w-full lg:w-1/2 text-center lg:text-left z-10">
               {/* Headline */}
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight animate-fade-up-delay-1">
+              <h1 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight animate-fade-up-delay-1">
                 The Standard for <br />
                 <span className="text-primary relative inline-block">
                   Electronic Signatures
@@ -719,12 +719,12 @@ const Landing = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {/* Free Plan */}
             <div 
               onClick={() => setSelectedPlan("Free")}
-              className={`bg-card rounded-2xl p-6 md:p-10 flex flex-col transition-all duration-300 cursor-pointer ${
-                selectedPlan === "Free" ? "border-2 border-primary shadow-xl md:scale-105 z-10 ring-4 ring-primary/10" : "border border-border hover:border-primary/50"
+              className={`bg-card rounded-2xl p-6 lg:p-10 flex flex-col transition-all duration-300 cursor-pointer ${
+                selectedPlan === "Free" ? "border-2 border-primary shadow-xl lg:scale-105 z-10 ring-4 ring-primary/10" : "border border-border hover:border-primary/50"
               }`}
             >
               <div className="mb-6">
@@ -753,8 +753,8 @@ const Landing = () => {
             {/* Pro Plan */}
             <div 
               onClick={() => setSelectedPlan("Pro")}
-              className={`bg-card rounded-2xl p-6 md:p-10 flex flex-col relative transition-all duration-300 cursor-pointer ${
-                selectedPlan === "Pro" ? "border-2 border-[#FFC83D] shadow-xl md:scale-105 z-10 ring-4 ring-[#FFC83D]/10" : "border border-border hover:border-[#FFC83D]/50"
+              className={`bg-card rounded-2xl p-6 lg:p-10 flex flex-col relative transition-all duration-300 cursor-pointer ${
+                selectedPlan === "Pro" ? "border-2 border-[#FFC83D] shadow-xl lg:scale-105 z-10 ring-4 ring-[#FFC83D]/10" : "border border-border hover:border-[#FFC83D]/50"
               }`}
             >
               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#FFC83D] text-black text-sm font-bold px-3 py-1 rounded-full">
@@ -790,8 +790,8 @@ const Landing = () => {
             {/* Business Plan */}
             <div 
               onClick={() => setSelectedPlan("Business")}
-              className={`bg-card rounded-2xl p-6 md:p-10 flex flex-col transition-all duration-300 cursor-pointer ${
-                selectedPlan === "Business" ? "border-2 border-primary shadow-xl md:scale-105 z-10 ring-4 ring-primary/10" : "border border-border hover:border-primary/50"
+              className={`bg-card rounded-2xl p-6 lg:p-10 flex flex-col transition-all duration-300 cursor-pointer md:col-span-2 lg:col-span-1 ${
+                selectedPlan === "Business" ? "border-2 border-primary shadow-xl lg:scale-105 z-10 ring-4 ring-primary/10" : "border border-border hover:border-primary/50"
               }`}
             >
               <div className="mb-6">
@@ -1089,9 +1089,9 @@ const Landing = () => {
       )}
 
       {/* Live Chat Widget */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+      <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-4">
         {showChat && (
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-80 sm:w-96 overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-[calc(100vw-2rem)] sm:w-96 overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
             <div className="bg-[#FFC83D] p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
