@@ -9,18 +9,19 @@ const Payment = () => {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Detect if we are on the live domain
-  const isProduction = window.location.hostname === "e-ndorse.site" || window.location.hostname === "www.e-ndorse.site";
+  const isProduction = window.location.hostname === "e-ndorse.site" || 
+                       window.location.hostname === "www.e-ndorse.site" ||
+                       window.location.hostname === "endorse-app.web.app";
 
   // --- Paystack Configuration ---
   const paystackConfig = {
     reference: (new Date()).getTime().toString(),
     email: email,
     amount: amount, 
-    publicKey: "pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // TODO: Replace with your actual Live Public Key from Paystack
     // Automatically switch keys based on the domain
     publicKey: isProduction 
-      ? "pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // REPLACE with your real LIVE key
-      : "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // REPLACE with your TEST key
+      ? "pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // 🔴 ACTION: Replace with your real Paystack LIVE key
+      : "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 🔴 ACTION: Replace with your real Paystack TEST key
   };
 
   // Initialize Paystack hook
@@ -70,8 +71,7 @@ const Payment = () => {
         <p className="mb-4 text-gray-600">International payments via PayPal balance or cards.</p>
         
         {/* PayPal Provider wraps the buttons. Ideally, put this in App.tsx if used globally */}
-        <PayPalScriptProvider options={{ "client-id": "YOUR_PAYPAL_LIVE_CLIENT_ID" }}> 
-        <PayPalScriptProvider options={{ "client-id": isProduction ? "YOUR_PAYPAL_LIVE_CLIENT_ID" : "test" }}> 
+        <PayPalScriptProvider options={{ "client-id": isProduction ? "YOUR_PAYPAL_LIVE_CLIENT_ID" : "test" }}> {/* 🔴 ACTION: Add Live PayPal Client ID */}
           <PayPalButtons
             style={{ layout: "horizontal" }}
             createOrder={(data, actions) => {
