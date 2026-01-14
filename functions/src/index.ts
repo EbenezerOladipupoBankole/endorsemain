@@ -1,7 +1,7 @@
-import * as functions from "firebase-functions";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
-import Stripe from "stripe";
+import { defineSecret } from "firebase-functions/params";
 
 // Initialize Admin SDK
 if (admin.apps.length === 0) {
@@ -10,17 +10,24 @@ if (admin.apps.length === 0) {
 
 // --- EMAIL CONFIGURATION ---
 // For Gmail, use an App Password: https://myaccount.google.com/apppasswords
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "ebenezerbankole7@gmail.com",
-    pass: "rslkarucyqbvtsbz",
-  },
-});
+// Credentials are now stored securely using Firebase Secrets.
+const gmailEmail = defineSecret("GMAIL_EMAIL");
+const gmailPassword = defineSecret("GMAIL_PASSWORD");
 
-// Initialize Stripe
-// Make sure to set this in your environment variables or replace here:
-const stripe = new Stripe("sk_test_YOUR_STRIPE_SECRET_KEY", { apiVersion: "2023-10-16" });
+let transporter: nodemailer.Transporter | null = null;
+
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: gmailEmail.value(),
+        pass: gmailPassword.value(),
+      },
+    });
+  }
+  return transporter;
+}
 
 const APP_URL = "https://endorse.onrender.com"; // Changed to root to avoid 404s if server rewrites aren't configured
 
@@ -43,23 +50,17 @@ interface SendSignerInvitesPayload {
   documentId: string;
 }
 
-interface CreateCheckoutSessionPayload {
-  plan: "Pro" | "Business";
-  successUrl: string;
-  cancelUrl: string;
-}
-
 // Function to invite a user to sign
-export const inviteToSign = functions.https.onCall(async (request) => {
+export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
   if (!request.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
   const data = request.data as InvitePayload;
   const { documentId, recipientEmail } = data;
 
   if (!documentId || !recipientEmail) {
-    throw new functions.https.HttpsError("invalid-argument", "Missing required fields.");
+    throw new HttpsError("invalid-argument", "Missing required fields.");
   }
 
   const db = admin.firestore();
@@ -70,7 +71,7 @@ export const inviteToSign = functions.https.onCall(async (request) => {
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
-      throw new functions.https.HttpsError("not-found", "Document not found.");
+      throw new HttpsError("not-found", "Document not found.");
     }
 
     const originalData = docSnap.data();
@@ -96,7 +97,7 @@ export const inviteToSign = functions.https.onCall(async (request) => {
     const documentLink = `${APP_URL}/sign/${newDocRef.id}`;
 
     // 4. Send Invitation Email
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: '"Endorse App" <ebenezerbankole7@gmail.com>',
       to: recipientEmail,
       subject: "You have been invited to sign a document",
@@ -110,21 +111,21 @@ export const inviteToSign = functions.https.onCall(async (request) => {
     console.error("Invite Error:", error);
     // Ensure we return the specific error message from Nodemailer or Firestore
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-    throw new functions.https.HttpsError("internal", errorMessage);
+    throw new HttpsError("internal", errorMessage);
   }
 });
 
 // Function to handle bulk invites from Dashboard
-export const sendSignerInvites = functions.https.onCall(async (request) => {
+export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
   if (!request.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
   const data = request.data as SendSignerInvitesPayload;
   const { signers, documentName, uploaderName, documentId } = data;
 
   if (!signers || !Array.isArray(signers) || signers.length === 0) {
-    throw new functions.https.HttpsError("invalid-argument", "No signers provided.");
+    throw new HttpsError("invalid-argument", "No signers provided.");
   }
 
   const documentLink = documentId ? `${APP_URL}/sign/${documentId}` : APP_URL;
@@ -134,7 +135,7 @@ export const sendSignerInvites = functions.https.onCall(async (request) => {
 
   for (const signer of signers) {
     try {
-      await transporter.sendMail({
+      await getTransporter().sendMail({
         from: '"Endorse App" <ebenezerbankole7@gmail.com>',
         to: signer.email,
         subject: `${uploaderName} invited you to sign ${documentName}`,
@@ -152,9 +153,9 @@ export const sendSignerInvites = functions.https.onCall(async (request) => {
 });
 
 // Function to send the signed document via email
-export const sendDocument = functions.https.onCall(async (request) => {
+export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
   if (!request.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
+    throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
   const data = request.data as SendDocumentPayload;
@@ -162,7 +163,7 @@ export const sendDocument = functions.https.onCall(async (request) => {
   const base64Content = pdfBase64.split(",")[1]; // Remove data:application/pdf;base64, prefix
 
   try {
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: '"Endorse App" <ebenezerbankole7@gmail.com>',
       to: recipientEmail,
       subject: `Signed Document: ${documentName}`,
@@ -179,53 +180,6 @@ export const sendDocument = functions.https.onCall(async (request) => {
     return { success: true };
   } catch (error: any) {
     console.error("Send Document Error:", error);
-    throw new functions.https.HttpsError("internal", error.message || "Failed to send document.");
-  }
-});
-
-// Function to create a Stripe Checkout Session
-export const createStripeCheckoutSession = functions.https.onCall(async (request) => {
-  if (!request.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be logged in.");
-  }
-
-  const data = request.data as CreateCheckoutSessionPayload;
-  const { plan, successUrl, cancelUrl } = data;
-
-  // Map plans to Stripe Price IDs (Create these in your Stripe Dashboard)
-  const priceIds: Record<string, string> = {
-    "Pro": "price_YOUR_PRO_PRICE_ID",
-    "Business": "price_YOUR_BUSINESS_PRICE_ID",
-  };
-
-  const priceId = priceIds[plan];
-
-  if (!priceId) {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid plan selected.");
-  }
-
-  try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      customer_email: request.auth.token.email,
-      metadata: {
-        firebaseUID: request.auth.uid,
-        plan: plan
-      }
-    });
-
-    return { url: session.url };
-  } catch (error: any) {
-    console.error("Stripe Error:", error);
-    throw new functions.https.HttpsError("internal", error.message);
+    throw new HttpsError("internal", error.message || "Failed to send document.");
   }
 });
