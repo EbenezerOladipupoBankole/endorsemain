@@ -8,12 +8,19 @@ const Payment = () => {
   const [amount] = useState(5000); // Amount in Kobo for Paystack (5000 kobo = 50 NGN)
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
+  // Detect if we are on the live domain
+  const isProduction = window.location.hostname === "e-ndorse.site" || window.location.hostname === "www.e-ndorse.site";
+
   // --- Paystack Configuration ---
   const paystackConfig = {
     reference: (new Date()).getTime().toString(),
     email: email,
     amount: amount, 
     publicKey: "pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // TODO: Replace with your actual Live Public Key from Paystack
+    // Automatically switch keys based on the domain
+    publicKey: isProduction 
+      ? "pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // REPLACE with your real LIVE key
+      : "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // REPLACE with your TEST key
   };
 
   // Initialize Paystack hook
@@ -64,6 +71,7 @@ const Payment = () => {
         
         {/* PayPal Provider wraps the buttons. Ideally, put this in App.tsx if used globally */}
         <PayPalScriptProvider options={{ "client-id": "YOUR_PAYPAL_LIVE_CLIENT_ID" }}> 
+        <PayPalScriptProvider options={{ "client-id": isProduction ? "YOUR_PAYPAL_LIVE_CLIENT_ID" : "test" }}> 
           <PayPalButtons
             style={{ layout: "horizontal" }}
             createOrder={(data, actions) => {
