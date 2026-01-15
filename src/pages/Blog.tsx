@@ -358,7 +358,8 @@ const Blog = () => {
           <div className="flex gap-6 text-sm text-muted-foreground">
             <Link to="/" className="hover:text-foreground">Home</Link>
             <Link to="/auth" className="hover:text-foreground">Sign In</Link>
-            <a href="#" className="hover:text-foreground">Privacy</a>
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/terms" className="hover:text-foreground">Terms</Link>
           </div>
         </div>
       </footer>

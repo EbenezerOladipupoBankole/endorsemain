@@ -144,7 +144,13 @@ const SignDocument = () => {
                {!signature && <Button size="sm" variant="outline" onClick={() => setShowSignatureModal(true)}>Create Signature</Button>}
              </div>
              <div className="p-6 bg-muted/10 min-h-[600px] flex justify-center">
-               {pdfFile && <PDFViewer file={pdfFile} signatureImage={signature} signaturePositions={signaturePositions} onSignaturePlace={handleSignaturePlace} onSignatureMove={(pos) => {
+               {pdfFile && <PDFViewer 
+                 file={pdfFile} 
+                 signatureImage={signature} 
+                 signaturePositions={signaturePositions} 
+                 signaturePosition={signaturePositions.length > 0 ? signaturePositions[signaturePositions.length - 1] : null}
+                 onSignaturePlace={handleSignaturePlace} 
+                 onSignatureMove={(pos) => {
                  setSignaturePositions(prev => {
                    const newPositions = [...prev];
                    if (newPositions.length > 0) {

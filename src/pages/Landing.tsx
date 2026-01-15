@@ -317,7 +317,7 @@ const Landing = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  <span>Bank-Level Security</span>
+                  <span>Secure & Private</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -644,13 +644,13 @@ const Landing = () => {
                   <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-6 backdrop-blur-md border border-white/20">
                     <Lock className="w-10 h-10 text-[#FFC83D]" />
                   </div>
-                  <h4 className="text-2xl font-bold mb-2">Bank-Level Security</h4>
-                  <p className="text-gray-400 mb-8">256-bit SSL Encryption</p>
+                  <h4 className="text-2xl font-bold mb-2">Secure Infrastructure</h4>
+                  <p className="text-gray-400 mb-8">Powered by Google Cloud</p>
                   
                   <div className="grid grid-cols-2 gap-4 w-full">
                     <div className="bg-white/5 p-3 rounded-lg border border-white/10">
-                      <div className="text-[#FFC83D] font-bold text-lg">SOC 2</div>
-                      <div className="text-xs text-gray-400">Compliant</div>
+                      <div className="text-[#FFC83D] font-bold text-lg">SSL</div>
+                      <div className="text-xs text-gray-400">Encryption</div>
                     </div>
                     <div className="bg-white/5 p-3 rounded-lg border border-white/10">
                       <div className="text-[#FFC83D] font-bold text-lg">99.9%</div>
@@ -663,14 +663,14 @@ const Landing = () => {
             <div className="w-full md:w-1/2 order-1 md:order-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-600 text-sm font-medium mb-4">
                 <Shield className="w-4 h-4" />
-                Enterprise Grade
+                Secure & Reliable
               </div>
-              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Secure, compliant, and legally binding.</h3>
+              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Secure, private, and legally binding.</h3>
               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                We take security seriously. Your documents are protected by industry-leading encryption and compliance standards.
+                We take security seriously. Your documents are protected by industry-standard encryption and secure cloud infrastructure.
               </p>
               <div className="flex flex-wrap gap-3">
-                {["Audit Trails", "Two-Factor Auth", "Data Encryption", "GDPR Compliant"].map((tag, i) => (
+                {["Audit Trails", "Two-Factor Auth", "Data Encryption", "Privacy Focused"].map((tag, i) => (
                   <span key={i} className="px-3 py-1 bg-secondary rounded-md text-sm font-medium text-secondary-foreground border border-border">
                     {tag}
                   </span>
@@ -849,7 +849,7 @@ const Landing = () => {
               },
               {
                 q: "Is my data secure?",
-                a: "Absolutely. We use bank-level 256-bit SSL encryption for all document transfers and storage. Your documents are private and only accessible to you and your designated signers."
+                a: "Absolutely. We use industry-standard SSL encryption for all document transfers. Your documents are private and only accessible to you and your designated signers."
               },
               {
                 q: "Can I sign on my mobile phone?",
@@ -918,7 +918,7 @@ const Landing = () => {
               </p>
               <div className="flex gap-4">
                 <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Twitter"><Twitter className="w-5 h-5" /></a>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="LinkedIn"><Linkedin className="w-5 h-5" /></a>
+                <a href="https://www.linkedin.com/company/e-ndorse/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors" aria-label="LinkedIn"><Linkedin className="w-5 h-5" /></a>
                 <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Facebook"><Facebook className="w-5 h-5" /></a>
                 <a href="https://www.instagram.com/e.ndorse?igsh=MWs2MnltaGdxbDU3eA%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Instagram"><Instagram className="w-5 h-5" /></a>
               </div>
@@ -976,9 +976,9 @@ const Landing = () => {
               </div>
             </div>
             <div className="flex gap-8 text-base text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-foreground transition-colors">Cookie Policy</a>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+              <Link to="/cookie-policy" className="hover:text-foreground transition-colors">Cookie Policy</Link>
             </div>
           </div>
         </div>
@@ -1059,6 +1059,14 @@ const Landing = () => {
                 <Button type="submit" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Send Request</Button>
               </div>
             </form>
+            <div className="mt-6 pt-6 border-t border-border flex justify-center">
+              <a href="https://www.linkedin.com/company/e-ndorse/" target="_blank" rel="noopener noreferrer" className="w-full">
+                <Button variant="outline" className="w-full gap-2 text-muted-foreground hover:text-[#0A66C2] hover:border-[#0A66C2]/30">
+                  <Linkedin className="w-4 h-4" />
+                  Follow us on LinkedIn
+                </Button>
+              </a>
+            </div>
           </div>
         </div>
       )}

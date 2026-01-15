@@ -144,8 +144,8 @@ const LandingPage = () => {
               <span className="text-sm text-muted-foreground ml-2">© {new Date().getFullYear()} Endorse.</span>
             </div>
             <div className="flex gap-8 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
               <a href="#" className="hover:text-foreground transition-colors">Contact</a>
             </div>
           </div>
