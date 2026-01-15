@@ -64,6 +64,17 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
   }
 
   const db = admin.firestore();
+  
+  // Check for free plan limits (3 documents)
+  const userRef = db.collection("users").doc(request.auth.uid);
+  const userSnap = await userRef.get();
+  const userData = userSnap.data();
+  const documentsSigned = userData?.documentsSigned || 0;
+  const isPro = userData?.plan === "pro" || userData?.plan === "business";
+
+  if (!isPro && documentsSigned >= 3) {
+    throw new HttpsError("resource-exhausted", "You have reached the limit of 3 free documents. Please upgrade to continue.");
+  }
 
   try {
     // 1. Get Original Document
@@ -93,6 +104,9 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
 
     // 3. Save to Firestore
     const newDocRef = await db.collection("documents").add(newDocumentData);
+    
+    // Increment document count for user
+    await userRef.set({ documentsSigned: admin.firestore.FieldValue.increment(1) }, { merge: true });
 
     const documentLink = `${APP_URL}/sign/${newDocRef.id}`;
 
