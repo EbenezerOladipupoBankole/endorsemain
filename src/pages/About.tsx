@@ -48,7 +48,7 @@ const About = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                  <Link to="/conversion" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
                       <FileType className="w-5 h-5 text-primary" />
                     </div>
@@ -125,7 +125,7 @@ const About = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5 h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="md:hidden absolute top-20 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5 h-[calc(100vh-5rem)] overflow-y-auto">
             <div className="flex flex-col">
               <button 
                 className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
@@ -137,7 +137,7 @@ const About = () => {
               {mobileProductOpen && (
                 <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
                   <Link to="/#features" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><PenTool className="w-4 h-4" /> eSign</Link>
-                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileType className="w-4 h-4" /> File Conversion</Link>
+                  <Link to="/conversion" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileType className="w-4 h-4" /> File Conversion</Link>
                 </div>
               )}
             </div>
@@ -209,7 +209,7 @@ const About = () => {
         {/* Mission & Story */}
         <section className="px-4 md:px-6 py-16 md:py-20 bg-secondary/20">
           <div className="container mx-auto max-w-6xl">
-            <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
               <div>
                 <h2 className="font-display text-3xl md:text-4xl font-bold mb-6">Our Mission</h2>
                 <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
@@ -310,7 +310,7 @@ const About = () => {
                    We are a fully distributed team spanning multiple continents. This allows us to provide 24/7 support and build a product that truly understands global collaboration.
                  </p>
                </div>
-               <div className="md:w-1/2 grid grid-cols-2 gap-4">
+               <div className="md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                  {[
                    { title: "Remote First", desc: "Distributed team across 12+ time zones" },
                    { title: "24/7 Support", desc: "Always on, wherever you are" },

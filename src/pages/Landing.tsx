@@ -15,11 +15,48 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "@/components/client";
 import { toast } from "sonner";
 
+const tiers = [
+  {
+    name: 'Free',
+    price: 'Free',
+    frequency: '',
+    features: ['5 documents/month', 'Basic signatures'],
+    color: 'text-green-600',
+    buttonColor: 'bg-green-600 hover:bg-green-700 focus-visible:outline-green-600',
+    badgeColor: 'bg-green-100 text-green-600',
+  },
+  {
+    name: 'Starter',
+    price: '$4.99',
+    frequency: '/month',
+    features: ['20 documents', 'Audit trail', 'Email notifications'],
+    color: 'text-blue-600',
+    buttonColor: 'bg-blue-600 hover:bg-blue-700 focus-visible:outline-blue-600',
+    badgeColor: 'bg-blue-100 text-blue-600',
+  },
+  {
+    name: 'Pro',
+    price: '$9.99',
+    frequency: '/month',
+    features: ['50 documents', 'Custom branding', 'Priority support'],
+    color: 'text-purple-600',
+    buttonColor: 'bg-purple-600 hover:bg-purple-700 focus-visible:outline-purple-600',
+    badgeColor: 'bg-purple-100 text-purple-600',
+  },
+  {
+    name: 'Business',
+    price: '$25',
+    frequency: '/month',
+    features: ['Unlimited documents', 'Teams', 'Admin control'],
+    color: 'text-orange-600',
+    buttonColor: 'bg-orange-600 hover:bg-orange-700 focus-visible:outline-orange-600',
+    badgeColor: 'bg-orange-100 text-orange-600',
+  },
+];
+
 const Landing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [currency, setCurrency] = useState<"USD" | "NGN">("USD");
-  const [selectedPlan, setSelectedPlan] = useState<"Free" | "Pro" | "Business">("Pro");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCookieConsent, setShowCookieConsent] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -118,7 +155,7 @@ const Landing = () => {
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
-                  <a href="#" className="flex items-start gap-3 p-3 w-full">
+                  <Link to="/conversion" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
                       <FileType className="w-5 h-5 text-primary" />
                     </div>
@@ -128,7 +165,7 @@ const Landing = () => {
                         Transform documents between PDF, Word, and other formats.
                       </span>
                     </div>
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -210,9 +247,9 @@ const Landing = () => {
                   <a href="#features" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}>
                     <PenTool className="w-4 h-4" /> eSign
                   </a>
-                  <a href="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}>
+                  <Link to="/conversion" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}>
                     <FileType className="w-4 h-4" /> File Conversion
-                  </a>
+                  </Link>
                 </div>
               )}
             </div>
@@ -260,9 +297,9 @@ const Landing = () => {
             <div className="w-full lg:w-1/2 text-center lg:text-left z-10">
               {/* Headline */}
               <h1 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight animate-fade-up-delay-1">
-                The Standard for <br />
+                The Trusted Platform for <br />
                 <span className="text-primary relative inline-block">
-                  Electronic Signatures
+                  Digital Agreements
                   <svg className="absolute w-full h-3 -bottom-1 left-0 text-[#FFC83D] opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
                     <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                   </svg>
@@ -271,7 +308,7 @@ const Landing = () => {
               
               {/* Subheadline */}
               <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-8 md:mb-10 leading-relaxed animate-fade-up-delay-2">
-                Accelerate business with the world's most trusted e-signature solution. Secure, compliant, and easy to use.
+                Empower your organization with legally binding e-signatures. Experience enterprise-grade security and compliance without the complexity.
               </p>
               
               {/* CTA Buttons */}
@@ -682,148 +719,53 @@ const Landing = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-16 md:py-24 px-4 md:px-6 bg-secondary/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <p className="text-base font-semibold text-primary uppercase tracking-wider mb-3">Pricing</p>
-            <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Simple, transparent pricing
-            </h2>
-            <p className="text-muted-foreground text-xl max-w-xl mx-auto">
-              Choose the plan that's right for you
+      <section id="pricing" className="bg-white py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <h2 className="text-base font-semibold leading-7 text-indigo-600">Pricing</h2>
+            <p className="mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+              Choose the right plan for you
             </p>
-
-            <div className="flex justify-center mt-8">
-              <div className="bg-secondary p-1 rounded-lg inline-flex border border-border">
-                <button
-                  onClick={() => setCurrency("USD")}
-                  className={`px-6 py-2 rounded-md text-base font-medium transition-all ${
-                    currency === "USD"
-                      ? "bg-background shadow-sm text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  USD ($)
-                </button>
-                <button
-                  onClick={() => setCurrency("NGN")}
-                  className={`px-6 py-2 rounded-md text-base font-medium transition-all ${
-                    currency === "NGN"
-                      ? "bg-background shadow-sm text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  NGN (₦)
-                </button>
-              </div>
-            </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {/* Free Plan */}
-            <div 
-              onClick={() => setSelectedPlan("Free")}
-              className={`bg-card rounded-2xl p-6 lg:p-10 flex flex-col transition-all duration-300 cursor-pointer ${
-                selectedPlan === "Free" ? "border-2 border-primary shadow-xl lg:scale-105 z-10 ring-4 ring-primary/10" : "border border-border hover:border-primary/50"
-              }`}
-            >
-              <div className="mb-6">
-                <h3 className="font-display text-2xl font-bold text-foreground mb-2">Free</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">{currency === "USD" ? "$0" : "₦0"}</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-                <p className="text-base text-muted-foreground mt-2">For individuals starting out</p>
-              </div>
-              <ul className="space-y-4 mb-8 flex-1">
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  3 documents/mo
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Basic signatures
-                </li>
-              </ul>
-              <Link to="/auth?mode=signup">
-                <Button variant="outline" size="lg" className={`w-full ${selectedPlan === "Free" ? "animate-pulse" : ""}`}>Get Started</Button>
-              </Link>
-            </div>
-
-            {/* Pro Plan */}
-            <div 
-              onClick={() => setSelectedPlan("Pro")}
-              className={`bg-card rounded-2xl p-6 lg:p-10 flex flex-col relative transition-all duration-300 cursor-pointer ${
-                selectedPlan === "Pro" ? "border-2 border-[#FFC83D] shadow-xl lg:scale-105 z-10 ring-4 ring-[#FFC83D]/10" : "border border-border hover:border-[#FFC83D]/50"
-              }`}
-            >
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#FFC83D] text-black text-sm font-bold px-3 py-1 rounded-full">
-                MOST POPULAR
-              </div>
-              <div className="mb-6">
-                <h3 className="font-display text-2xl font-bold text-foreground mb-2">Pro</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">{currency === "USD" ? "$10" : "₦15,500"}</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-                <p className="text-base text-muted-foreground mt-2">For professionals</p>
-              </div>
-              <ul className="space-y-4 mb-8 flex-1">
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Unlimited documents
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Invite signers
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Audit trails
-                </li>
-              </ul>
-              <Link to="/auth?mode=signup">
-                <Button size="lg" className={`w-full bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black ${selectedPlan === "Pro" ? "animate-pulse" : ""}`}>Start Free Trial</Button>
-              </Link>
-            </div>
-
-            {/* Business Plan */}
-            <div 
-              onClick={() => setSelectedPlan("Business")}
-              className={`bg-card rounded-2xl p-6 lg:p-10 flex flex-col transition-all duration-300 cursor-pointer md:col-span-2 lg:col-span-1 ${
-                selectedPlan === "Business" ? "border-2 border-primary shadow-xl lg:scale-105 z-10 ring-4 ring-primary/10" : "border border-border hover:border-primary/50"
-              }`}
-            >
-              <div className="mb-6">
-                <h3 className="font-display text-2xl font-bold text-foreground mb-2">Business</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">{currency === "USD" ? "$25" : "₦34,000"}</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-                <p className="text-base text-muted-foreground mt-2">For teams & organizations</p>
-              </div>
-              <ul className="space-y-4 mb-8 flex-1">
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Everything in Pro
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Team management
-                </li>
-                <li className="flex items-center gap-3 text-base">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  Custom branding
-                </li>
-              </ul>
-              <Button
-                size="lg" 
-                className={`w-full ${selectedPlan === "Business" ? "animate-pulse" : ""}`}
-                onClick={() => handleUpgrade('Business')}
+          <div className="isolate mx-auto mt-10 grid max-w-md grid-cols-1 gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-4">
+            {tiers.map((tier) => (
+              <div
+                key={tier.name}
+                className="rounded-3xl p-8 ring-1 ring-gray-200 xl:p-10 flex flex-col justify-between hover:shadow-lg transition-shadow duration-300"
               >
-                Get Started
-              </Button>
-            </div>
+                <div>
+                  <div className="flex items-center justify-between gap-x-4">
+                    <h3 id={tier.name} className={`text-lg font-semibold leading-8 ${tier.color}`}>
+                      {tier.name}
+                    </h3>
+                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${tier.badgeColor} ring-1 ring-inset ring-gray-500/10`}>
+                      {tier.name}
+                    </span>
+                  </div>
+                  <p className="mt-4 flex items-baseline gap-x-1">
+                    <span className="text-4xl font-bold tracking-tight text-gray-900">{tier.price}</span>
+                    {tier.frequency && <span className="text-sm font-semibold leading-6 text-gray-600">{tier.frequency}</span>}
+                  </p>
+                  <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
+                    {tier.features.map((feature) => (
+                      <li key={feature} className="flex gap-x-3">
+                        <svg className={`h-6 w-5 flex-none ${tier.color}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                        </svg>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={() => tier.name === 'Free' ? navigate('/auth?mode=signup') : handleUpgrade(tier.name)}
+                  aria-describedby={tier.name}
+                  className={`mt-8 block w-full rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${tier.buttonColor}`}
+                >
+                  Get started
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </section>

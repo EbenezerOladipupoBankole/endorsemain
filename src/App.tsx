@@ -15,6 +15,7 @@ import Payment from "./Payment";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import CookiePolicy from "./pages/CookiePolicy";
+import FileConversion from "./pages/FileConversion";
 import { useAuth } from "./components/AuthContext";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/conversion" element={<FileConversion />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sign/:id" element={<SignDocument />} />
