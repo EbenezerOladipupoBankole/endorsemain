@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/components/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
@@ -200,6 +200,15 @@ const Dashboard = () => {
       return;
     }
 
+    // Check limits for free plan
+    const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
+    const documentsSigned = userProfile?.documentsSigned || 0;
+
+    if (!isPro && documentsSigned >= 3) {
+      toast.error("You have reached the limit of 3 free documents. Please upgrade to continue.");
+      return;
+    }
+
     setIsDownloading(true);
     try {
       // Dynamically import PDF utils only when the user clicks download
@@ -212,6 +221,13 @@ const Dashboard = () => {
       
       downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
       toast.success('Signed document downloaded!');
+
+      // Increment document count
+      if (user?.uid) {
+        await updateDoc(doc(db, "users", user.uid), {
+          documentsSigned: increment(1)
+        });
+      }
     } catch (error) {
       console.error('Error downloading PDF:', error);
       toast.error('Failed to download signed document. Please try again.');
