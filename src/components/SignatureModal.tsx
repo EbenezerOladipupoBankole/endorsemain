@@ -569,7 +569,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
               <div className="mb-4">
                 <Label className="mb-2 block text-sm">Your Signature</Label>
                 {mode === "draw" ? (
-                  <div className="relative border-2 border-dashed border-border rounded-lg overflow-hidden bg-secondary/30">
+                  <div className="relative border-2 border-dashed border-border rounded-lg overflow-hidden bg-white">
                     <SignatureCanvas
                       ref={signatureRef}
                       canvasProps={{
@@ -604,12 +604,12 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                     </div>
                   </div>
                 ) : mode === "type" ? (
-                  <div className="border-2 border-dashed border-border rounded-lg p-5 bg-secondary/30">
+                  <div className="border-2 border-dashed border-border rounded-lg p-5 bg-white">
                     <Input
                       placeholder="Type your full name"
                       value={typedSignature}
                       onChange={(e) => setTypedSignature(e.target.value)}
-                      className="text-center text-2xl border-0 bg-transparent focus-visible:ring-0 h-auto py-2"
+                      className="text-center text-2xl border-0 bg-transparent focus-visible:ring-0 h-auto py-2 text-black"
                       style={{ fontFamily: selectedFont.family }}
                     />
                     <div className="flex justify-end mt-2">
@@ -626,7 +626,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                     </div>
                     {typedSignature && (
                       <div className="mt-6 pb-4 overflow-x-auto flex justify-center">
-                        <p className="text-center text-foreground whitespace-nowrap" style={{ fontFamily: selectedFont.family, fontSize: `${fontSize}px` }}>
+                        <p className="text-center text-black whitespace-nowrap" style={{ fontFamily: selectedFont.family, fontSize: `${fontSize}px` }}>
                           {typedSignature}
                         </p>
                       </div>
@@ -741,7 +741,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
                 />
                 <label htmlFor="terms" className="text-xs text-muted-foreground leading-tight cursor-pointer">
-                  I agree to be legally bound by this document and the <span className="text-primary hover:underline">Terms of Service</span> and <span className="text-primary hover:underline">Electronic Record and Signature Disclosure</span>.
+                  I agree to be legally bound by this document and the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</a> and <span className="text-primary hover:underline">Electronic Record and Signature Disclosure</span>.
                 </label>
               </div>
             </>

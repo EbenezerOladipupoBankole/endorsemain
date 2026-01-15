@@ -72,6 +72,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState({ total: 0, signed: 0, pending: 0 });
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -250,6 +251,40 @@ const Dashboard = () => {
     setIsDownloading(false);
   };
 
+  const handleApplySignature = async () => {
+    if (!pdfFile || !signature || signaturePositions.length === 0) return;
+
+    setIsApplying(true);
+    try {
+      // Dynamically import PDF utils
+      const { embedSignatureInPDF } = await import('@/lib/pdfUtils');
+      
+      let currentFile = pdfFile;
+      let signedPdfBytes = null;
+
+      for (const position of signaturePositions) {
+        signedPdfBytes = await embedSignatureInPDF(
+          currentFile,
+          signature,
+          position
+        );
+        currentFile = new File([signedPdfBytes], pdfFile.name, { type: 'application/pdf' });
+      }
+      
+      if (signedPdfBytes) {
+        setPdfFile(currentFile);
+        setSignature(null);
+        setSignaturePositions([]);
+        toast.success('Signatures applied. You can now add another signature.');
+      }
+    } catch (error) {
+      console.error('Error applying signature:', error);
+      toast.error('Failed to apply signature.');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
   const handleReset = () => {
     setPdfFile(null);
     setSignature(null);
@@ -403,7 +438,7 @@ const Dashboard = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {pdfFile && signature && signaturePosition && (
+            {pdfFile && signature && signaturePositions.length > 0 && (
               <Button
                 onClick={handleDownload}
                 disabled={isDownloading}
@@ -672,6 +707,7 @@ const Dashboard = () => {
                       file={pdfFile}
                       signatureImage={signature}
                       signaturePositions={signaturePositions}
+                      signaturePosition={signaturePositions.length > 0 ? signaturePositions[signaturePositions.length - 1] : null}
                       onSignaturePlace={handleSignaturePlace}
                       onSignatureMove={handleSignatureMove}
                     />
@@ -690,14 +726,24 @@ const Dashboard = () => {
                     <PenTool className="w-4 h-4 mr-2" />
                     Create Signature
                   </Button>
-                  {signature && (
-                    <Button 
-                      variant="ghost" 
-                      className="w-full text-destructive hover:text-destructive hover:bg-destructive/10" 
-                      onClick={() => { setSignature(null); setSignaturePositions([]); toast.info("Signature cleared"); }}
-                    >
-                      Clear Current Signature
-                    </Button>
+                  {signaturePositions.length > 0 && (
+                    <>
+                      <Button 
+                        className="w-full mb-2 bg-green-600 hover:bg-green-700 text-white" 
+                        onClick={handleApplySignature}
+                        disabled={isApplying}
+                      >
+                        {isApplying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                        Apply & Add Another
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10" 
+                        onClick={() => { setSignaturePositions([]); toast.info("All signature placements have been cleared."); }}
+                      >
+                        Clear All Placements
+                      </Button>
+                    </>
                   )}
                   <Separator />
                   <SignerManager signers={signers} setSigners={setSigners} onSendInvites={handleSendInvites} />

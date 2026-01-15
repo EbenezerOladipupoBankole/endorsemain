@@ -244,7 +244,7 @@ const About = () => {
                     Security isn't just a feature; it's our foundation. We adhere to the strictest global standards to ensure your data remains yours.
                   </p>
                   <ul className="space-y-3">
-                    {["SOC 2 Type II Certified", "ISO 27001 Compliant", "GDPR Ready", "256-bit Encryption"].map((item, i) => (
+                    {["Secure Cloud Infrastructure", "Encrypted Data Transfer", "Privacy Focused", "99.9% Uptime"].map((item, i) => (
                       <li key={i} className="flex items-center gap-3 text-sm font-medium">
                         <CheckCircle2 className="w-4 h-4 text-primary" />
                         {item}
