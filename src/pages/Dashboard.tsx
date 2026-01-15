@@ -65,7 +65,7 @@ const Dashboard = () => {
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
-  const [signaturePosition, setSignaturePosition] = useState<SignaturePosition | null>(null);
+  const [signaturePositions, setSignaturePositions] = useState<SignaturePosition[]>([]);
   const [signers, setSigners] = useState<Signer[]>([]);
   const [recentDocs, setRecentDocs] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -175,7 +175,7 @@ const Dashboard = () => {
   const handleFileSelect = (file: File) => {
     setPdfFile(file);
     setSignature(null);
-    setSignaturePosition(null);
+    setSignaturePositions([]);
     setSigners([]);
   };
 
@@ -186,17 +186,23 @@ const Dashboard = () => {
   };
 
   const handleSignaturePlace = (position: SignaturePosition) => {
-    setSignaturePosition(position);
-    toast.success('Signature placed! You can drag to reposition.');
+    setSignaturePositions(prev => [...prev, position]);
+    toast.success('Signature placed!');
   };
 
   const handleSignatureMove = (position: SignaturePosition) => {
-    setSignaturePosition(position);
+    setSignaturePositions(prev => {
+      const newPositions = [...prev];
+      if (newPositions.length > 0) {
+        newPositions[newPositions.length - 1] = position;
+      }
+      return newPositions;
+    });
   };
 
   const handleDownload = async () => {
-    if (!pdfFile || !signature || !signaturePosition) {
-      toast.error('Please upload a document and place your signature first.');
+    if (!pdfFile || !signature || signaturePositions.length === 0) {
+      toast.error('Please upload a document and place at least one signature.');
       return;
     }
 
@@ -213,14 +219,23 @@ const Dashboard = () => {
     try {
       // Dynamically import PDF utils only when the user clicks download
       const { embedSignatureInPDF, downloadPDF } = await import('@/lib/pdfUtils');
-      const signedPdfBytes = await embedSignatureInPDF(
-        pdfFile,
-        signature,
-        signaturePosition
-      );
       
-      downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
-      toast.success('Signed document downloaded!');
+      let currentFile = pdfFile;
+      let signedPdfBytes = null;
+
+      for (const position of signaturePositions) {
+        signedPdfBytes = await embedSignatureInPDF(
+          currentFile,
+          signature,
+          position
+        );
+        currentFile = new File([signedPdfBytes], pdfFile.name, { type: 'application/pdf' });
+      }
+      
+      if (signedPdfBytes) {
+        downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
+        toast.success('Signed document downloaded!');
+      }
 
       // Increment document count
       if (user?.uid) {
@@ -238,7 +253,7 @@ const Dashboard = () => {
   const handleReset = () => {
     setPdfFile(null);
     setSignature(null);
-    setSignaturePosition(null);
+    setSignaturePositions([]);
     setSigners([]);
   };
 
@@ -656,7 +671,7 @@ const Dashboard = () => {
                     <PDFViewer
                       file={pdfFile}
                       signatureImage={signature}
-                      signaturePosition={signaturePosition}
+                      signaturePositions={signaturePositions}
                       onSignaturePlace={handleSignaturePlace}
                       onSignatureMove={handleSignatureMove}
                     />
@@ -679,7 +694,7 @@ const Dashboard = () => {
                     <Button 
                       variant="ghost" 
                       className="w-full text-destructive hover:text-destructive hover:bg-destructive/10" 
-                      onClick={() => { setSignature(null); setSignaturePosition(null); toast.info("Signature cleared"); }}
+                      onClick={() => { setSignature(null); setSignaturePositions([]); toast.info("Signature cleared"); }}
                     >
                       Clear Current Signature
                     </Button>

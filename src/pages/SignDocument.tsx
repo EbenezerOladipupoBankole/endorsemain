@@ -23,7 +23,7 @@ const SignDocument = () => {
   const [documentData, setDocumentData] = useState<any>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
-  const [signaturePosition, setSignaturePosition] = useState<SignaturePosition | null>(null);
+  const [signaturePositions, setSignaturePositions] = useState<SignaturePosition[]>([]);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -82,13 +82,13 @@ const SignDocument = () => {
   };
 
   const handleSignaturePlace = (position: SignaturePosition) => {
-    setSignaturePosition(position);
+    setSignaturePositions(prev => [...prev, position]);
     toast.success('Signature placed!');
   };
 
   const handleCompleteSigning = async () => {
-    if (!signature || !signaturePosition || !id) {
-      toast.error("Please place your signature on the document.");
+    if (!signature || signaturePositions.length === 0 || !id) {
+      toast.error("Please place at least one signature on the document.");
       return;
     }
 
@@ -97,7 +97,7 @@ const SignDocument = () => {
       await updateDoc(doc(db, "documents", id), {
         status: 'signed',
         signature_data: signature,
-        signature_position: signaturePosition,
+        signature_positions: signaturePositions,
         signedAt: serverTimestamp(),
       });
       
@@ -131,7 +131,7 @@ const SignDocument = () => {
       <header className="bg-background border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Logo className="h-8 w-auto" />
-          <Button onClick={handleCompleteSigning} disabled={!signature || !signaturePosition || isSubmitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
+          <Button onClick={handleCompleteSigning} disabled={!signature || signaturePositions.length === 0 || isSubmitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin md:mr-2" /> : <PenTool className="w-4 h-4 md:mr-2" />}
             <span className="hidden md:inline">Finish Signing</span>
           </Button>
@@ -144,7 +144,15 @@ const SignDocument = () => {
                {!signature && <Button size="sm" variant="outline" onClick={() => setShowSignatureModal(true)}>Create Signature</Button>}
              </div>
              <div className="p-6 bg-muted/10 min-h-[600px] flex justify-center">
-               {pdfFile && <PDFViewer file={pdfFile} signatureImage={signature} signaturePosition={signaturePosition} onSignaturePlace={handleSignaturePlace} onSignatureMove={(pos) => setSignaturePosition(pos)} />}
+               {pdfFile && <PDFViewer file={pdfFile} signatureImage={signature} signaturePositions={signaturePositions} onSignaturePlace={handleSignaturePlace} onSignatureMove={(pos) => {
+                 setSignaturePositions(prev => {
+                   const newPositions = [...prev];
+                   if (newPositions.length > 0) {
+                     newPositions[newPositions.length - 1] = pos;
+                   }
+                   return newPositions;
+                 });
+               }} />}
              </div>
         </div>
       </main>
