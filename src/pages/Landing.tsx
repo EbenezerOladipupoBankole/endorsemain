@@ -109,22 +109,43 @@ const Landing = () => {
     }
   };
 
-  const handleChatSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
+  const getBotResponse = (text: string) => {
+    const lower = text.toLowerCase();
+    if (lower.includes("price") || lower.includes("cost") || lower.includes("plan") || lower.includes("free")) {
+      return "We offer a Free plan (5 docs/mo), Starter ($4.99/mo), and Pro ($9.99/mo). Check out our Pricing section below for more details!";
+    }
+    if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
+      return "Hi there! Ready to sign some documents? 📄 How can I help you today?";
+    }
+    if (lower.includes("security") || lower.includes("safe") || lower.includes("legal") || lower.includes("binding")) {
+      return "Yes! Endorse is ESIGN compliant and uses 256-bit SSL encryption to keep your data secure and legally binding.";
+    }
+    if (lower.includes("support") || lower.includes("help")) {
+      return "You can reach our support team at support@endorse.com or browse our Help Center resources.";
+    }
+    return "Thanks for the message! A support agent will be with you shortly. In the meantime, feel free to browse our features.";
+  };
 
-    const newMessage = { text: chatInput, isUser: true, time: "Just now" };
+  const sendMessage = (text: string) => {
+    if (!text.trim()) return;
+    
+    const newMessage = { text, isUser: true, time: "Just now" };
     setChatMessages((prev) => [...prev, newMessage]);
     setChatInput("");
     setIsTyping(true);
 
-    // Simulate bot response
     setTimeout(() => {
       setIsTyping(false);
-      setChatMessages((prev) => [...prev, { text: "Thanks for reaching out! A member of our team will be with you shortly.", isUser: false, time: "Just now" }]);
+      const response = getBotResponse(text);
+      setChatMessages((prev) => [...prev, { text: response, isUser: false, time: "Just now" }]);
       const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
       audio.play().catch((e) => console.error("Audio play failed:", e));
     }, 1500);
+  };
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage(chatInput);
   };
 
   return (
@@ -1058,6 +1079,19 @@ const Landing = () => {
                   <span className="text-[10px] text-muted-foreground mt-1 block">{msg.time}</span>
                 </div>
               ))}
+              {chatMessages.length < 4 && (
+                <div className="flex flex-wrap gap-2 mt-2 px-1">
+                  {["Pricing Plans", "Is it legal?", "Contact Support", "Features"].map((reply) => (
+                    <button
+                      key={reply}
+                      onClick={() => sendMessage(reply)}
+                      className="text-xs bg-secondary hover:bg-secondary/80 border border-border rounded-full px-3 py-1.5 transition-colors text-foreground/80"
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              )}
               {isTyping && (
                 <div className="bg-secondary p-4 rounded-lg rounded-tl-none max-w-[85%] self-start border border-border">
                   <div className="flex gap-1">

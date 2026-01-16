@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { db } from '@/components/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
@@ -69,6 +69,7 @@ const Dashboard = () => {
   const [signers, setSigners] = useState<Signer[]>([]);
   const [recentDocs, setRecentDocs] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [usageCount, setUsageCount] = useState(userProfile?.documentsSigned || 0);
   const [stats, setStats] = useState({ total: 0, signed: 0, pending: 0 });
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -135,6 +136,21 @@ const Dashboard = () => {
     fetchRecentDocs();
   }, [user]);
 
+  // Real-time listener for usage count
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = onSnapshot(doc(db, "users", user.uid), (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data();
+          setUsageCount(data.documentsSigned || 0);
+        }
+      }, (error) => {
+        console.error("Error listening to usage count:", error);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
   // Fetch Notifications
   useEffect(() => {
     if (!user?.email) return;
@@ -174,6 +190,16 @@ const Dashboard = () => {
   };
 
   const handleFileSelect = (file: File) => {
+    // Check limits for free plan
+    const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
+    const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
+
+    if (!isPro && documentsSigned >= 3) {
+      toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
+      navigate('/settings?tab=billing');
+      return;
+    }
+
     setPdfFile(file);
     setSignature(null);
     setSignaturePositions([]);
@@ -209,10 +235,11 @@ const Dashboard = () => {
 
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const documentsSigned = userProfile?.documentsSigned || 0;
+    const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
 
     if (!isPro && documentsSigned >= 3) {
-      toast.error("You have reached the limit of 3 free documents. Please upgrade to continue.");
+      toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
+      navigate('/settings?tab=billing');
       return;
     }
 
@@ -236,19 +263,23 @@ const Dashboard = () => {
       if (signedPdfBytes) {
         downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
         toast.success('Signed document downloaded!');
-      }
 
-      // Increment document count
-      if (user?.uid) {
-        await updateDoc(doc(db, "users", user.uid), {
-          documentsSigned: increment(1)
-        });
+        // Increment document count - Fire and forget to prevent blocking UI
+        if (user?.uid) {
+          setDoc(doc(db, "users", user.uid), {
+            documentsSigned: increment(1)
+          }, { merge: true }).then(() => {
+          }).catch((dbError) => {
+            console.error("Background update failed (non-critical):", dbError);
+          });
+        }
       }
     } catch (error) {
       console.error('Error downloading PDF:', error);
       toast.error('Failed to download signed document. Please try again.');
+    } finally {
+      setIsDownloading(false);
     }
-    setIsDownloading(false);
   };
 
   const handleApplySignature = async () => {
@@ -520,6 +551,17 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-2">
+                  {(userProfile?.plan === 'free' || !userProfile?.plan) && (
+                    <div className="mb-3">
+                      <div className="flex justify-between text-xs font-medium mb-1">
+                        <span>Free Usage</span>
+                        <span>{usageCount || userProfile?.documentsSigned || 0}/3 used</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((usageCount || userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
+                      </div>
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground mb-3">
                     {userProfile?.plan === 'free' || !userProfile?.plan 
                       ? 'Upgrade to unlock unlimited documents.' 
@@ -554,6 +596,17 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-2">
+                {(userProfile?.plan === 'free' || !userProfile?.plan) && (
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs font-medium mb-1">
+                      <span>Free Usage</span>
+                      <span>{usageCount || userProfile?.documentsSigned || 0}/3 used</span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((usageCount || userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
+                    </div>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground mb-3">
                   {userProfile?.plan === 'free' || !userProfile?.plan 
                     ? 'Upgrade to unlock unlimited documents.' 
