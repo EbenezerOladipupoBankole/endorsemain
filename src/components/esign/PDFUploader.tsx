@@ -5,15 +5,24 @@ import { Button } from "@/components/ui/button";
 interface PDFUploaderProps {
   onFileSelect: (file: File) => void;
   currentFile: File | null;
+  accept?: string;
 }
 
-export const PDFUploader = ({ onFileSelect, currentFile }: PDFUploaderProps) => {
+export const PDFUploader = ({ onFileSelect, currentFile, accept = ".pdf" }: PDFUploaderProps) => {
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files[0];
-      if (file && file.type === "application/pdf") {
-        onFileSelect(file);
+      if (file) {
+        // Simple extension check if type is not reliable for Word documents on some OS/Browsers
+        const isPDF = file.type === "application/pdf";
+        const isWord = file.name.match(/\.(doc|docx)$/i) || 
+                       file.type === "application/msword" || 
+                       file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                       
+        if (isPDF || isWord) {
+          onFileSelect(file);
+        }
       }
     },
     [onFileSelect]
@@ -46,15 +55,16 @@ export const PDFUploader = ({ onFileSelect, currentFile }: PDFUploaderProps) => 
         <>
           <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-lg font-medium text-foreground mb-2">
-            Drop your PDF here
+            Drop your document here
           </p>
-          <p className="text-sm text-muted-foreground mb-4">or</p>
+          <p className="text-sm text-muted-foreground mb-4">PDF or Word documents</p>
+          <p className="text-sm text-muted-foreground mb-4 font-bold text-primary">or</p>
         </>
       )}
       <label>
         <input
           type="file"
-          accept=".pdf"
+          accept={accept}
           onChange={handleChange}
           className="hidden"
         />

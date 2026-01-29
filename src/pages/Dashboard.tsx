@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/components/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
@@ -13,11 +13,11 @@ import { SignerManager } from '@/components/esign/SignerManager';
 import type { Signer } from '@/components/esign/SignerManager';
 import SignatureModal from '@/components/SignatureModal';
 import { Logo } from '@/components/Logo';
-import { 
-  FileSignature, 
-  Download, 
-  RefreshCw, 
-  LogOut, 
+import {
+  FileSignature,
+  Download,
+  RefreshCw,
+  LogOut,
   Loader2,
   User,
   ChevronDown,
@@ -57,6 +57,39 @@ interface SignaturePosition {
   y: number;
   page: number;
 }
+
+// Helper to convert Word to PDF via Cloud Function
+const convertWordToPDF = async (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      try {
+        const base64 = (reader.result as string).split(',')[1];
+        const functions = getFunctions();
+        const convertDocument = httpsCallable(functions, 'convertDocument');
+
+        const result = await convertDocument({
+          file: base64,
+          filename: file.name,
+          mimeType: file.type
+        });
+
+        const data = result.data as { pdfBase64: string };
+        const byteCharacters = atob(data.pdfBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        resolve(new Blob([byteArray], { type: 'application/pdf' }));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -106,14 +139,14 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchRecentDocs = async () => {
       if (!user?.email) return;
-      
+
       try {
         const q = query(
           collection(db, "documents"),
           where("ownerEmail", "==", user.email),
           orderBy("createdAt", "desc")
         );
-        
+
         const querySnapshot = await getDocs(q);
         const docs = querySnapshot.docs.map(doc => ({
           id: doc.id,
@@ -189,7 +222,7 @@ const Dashboard = () => {
     }
   };
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
     const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
@@ -200,10 +233,34 @@ const Dashboard = () => {
       return;
     }
 
-    setPdfFile(file);
-    setSignature(null);
-    setSignaturePositions([]);
-    setSigners([]);
+    const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isWord = file.name.match(/\.(doc|docx)$/i) ||
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    if (isPDF) {
+      setPdfFile(file);
+      setSignature(null);
+      setSignaturePositions([]);
+      setSigners([]);
+    } else if (isWord) {
+      const toastId = toast.loading("Converting Word document to PDF...");
+      try {
+        const pdfBlob = await convertWordToPDF(file);
+        const convertedFile = new File([pdfBlob], file.name.replace(/\.(doc|docx)$/i, '.pdf'), { type: 'application/pdf' });
+
+        setPdfFile(convertedFile);
+        setSignature(null);
+        setSignaturePositions([]);
+        setSigners([]);
+        toast.success("Document converted successfully", { id: toastId });
+      } catch (error) {
+        console.error("Conversion error:", error);
+        toast.error("Failed to convert document. Please ensure you have a stable connection and try again.", { id: toastId });
+      }
+    } else {
+      toast.error("Unsupported file format. Please upload PDF or Word documents.");
+    }
   };
 
   const handleModalSave = (signatureData: string) => {
@@ -247,7 +304,7 @@ const Dashboard = () => {
     try {
       // Dynamically import PDF utils only when the user clicks download
       const { embedSignatureInPDF, downloadPDF } = await import('@/lib/pdfUtils');
-      
+
       let currentFile = pdfFile;
       let signedPdfBytes = null;
 
@@ -259,7 +316,7 @@ const Dashboard = () => {
         );
         currentFile = new File([signedPdfBytes], pdfFile.name, { type: 'application/pdf' });
       }
-      
+
       if (signedPdfBytes) {
         downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
         toast.success('Signed document downloaded!');
@@ -289,7 +346,7 @@ const Dashboard = () => {
     try {
       // Dynamically import PDF utils
       const { embedSignatureInPDF } = await import('@/lib/pdfUtils');
-      
+
       let currentFile = pdfFile;
       let signedPdfBytes = null;
 
@@ -301,7 +358,7 @@ const Dashboard = () => {
         );
         currentFile = new File([signedPdfBytes], pdfFile.name, { type: 'application/pdf' });
       }
-      
+
       if (signedPdfBytes) {
         setPdfFile(currentFile);
         setSignature(null);
@@ -341,16 +398,38 @@ const Dashboard = () => {
     }
 
     const promise = async () => {
+      // 1. Convert PDF to Base64 (simple solution for now, ideally upload to Storage)
+      const buffer = await pdfFile.arrayBuffer();
+      const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+      const pdfBase64 = `data:application/pdf;base64,${base64}`;
+
+      // 2. Create the document in Firestore immediately
+      const docRef = await addDoc(collection(db, "documents"), {
+        name: pdfFile.name,
+        status: 'pending',
+        ownerEmail: user?.email,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        pdfBase64: pdfBase64, // Storing base64 for simplicity in this demo. For prod, use Storage.
+        signers: signers.map(s => ({ ...s, status: 'pending' })),
+        invitedBy: user?.uid,
+      });
+
+      // 3. Send invites with the new document ID
       const functions = getFunctions();
       const sendInvites = httpsCallable(functions, 'sendSignerInvites');
-      
+
       await sendInvites({
         signers: signers,
         documentName: pdfFile.name,
         uploaderName: user?.email?.split('@')[0] || 'A user',
         uploaderEmail: user?.email,
-        signingLink: `${window.location.origin}/dashboard`,
+        documentId: docRef.id, // Pass the ID effectively
+        signingLink: `${window.location.origin}/sign/${docRef.id}`, // Explicit link
       });
+
+      // Update local stats
+      setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }));
     };
 
     toast.promise(promise(), {
@@ -459,7 +538,7 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between w-full">
                         <span className={`font-medium text-sm ${!notif.read ? 'text-foreground' : 'text-muted-foreground'}`}>{notif.title}</span>
                         <span className="text-[10px] text-muted-foreground">
-                          {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                          {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">{notif.message || notif.desc}</p>
@@ -563,8 +642,8 @@ const Dashboard = () => {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground mb-3">
-                    {userProfile?.plan === 'free' || !userProfile?.plan 
-                      ? 'Upgrade to unlock unlimited documents.' 
+                    {userProfile?.plan === 'free' || !userProfile?.plan
+                      ? 'Upgrade to unlock unlimited documents.'
                       : 'Your plan is active.'}
                   </p>
                 </CardContent>
@@ -608,8 +687,8 @@ const Dashboard = () => {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground mb-3">
-                  {userProfile?.plan === 'free' || !userProfile?.plan 
-                    ? 'Upgrade to unlock unlimited documents.' 
+                  {userProfile?.plan === 'free' || !userProfile?.plan
+                    ? 'Upgrade to unlock unlimited documents.'
                     : 'Your plan is active.'}
                 </p>
               </CardContent>
@@ -618,194 +697,204 @@ const Dashboard = () => {
         )}
 
         <main className="flex-1 min-w-0">
-        {!pdfFile ? (
-          <div className="max-w-5xl mx-auto space-y-8">
-            {/* Welcome & Actions */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-                <p className="text-gray-500">Manage your documents and signatures.</p>
-              </div>
-              <div className="flex gap-3">
-                 <Button variant="outline" className="bg-white">
-                   <Settings className="w-4 h-4 mr-2" /> Settings
-                 </Button>
-                 <label htmlFor="pdf-upload-hidden" className="cursor-pointer">
+          {!pdfFile ? (
+            <div className="max-w-5xl mx-auto space-y-8">
+              {/* Welcome & Actions */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+                  <p className="text-gray-500">Manage your documents and signatures.</p>
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="bg-white">
+                    <Settings className="w-4 h-4 mr-2" /> Settings
+                  </Button>
+                  <label htmlFor="new-doc-upload-input" className="cursor-pointer">
                     <Button className="bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-medium pointer-events-none">
                       <PenTool className="w-4 h-4 mr-2" />
                       New Document
                     </Button>
-                 </label>
-              </div>
-            </div>
-
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Documents</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                  <p className="text-xs text-gray-500 mt-1">All documents</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Signed</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.signed}</div>
-                  <p className="text-xs text-gray-500 mt-1">Completed documents</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.pending}</div>
-                  <p className="text-xs text-orange-600 font-medium mt-1">Action required</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Upload Area */}
-            <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors shadow-none">
-              <CardContent className="pt-6">
-                 <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} />
-              </CardContent>
-            </Card>
-            
-            {/* Recent Documents Section */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-gray-500" />
-                  Recent Documents
-                </h2>
-                <Button variant="ghost" size="sm" className="text-primary h-8 text-xs">View All</Button>
-              </div>
-              
-              <div className="divide-y divide-gray-100">
-                {loadingDocs ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : recentDocs.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <FileText className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                    <p>No recent documents found</p>
-                  </div>
-                ) : (
-                  recentDocs.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
-                    <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                        <FileText className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-medium text-gray-900 truncate">{doc.name}</h3>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span>{doc.createdAt?.seconds ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown date'}</span>
-                          <span>•</span>
-                          <span>{doc.ownerEmail}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 md:gap-4 pl-2">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        doc.status === 'Signed' || doc.status === 'completed' ? 'bg-green-500/10 text-green-500' :
-                        doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-600' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {doc.status || 'Draft'}
-                      </span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 hover:bg-red-50"
-                        onClick={(e) => handleDeleteDoc(e, doc.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* PDF Viewer */}
-            <div className="lg:col-span-2">
-              <div className="gradient-card rounded-2xl border border-border/50 shadow-soft overflow-hidden">
-                <div className="p-4 border-b border-border/50 bg-muted/30">
-                  <h2 className="font-display font-semibold flex items-center gap-2">
-                    <FileSignature className="w-5 h-5 text-primary" />
-                    {pdfFile.name}
-                  </h2>
-                </div>
-                <div className="p-4">
-                  <Suspense fallback={
-                    <div className="h-[600px] flex items-center justify-center bg-muted/10 rounded-lg">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    </div>
-                  }>
-                    <PDFViewer
-                      file={pdfFile}
-                      signatureImage={signature}
-                      signaturePositions={signaturePositions}
-                      signaturePosition={signaturePositions.length > 0 ? signaturePositions[signaturePositions.length - 1] : null}
-                      onSignaturePlace={handleSignaturePlace}
-                      onSignatureMove={handleSignatureMove}
-                    />
-                  </Suspense>
+                  </label>
+                  <input
+                    id="new-doc-upload-input"
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileSelect(e.target.files[0]);
+                      }
+                    }}
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Signature Pad */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-24">
-                <Card className="border-border/60 shadow-sm">
-                  <CardContent className="p-6 space-y-6">
-                    <h3 className="font-semibold flex items-center gap-2"><PenTool className="w-4 h-4" /> Signature Tools</h3>
-                  <Button onClick={() => setShowSignatureModal(true)} className="w-full" variant="outline">
-                    <PenTool className="w-4 h-4 mr-2" />
-                    Create Signature
-                  </Button>
-                  {signaturePositions.length > 0 && (
-                    <>
-                      <Button 
-                        className="w-full mb-2 bg-green-600 hover:bg-green-700 text-white" 
-                        onClick={handleApplySignature}
-                        disabled={isApplying}
-                      >
-                        {isApplying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                        Apply & Add Another
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10" 
-                        onClick={() => { setSignaturePositions([]); toast.info("All signature placements have been cleared."); }}
-                      >
-                        Clear All Placements
-                      </Button>
-                    </>
-                  )}
-                  <Separator />
-                  <SignerManager signers={signers} setSigners={setSigners} onSendInvites={handleSendInvites} />
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-white shadow-sm border-gray-200">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Total Documents</CardTitle>
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                    <p className="text-xs text-gray-500 mt-1">All documents</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-white shadow-sm border-gray-200">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Signed</CardTitle>
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900">{stats.signed}</div>
+                    <p className="text-xs text-gray-500 mt-1">Completed documents</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-white shadow-sm border-gray-200">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-orange-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900">{stats.pending}</div>
+                    <p className="text-xs text-orange-600 font-medium mt-1">Action required</p>
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Upload Area */}
+              <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors shadow-none">
+                <CardContent className="pt-6">
+                  <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                </CardContent>
+              </Card>
+
+              {/* Recent Documents Section */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                    Recent Documents
+                  </h2>
+                  <Button variant="ghost" size="sm" className="text-primary h-8 text-xs">View All</Button>
+                </div>
+
+                <div className="divide-y divide-gray-100">
+                  {loadingDocs ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : recentDocs.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <FileText className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                      <p>No recent documents found</p>
+                    </div>
+                  ) : (
+                    recentDocs.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-medium text-gray-900 truncate">{doc.name}</h3>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span>{doc.createdAt?.seconds ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown date'}</span>
+                              <span>•</span>
+                              <span>{doc.ownerEmail}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 md:gap-4 pl-2">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${doc.status === 'Signed' || doc.status === 'completed' ? 'bg-green-500/10 text-green-500' :
+                            doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-600' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                            {doc.status || 'Draft'}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={(e) => handleDeleteDoc(e, doc.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* PDF Viewer */}
+              <div className="lg:col-span-2">
+                <div className="gradient-card rounded-2xl border border-border/50 shadow-soft overflow-hidden">
+                  <div className="p-4 border-b border-border/50 bg-muted/30">
+                    <h2 className="font-display font-semibold flex items-center gap-2">
+                      <FileSignature className="w-5 h-5 text-primary" />
+                      {pdfFile.name}
+                    </h2>
+                  </div>
+                  <div className="p-4">
+                    <Suspense fallback={
+                      <div className="h-[600px] flex items-center justify-center bg-muted/10 rounded-lg">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      </div>
+                    }>
+                      <PDFViewer
+                        file={pdfFile}
+                        signatureImage={signature}
+                        signaturePositions={signaturePositions}
+                        signaturePosition={signaturePositions.length > 0 ? signaturePositions[signaturePositions.length - 1] : null}
+                        onSignaturePlace={handleSignaturePlace}
+                        onSignatureMove={handleSignatureMove}
+                      />
+                    </Suspense>
+                  </div>
+                </div>
+              </div>
+
+              {/* Signature Pad */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-24">
+                  <Card className="border-border/60 shadow-sm">
+                    <CardContent className="p-6 space-y-6">
+                      <h3 className="font-semibold flex items-center gap-2"><PenTool className="w-4 h-4" /> Signature Tools</h3>
+                      <Button onClick={() => setShowSignatureModal(true)} className="w-full" variant="outline">
+                        <PenTool className="w-4 h-4 mr-2" />
+                        Create Signature
+                      </Button>
+                      {signaturePositions.length > 0 && (
+                        <>
+                          <Button
+                            className="w-full mb-2 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={handleApplySignature}
+                            disabled={isApplying}
+                          >
+                            {isApplying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                            Apply & Add Another
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => { setSignaturePositions([]); toast.info("All signature placements have been cleared."); }}
+                          >
+                            Clear All Placements
+                          </Button>
+                        </>
+                      )}
+                      <Separator />
+                      <SignerManager signers={signers} setSigners={setSigners} onSendInvites={handleSendInvites} />
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
       {showSignatureModal && pdfFile && (
