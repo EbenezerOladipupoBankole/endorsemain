@@ -9,12 +9,46 @@ import { Download, RotateCcw, FileText, CheckCircle2, Clock, ChevronRight, PenTo
 import { embedSignatureInPDF, downloadPDF } from "@/lib/pdfUtils";
 import { toast } from "sonner";
 import SignatureModal from "@/components/SignatureModal";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 interface SignaturePosition {
   x: number;
   y: number;
   page: number;
 }
+
+// Helper to convert Word to PDF via Cloud Function
+const convertWordToPDF = async (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      try {
+        const base64 = (reader.result as string).split(',')[1];
+        const functions = getFunctions();
+        const convertDocument = httpsCallable(functions, 'convertDocument');
+
+        const result = await convertDocument({
+          file: base64,
+          filename: file.name,
+          mimeType: file.type
+        });
+
+        const data = result.data as { pdfBase64: string };
+        const byteCharacters = atob(data.pdfBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        resolve(new Blob([byteArray], { type: 'application/pdf' }));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
 
 const Index = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -23,10 +57,31 @@ const Index = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
 
-  const handleFileSelect = (file: File) => {
-    setPdfFile(file);
-    setSignaturePosition(null);
-    toast.success("PDF uploaded successfully!");
+  const handleFileSelect = async (file: File) => {
+    const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isWord = file.name.match(/\.(doc|docx)$/i) ||
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    if (isPDF) {
+      setPdfFile(file);
+      setSignaturePosition(null);
+      toast.success("PDF uploaded successfully!");
+    } else if (isWord) {
+      const toastId = toast.loading("Converting Word document to PDF...");
+      try {
+        const pdfBlob = await convertWordToPDF(file);
+        const convertedFile = new File([pdfBlob], file.name.replace(/\.(doc|docx)$/i, '.pdf'), { type: 'application/pdf' });
+        setPdfFile(convertedFile);
+        setSignaturePosition(null);
+        toast.success("Document converted successfully", { id: toastId });
+      } catch (error) {
+        console.error("Conversion error:", error);
+        toast.error("Failed to convert document", { id: toastId });
+      }
+    } else {
+      toast.error("Unsupported file format. Please upload PDF or Word documents.");
+    }
   };
 
   const handleSignatureCreate = (dataUrl: string) => {
@@ -156,7 +211,7 @@ const Index = () => {
               <h2 className="text-lg font-semibold mb-4">Quick Action</h2>
               <Card className="border-dashed border-2 border-muted-foreground/20 bg-card/50 hover:bg-card/80 transition-colors">
                 <CardContent className="pt-10 pb-10">
-                  <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} />
+                  <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
                 </CardContent>
               </Card>
             </div>
@@ -187,23 +242,23 @@ const Index = () => {
                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
                       <label className="text-sm font-medium text-muted-foreground">Preview</label>
                       <div className="border border-border rounded-lg p-4 bg-background/50 flex justify-center">
-                      <img
-                        src={signatureImage}
-                        alt="Your signature"
+                        <img
+                          src={signatureImage}
+                          alt="Your signature"
                           className="max-h-16 object-contain"
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
                         size="sm"
                         className="w-full text-xs h-8 mt-2"
-                      onClick={() => {
-                        setSignatureImage(null);
-                        setSignaturePosition(null);
-                      }}
-                    >
+                        onClick={() => {
+                          setSignatureImage(null);
+                          setSignaturePosition(null);
+                        }}
+                      >
                         Clear Signature
-                    </Button>
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -237,24 +292,24 @@ const Index = () => {
                     <div className="truncate">
                       <CardTitle className="text-sm font-medium truncate">{pdfFile.name}</CardTitle>
                       <CardDescription className="text-xs truncate">
-                    {signatureImage
-                      ? signaturePosition
-                        ? "Drag the signature to reposition it"
-                        : "Click on the document to place your signature"
-                      : "Create your signature first, then place it on the document"}
-                  </CardDescription>
+                        {signatureImage
+                          ? signaturePosition
+                            ? "Drag the signature to reposition it"
+                            : "Click on the document to place your signature"
+                          : "Create your signature first, then place it on the document"}
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 bg-muted/10 overflow-hidden relative">
                   <div className="absolute inset-0 overflow-auto p-4 flex justify-center">
-                  <PDFViewer
-                    file={pdfFile}
-                    signatureImage={signatureImage}
-                    signaturePosition={signaturePosition}
-                    onSignaturePlace={handleSignaturePlace}
-                    onSignatureMove={handleSignatureMove}
-                  />
+                    <PDFViewer
+                      file={pdfFile}
+                      signatureImage={signatureImage}
+                      signaturePosition={signaturePosition}
+                      onSignaturePlace={handleSignaturePlace}
+                      onSignatureMove={handleSignatureMove}
+                    />
                   </div>
                 </CardContent>
               </Card>
