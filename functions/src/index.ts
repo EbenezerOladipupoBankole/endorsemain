@@ -29,7 +29,7 @@ function getTransporter() {
   return transporter;
 }
 
-const APP_URL = "https://endorse.onrender.com"; // Changed to root to avoid 404s if server rewrites aren't configured
+const APP_URL = "https://e-ndorse.online"; // Updated to new custom domain
 
 interface InvitePayload {
   documentId: string;
@@ -64,7 +64,7 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
   }
 
   const db = admin.firestore();
-  
+
   // Check for free plan limits (3 documents)
   const userRef = db.collection("users").doc(request.auth.uid);
   const userSnap = await userRef.get();
@@ -104,7 +104,7 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
 
     // 3. Save to Firestore
     const newDocRef = await db.collection("documents").add(newDocumentData);
-    
+
     // Increment document count for user
     await userRef.set({ documentsSigned: admin.firestore.FieldValue.increment(1) }, { merge: true });
 
@@ -116,7 +116,7 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
       to: recipientEmail,
       subject: "You have been invited to sign a document",
       text: `You have been invited to sign "${originalData?.name}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-      html: `<div style="margin-bottom: 20px;"><img src="https://endorse.onrender.com/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+      html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
     });
 
     return { success: true, newDocumentId: newDocRef.id };
@@ -142,7 +142,9 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }
     throw new HttpsError("invalid-argument", "No signers provided.");
   }
 
-  const documentLink = documentId ? `${APP_URL}/sign/${documentId}` : APP_URL;
+  /* eslint-disable  @typescript-eslint/no-explicit-any */
+  const customLink = (data as any).signingLink;
+  const documentLink = customLink || (documentId ? `${APP_URL}/sign/${documentId}` : APP_URL);
   console.log(`Sending invite email with link: ${documentLink}`);
 
   const results = [];
@@ -154,7 +156,7 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }
         to: signer.email,
         subject: `${uploaderName} invited you to sign ${documentName}`,
         text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-        html: `<div style="margin-bottom: 20px;"><img src="https://endorse.onrender.com/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+        html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
       });
       results.push({ email: signer.email, status: 'sent' });
     } catch (error: any) {
@@ -190,10 +192,85 @@ export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
         },
       ],
     });
-    
+
     return { success: true };
   } catch (error: any) {
     console.error("Send Document Error:", error);
     throw new HttpsError("internal", error.message || "Failed to send document.");
+  }
+});
+
+// Function to convert Word document to PDF
+export const convertDocument = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const { file, filename } = request.data as { file: string; filename: string; mimeType: string };
+  if (!file || !filename) {
+    throw new HttpsError("invalid-argument", "Missing file or filename.");
+  }
+
+  try {
+    const mammoth = await import("mammoth");
+    const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+
+    // Word documents (DOCX) are based on XML. Mammoth extracts the text.
+    const buffer = Buffer.from(file, "base64");
+
+    // Convert DOCX to HTML/Text using Mammoth
+    const result = await mammoth.extractRawText({ buffer });
+    const text = result.value;
+
+    // Create a new PDF document from the text
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    // Basic text wrapping logic for PDF
+    const lines = text.split("\n");
+    let page = pdfDoc.addPage();
+    const { width, height } = page.getSize();
+    const fontSize = 12;
+    const margin = 50;
+    let y = height - margin;
+
+    for (const line of lines) {
+      if (y < margin + fontSize) {
+        page = pdfDoc.addPage();
+        y = height - margin;
+      }
+
+      // Handle long lines by splitting them
+      const words = line.split(" ");
+      let currentLine = "";
+
+      for (const word of words) {
+        const testLine = currentLine + word + " ";
+        const textWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+        if (textWidth > width - (margin * 2)) {
+          page.drawText(currentLine, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+          y -= fontSize * 1.5;
+          currentLine = word + " ";
+
+          if (y < margin + fontSize) {
+            page = pdfDoc.addPage();
+            y = height - margin;
+          }
+        } else {
+          currentLine = testLine;
+        }
+      }
+
+      page.drawText(currentLine, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+      y -= fontSize * 1.5;
+    }
+
+    const pdfBase64 = await pdfDoc.saveAsBase64();
+    return { pdfBase64 };
+
+  } catch (error: any) {
+    console.error("Conversion Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to convert document.");
   }
 });

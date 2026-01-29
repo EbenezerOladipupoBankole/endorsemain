@@ -1,8 +1,9 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/components/AuthContext';
 
 const ProtectedRoute = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     // You can add a loading spinner here
@@ -10,7 +11,8 @@ const ProtectedRoute = () => {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    // Redirect to auth page but save the current location they were trying to access
+    return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
   return <Outlet />;
