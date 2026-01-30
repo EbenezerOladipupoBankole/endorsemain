@@ -71,8 +71,9 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
   const userData = userSnap.data();
   const documentsSigned = userData?.documentsSigned || 0;
   const isPro = userData?.plan === "pro" || userData?.plan === "business";
+  const isAdmin = request.auth.token.email === "bankoleebenezer111@gmail.com";
 
-  if (!isPro && documentsSigned >= 3) {
+  if (!isPro && !isAdmin && documentsSigned >= 3) {
     throw new HttpsError("resource-exhausted", "You have reached the limit of 3 free documents. Please upgrade to continue.");
   }
 

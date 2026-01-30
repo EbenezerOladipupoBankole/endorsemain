@@ -12,7 +12,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 // 🔴 2. Set the email of the user you want to upgrade
-const TARGET_USER_EMAIL = 'user@example.com';
+const TARGET_USER_EMAIL = 'bankoleebenezer111@gmail.com';
 const NEW_PLAN = 'pro'; // or 'business'
 
 async function grantProLicense() {

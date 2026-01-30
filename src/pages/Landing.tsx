@@ -84,29 +84,12 @@ const Landing = () => {
     setShowCookieConsent(false);
   };
 
-  const handleUpgrade = async (plan: string) => {
+  const handleUpgrade = (plan: string) => {
     if (!user) {
       navigate("/auth?mode=signup");
       return;
     }
-
-    const toastId = toast.loading("Initializing payment...");
-    try {
-      const createPaystackTransaction = httpsCallable(functions, 'createPaystackTransaction');
-      const { data }: any = await createPaystackTransaction({
-        plan,
-        callbackUrl: `${window.location.origin}/dashboard?payment=success`,
-      });
-
-      if (data?.authorization_url) {
-        window.location.href = data.authorization_url;
-      } else {
-        toast.error("Failed to initialize payment", { id: toastId });
-      }
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Failed to initiate payment", { id: toastId });
-    }
+    navigate(`/payment?plan=${plan.toLowerCase()}`);
   };
 
   const getBotResponse = (text: string) => {
@@ -128,7 +111,7 @@ const Landing = () => {
 
   const sendMessage = (text: string) => {
     if (!text.trim()) return;
-    
+
     const newMessage = { text, isUser: true, time: "Just now" };
     setChatMessages((prev) => [...prev, newMessage]);
     setChatInput("");
@@ -256,11 +239,11 @@ const Landing = () => {
           <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5 h-[calc(100vh-4rem)] overflow-y-auto">
             {/* Product Mobile Dropdown */}
             <div className="flex flex-col">
-              <button 
+              <button
                 className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
                 onClick={() => setMobileProductOpen(!mobileProductOpen)}
               >
-                Product 
+                Product
                 <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileProductOpen ? 'rotate-180' : ''}`} />
               </button>
               {mobileProductOpen && (
@@ -276,14 +259,14 @@ const Landing = () => {
             </div>
 
             <a href="#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</a>
-            
+
             {/* Resources Mobile Dropdown */}
             <div className="flex flex-col">
-              <button 
+              <button
                 className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
                 onClick={() => setMobileResourcesOpen(!mobileResourcesOpen)}
               >
-                Resources 
+                Resources
                 <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileResourcesOpen ? 'rotate-180' : ''}`} />
               </button>
               {mobileResourcesOpen && (
@@ -310,10 +293,10 @@ const Landing = () => {
         {/* Grid Background */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-accent/20 via-background to-background" />
-        
+
         <div className="container mx-auto max-w-7xl relative">
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-            
+
             {/* Left Column: Content */}
             <div className="w-full lg:w-1/2 text-center lg:text-left z-10">
               {/* Headline */}
@@ -326,12 +309,12 @@ const Landing = () => {
                   </svg>
                 </span>
               </h1>
-              
+
               {/* Subheadline */}
               <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-8 md:mb-10 leading-relaxed animate-fade-up-delay-2">
                 Empower your organization with legally binding e-signatures. Experience enterprise-grade security and compliance without the complexity.
               </p>
-              
+
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-up-delay-3 mb-12">
                 <Link to="/auth?mode=signup">
@@ -340,8 +323,8 @@ const Landing = () => {
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
-                
-                <div 
+
+                <div
                   className="group flex items-center gap-3 pl-2 pr-6 py-2 rounded-full bg-background/50 border border-border/50 hover:border-primary/50 hover:bg-background/80 backdrop-blur-sm transition-all cursor-pointer shadow-sm hover:shadow-md h-14 w-full sm:w-auto"
                   onClick={() => setShowVideoModal(true)}
                   role="button"
@@ -349,9 +332,9 @@ const Landing = () => {
                   aria-label="Watch product demo"
                 >
                   <div className="relative w-10 h-10 rounded-full overflow-hidden bg-muted shrink-0">
-                    <img 
-                      src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=100&h=100&fit=crop&q=80" 
-                      alt="Demo thumbnail" 
+                    <img
+                      src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=100&h=100&fit=crop&q=80"
+                      alt="Demo thumbnail"
                       className="w-full h-full object-cover opacity-90 group-hover:scale-110 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/10">
@@ -389,7 +372,7 @@ const Landing = () => {
               <div className="relative transform transition-transform hover:scale-[1.01] duration-500">
                 {/* Glow effect */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-primary/20 blur-[120px] rounded-full pointer-events-none opacity-50" />
-                
+
                 <div className="relative mx-auto w-full max-w-[600px] lg:max-w-none">
                   {/* Main Interface Window */}
                   <div className="bg-background/95 backdrop-blur rounded-2xl border border-border/60 shadow-2xl overflow-hidden relative ring-1 ring-white/10">
@@ -402,12 +385,12 @@ const Landing = () => {
                       </div>
                       <div className="flex-1 flex justify-center">
                         <div className="bg-background/80 border border-border/40 rounded-md px-4 py-1.5 text-xs text-muted-foreground flex items-center gap-2 w-full max-w-[240px] justify-center shadow-sm">
-                          <Lock className="w-3 h-3 opacity-70" /> 
+                          <Lock className="w-3 h-3 opacity-70" />
                           <span className="opacity-70">endorse.com/sign/contract</span>
                         </div>
                       </div>
                       <div className="w-16 flex justify-end gap-2">
-                         <div className="w-6 h-6 rounded-full bg-muted border border-border/50" />
+                        <div className="w-6 h-6 rounded-full bg-muted border border-border/50" />
                       </div>
                     </div>
 
@@ -426,13 +409,13 @@ const Landing = () => {
                       <div className="flex-1 bg-muted/10 p-2 md:p-8 overflow-hidden relative flex flex-col items-center">
                         {/* Toolbar Mock */}
                         <div className="w-full max-w-[500px] h-10 bg-background rounded-lg border border-border/40 shadow-sm mb-6 flex items-center px-4 gap-4 opacity-80">
-                           <div className="h-2 w-24 bg-muted rounded-full" />
-                           <div className="h-4 w-px bg-border" />
-                           <div className="flex gap-2">
-                              <div className="h-4 w-4 bg-muted rounded" />
-                              <div className="h-4 w-4 bg-muted rounded" />
-                              <div className="h-4 w-4 bg-muted rounded" />
-                           </div>
+                          <div className="h-2 w-24 bg-muted rounded-full" />
+                          <div className="h-4 w-px bg-border" />
+                          <div className="flex gap-2">
+                            <div className="h-4 w-4 bg-muted rounded" />
+                            <div className="h-4 w-4 bg-muted rounded" />
+                            <div className="h-4 w-4 bg-muted rounded" />
+                          </div>
                         </div>
 
                         {/* The Paper */}
@@ -451,23 +434,23 @@ const Landing = () => {
                           <h2 className="text-xl font-bold mb-6 text-gray-900">Service Agreement</h2>
                           <div className="space-y-4 text-[11px] md:text-xs text-gray-600 leading-relaxed">
                             <div className="flex gap-2 mb-6">
-                               <div className="w-1/2 space-y-2">
-                                  <p className="font-semibold text-gray-900">Between:</p>
-                                  <div className="h-2 w-24 bg-gray-100 rounded" />
-                                  <div className="h-2 w-32 bg-gray-100 rounded" />
-                               </div>
-                               <div className="w-1/2 space-y-2">
-                                  <p className="font-semibold text-gray-900">And:</p>
-                                  <div className="h-2 w-24 bg-gray-100 rounded" />
-                                  <div className="h-2 w-32 bg-gray-100 rounded" />
-                               </div>
+                              <div className="w-1/2 space-y-2">
+                                <p className="font-semibold text-gray-900">Between:</p>
+                                <div className="h-2 w-24 bg-gray-100 rounded" />
+                                <div className="h-2 w-32 bg-gray-100 rounded" />
+                              </div>
+                              <div className="w-1/2 space-y-2">
+                                <p className="font-semibold text-gray-900">And:</p>
+                                <div className="h-2 w-24 bg-gray-100 rounded" />
+                                <div className="h-2 w-32 bg-gray-100 rounded" />
+                              </div>
                             </div>
 
                             <p>This Service Agreement ("Agreement") is entered into by and between the undersigned parties.</p>
                             <div className="h-2 bg-gray-100 rounded w-full" />
                             <div className="h-2 bg-gray-100 rounded w-11/12" />
                             <div className="h-2 bg-gray-100 rounded w-full" />
-                            
+
                             <h3 className="text-sm font-bold text-black mt-8 mb-3">1. Scope of Services</h3>
                             <div className="h-2 bg-gray-100 rounded w-full" />
                             <div className="h-2 bg-gray-100 rounded w-10/12" />
@@ -477,17 +460,17 @@ const Landing = () => {
                           {/* Signature Zone */}
                           <div className="mt-12 p-4 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/30 relative group cursor-pointer hover:bg-blue-50/50 transition-colors">
                             <div className="flex justify-between items-end">
-                               <div>
-                                  <p className="text-[10px] font-bold uppercase text-blue-400 mb-1">Signature</p>
-                                  <div className="font-handwriting text-2xl text-blue-600 transform -rotate-2 origin-left">
-                                    Sarah Jenkins
-                                  </div>
-                               </div>
-                               <div className="text-right">
-                                  <div className="bg-[#FFC83D] text-black text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3" /> VERIFIED
-                                  </div>
-                               </div>
+                              <div>
+                                <p className="text-[10px] font-bold uppercase text-blue-400 mb-1">Signature</p>
+                                <div className="font-handwriting text-2xl text-blue-600 transform -rotate-2 origin-left">
+                                  Sarah Jenkins
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="bg-[#FFC83D] text-black text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -516,19 +499,19 @@ const Landing = () => {
                         </div>
 
                         <div className="mt-8">
-                           <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-4">Activity</h4>
-                           <div className="space-y-4 pl-2 border-l border-border/50">
-                              <div className="relative pl-4">
-                                 <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-green-500 ring-4 ring-background" />
-                                 <p className="text-xs text-foreground">Document signed</p>
-                                 <p className="text-[10px] text-muted-foreground">2 mins ago</p>
-                              </div>
-                              <div className="relative pl-4 opacity-60">
-                                 <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-gray-300 ring-4 ring-background" />
-                                 <p className="text-xs text-foreground">Viewed by Sarah</p>
-                                 <p className="text-[10px] text-muted-foreground">15 mins ago</p>
-                              </div>
-                           </div>
+                          <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-4">Activity</h4>
+                          <div className="space-y-4 pl-2 border-l border-border/50">
+                            <div className="relative pl-4">
+                              <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-green-500 ring-4 ring-background" />
+                              <p className="text-xs text-foreground">Document signed</p>
+                              <p className="text-[10px] text-muted-foreground">2 mins ago</p>
+                            </div>
+                            <div className="relative pl-4 opacity-60">
+                              <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-gray-300 ring-4 ring-background" />
+                              <p className="text-xs text-foreground">Viewed by Sarah</p>
+                              <p className="text-[10px] text-muted-foreground">15 mins ago</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -560,11 +543,11 @@ const Landing = () => {
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">How Endorse Works</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Get your documents signed in minutes, not days. A simple workflow designed for speed.</p>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8 relative">
             {/* Connecting line for desktop */}
             <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-border via-primary/20 to-border -z-10" />
-            
+
             {[
               { title: "Upload", desc: "Upload any PDF or Word document from your computer or cloud storage.", icon: Upload },
               { title: "Sign & Send", desc: "Add your signature fields and send to recipients via email.", icon: PenTool },
@@ -607,7 +590,7 @@ const Landing = () => {
                     <div className="h-2 w-full bg-gray-100 rounded"></div>
                     <div className="h-2 w-2/3 bg-gray-100 rounded"></div>
                   </div>
-                  
+
                   {/* Signature Box */}
                   <div className="border-2 border-dashed border-[#FFC83D] bg-[#FFC83D]/5 rounded-lg p-4 relative group cursor-pointer">
                     <div className="absolute -top-3 left-4 bg-[#FFC83D] text-black text-xs font-bold px-2 py-0.5 rounded">Sign Here</div>
@@ -617,7 +600,7 @@ const Landing = () => {
                     <p className="text-xs text-muted-foreground mt-2 opacity-100 group-hover:opacity-0 transition-opacity">Click to sign</p>
                   </div>
                 </div>
-                
+
                 {/* Floating Badge */}
                 <div className="absolute -right-4 top-10 bg-background border border-border shadow-xl rounded-lg p-3 flex items-center gap-3 animate-in slide-in-from-bottom-4 duration-1000 delay-500">
                   <div className="bg-green-100 p-2 rounded-full"><Check className="w-4 h-4 text-green-600" /></div>
@@ -697,14 +680,14 @@ const Landing = () => {
             <div className="w-full md:w-1/2 order-2 md:order-1">
               <div className="relative rounded-2xl bg-[#1a1f2c] p-8 shadow-2xl overflow-hidden text-white">
                 <div className="absolute top-0 right-0 p-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none"></div>
-                
+
                 <div className="relative z-10 flex flex-col items-center justify-center text-center py-10">
                   <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-6 backdrop-blur-md border border-white/20">
                     <Lock className="w-10 h-10 text-[#FFC83D]" />
                   </div>
                   <h4 className="text-2xl font-bold mb-2">Secure Infrastructure</h4>
                   <p className="text-gray-400 mb-8">Powered by Google Cloud</p>
-                  
+
                   <div className="grid grid-cols-2 gap-4 w-full">
                     <div className="bg-white/5 p-3 rounded-lg border border-white/10">
                       <div className="text-[#FFC83D] font-bold text-lg">SSL</div>
@@ -886,7 +869,7 @@ const Landing = () => {
                 <a href="https://www.instagram.com/e.ndorse?igsh=MWs2MnltaGdxbDU3eA%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Instagram"><Instagram className="w-5 h-5" /></a>
               </div>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-lg text-foreground mb-6">Product</h4>
               <ul className="space-y-4 text-base text-muted-foreground">
@@ -925,7 +908,7 @@ const Landing = () => {
               </p>
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-muted-foreground" />
-                <select 
+                <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   className="bg-transparent border-none text-sm text-muted-foreground hover:text-foreground focus:ring-0 cursor-pointer outline-none"
@@ -976,7 +959,7 @@ const Landing = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowContactModal(false)} />
           <div className="relative z-50 w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl p-6 animate-in fade-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => setShowContactModal(false)}
               className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               aria-label="Close"
@@ -1011,8 +994,8 @@ const Landing = () => {
               </div>
               <div className="space-y-2">
                 <label htmlFor="message" className="text-sm font-medium leading-none">Message</label>
-                <textarea 
-                  id="message" 
+                <textarea
+                  id="message"
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   placeholder="Tell us about your needs..."
                 />
@@ -1039,19 +1022,19 @@ const Landing = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="absolute inset-0" onClick={() => setShowVideoModal(false)} />
           <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl shadow-2xl overflow-hidden border border-border/50 animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => setShowVideoModal(false)}
               className="absolute right-4 top-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
               aria-label="Close video"
             >
               <X className="w-5 h-5" />
             </button>
-            <iframe 
-              width="100%" 
-              height="100%" 
-              src="https://www.youtube.com/embed/STt-r1SlO74?autoplay=1" 
-              title="Product Demo" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://www.youtube.com/embed/STt-r1SlO74?autoplay=1"
+              title="Product Demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="w-full h-full"
             ></iframe>
@@ -1104,9 +1087,9 @@ const Landing = () => {
             </div>
             <div className="p-4 border-t border-border bg-background">
               <form className="flex gap-2" onSubmit={handleChatSubmit}>
-                <Input 
-                  placeholder="Type a message..." 
-                  className="flex-1" 
+                <Input
+                  placeholder="Type a message..."
+                  className="flex-1"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   aria-label="Type a message"
