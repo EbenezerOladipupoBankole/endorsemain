@@ -9,7 +9,7 @@ import { Logo } from "@/components/Logo";
 import { Label } from "@/components/ui/label";
 import { X, PenTool, Type, Download, RotateCcw, Send, Mail, Loader2, Upload, Check, Crop as CropIcon, Calendar, Eraser, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import jsPDF from "jspdf"; 
+import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { useAuth } from "@/components/AuthContext";
 
@@ -68,16 +68,16 @@ const generatePdfBlob = async (
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  
+
   // Header
   pdf.setFillColor(59, 130, 246);
   pdf.rect(0, 0, pageWidth, 35, "F");
-  
+
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(22);
   pdf.setFont("helvetica", "bold");
   pdf.text("Endorse", 20, 23);
-  
+
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "normal");
   pdf.text("Electronic Signature Document", pageWidth - 20, 23, { align: "right" });
@@ -87,7 +87,7 @@ const generatePdfBlob = async (
   pdf.setFontSize(16);
   pdf.setFont("helvetica", "bold");
   pdf.text(document.name, 20, 55);
-  
+
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(100, 116, 139);
@@ -104,13 +104,13 @@ const generatePdfBlob = async (
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
   pdf.text("Document Agreement", 20, 95);
-  
+
   const contentText = [
     "This document has been electronically signed using Endorse.",
     "The signature below confirms the signer's agreement to the terms and conditions.",
     "By signing, you acknowledge this is a legally binding electronic signature."
   ];
-  
+
   pdf.setTextColor(71, 85, 105);
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "normal");
@@ -150,19 +150,19 @@ const generatePdfBlob = async (
   pdf.setFontSize(7);
   pdf.setTextColor(148, 163, 184);
   pdf.text("This document was electronically signed via Endorse - Endorse.app", pageWidth / 2, pageHeight - 10, { align: "center" });
-  
+
   // --- Audit Trail Page ---
   pdf.addPage();
-  
+
   // Header
   pdf.setFillColor(248, 250, 252);
   pdf.rect(0, 0, pageWidth, 40, "F");
-  
+
   pdf.setTextColor(15, 23, 42);
   pdf.setFontSize(20);
   pdf.setFont("helvetica", "bold");
   pdf.text("Audit Trail", 20, 25);
-  
+
   // QR Code
   try {
     const verificationUrl = `https://endorse.app/verify/${document.id}`;
@@ -178,7 +178,7 @@ const generatePdfBlob = async (
   pdf.setFont("helvetica", "normal");
   pdf.text(`File Name: ${document.name}`, 20, 55);
   pdf.text(`Document ID: ${document.id}`, 20, 62);
-  const transactionId = Array.from({length: 24}, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase();
+  const transactionId = Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase();
   pdf.text(`Transaction ID: ${transactionId}`, 20, 69);
 
   // Events
@@ -263,20 +263,20 @@ const textToDataUrl = (text: string, font: string, fontSize: number = 60) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
-  
+
   ctx.font = `${fontSize}px ${font}`;
   const textMetrics = ctx.measureText(text);
-  
+
   // Add padding
   const padding = 40;
   canvas.width = textMetrics.width + (padding * 2);
   canvas.height = fontSize * 2.5;
-  
+
   ctx.font = `${fontSize}px ${font}`;
   ctx.fillStyle = "#000000";
   ctx.textBaseline = "middle";
   ctx.fillText(text, padding, canvas.height / 2);
-  
+
   return canvas.toDataURL("image/png");
 };
 
@@ -302,7 +302,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0]);
   const [fontSize, setFontSize] = useState(60);
-  const { userProfile } = useAuth();
+  const { userProfile, user } = useAuth();
 
   useEffect(() => {
     SIGNATURE_FONTS.forEach(font => {
@@ -451,7 +451,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       toast.error("Please enter recipient email");
       return;
     }
-    
+
     const pdfBlob = await generatePdfBlob(document, getSignatureData(), mode === "type" ? "upload" : mode);
     if (!pdfBlob) return;
 
@@ -485,15 +485,18 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       return;
     }
 
-    // Check if user is on a paid plan
-    if (userProfile?.plan !== 'pro' && userProfile?.plan !== 'business') {
+    // Check if user is on a paid plan (Bypass for admin email)
+    const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
+    const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
+
+    if (!isPro && !isAdmin) {
       toast.error("Inviting signers is a Pro feature. Please upgrade your plan.");
       return;
     }
 
     setIsInviting(true);
     const inviteToSign = httpsCallable<InviteToSignPayload, { success: boolean }>(functions, 'inviteToSign');
-    
+
     try {
       await inviteToSign({
         documentId: document.id,
@@ -579,7 +582,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                       backgroundColor="transparent"
                       penColor="#1e293b"
                     />
-                    
+
                     {/* Floating Tools */}
                     <div className="absolute bottom-2 right-2 flex gap-1">
                       <Button
@@ -631,7 +634,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                         </p>
                       </div>
                     )}
-                    
+
                     {/* Font Size Slider */}
                     <div className="flex items-center gap-3 px-2 mt-2">
                       <span className="text-xs text-muted-foreground w-12">Size</span>
@@ -665,10 +668,9 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                     </div>
                   </div>
                 ) : (
-                  <div 
-                    className={`border-2 border-dashed rounded-lg overflow-hidden flex flex-col items-center justify-center min-h-[200px] transition-colors ${
-                      isDragging ? "border-primary bg-primary/10" : "border-border bg-secondary/30"
-                    }`}
+                  <div
+                    className={`border-2 border-dashed rounded-lg overflow-hidden flex flex-col items-center justify-center min-h-[200px] transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-border bg-secondary/30"
+                      }`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
@@ -752,9 +754,9 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                 <Label className="mb-2 block text-sm">Signature</Label>
                 <div className="border-2 border-border rounded-lg p-5 bg-secondary/30">
                   {document.signature_type === "draw" || document.signature_type === "upload" ? (
-                    <img 
-                      src={document.signature_data!} 
-                      alt="Signature" 
+                    <img
+                      src={document.signature_data!}
+                      alt="Signature"
                       className="max-h-28 mx-auto"
                     />
                   ) : (
@@ -827,9 +829,9 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
             Cancel
           </Button>
           {document.status === "pending" ? (
-            <Button 
-              className="flex-1 h-9 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black" 
-              size="sm" 
+            <Button
+              className="flex-1 h-9 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black"
+              size="sm"
               onClick={handleSave}
               disabled={!agreedToTerms}
             >
@@ -842,7 +844,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                 <Download className="w-3.5 h-3.5 mr-1.5" />
                 Download
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 className="flex-1 h-9"
                 size="sm"
@@ -854,7 +856,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                 <UserPlus className="w-3.5 h-3.5 mr-1.5" />
                 Invite
               </Button>
-              <Button 
+              <Button
                 className="flex-1 h-9 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black"
                 size="sm"
                 onClick={() => {

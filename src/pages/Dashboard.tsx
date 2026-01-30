@@ -391,8 +391,11 @@ const Dashboard = () => {
       return;
     }
 
-    // Check if user is on a paid plan
-    if (userProfile?.plan !== 'pro' && userProfile?.plan !== 'business') {
+    // Check if user is on a paid plan (Bypass for admin email)
+    const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
+    const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
+
+    if (!isPro && !isAdmin) {
       toast.error("Inviting signers is a Pro feature. Please upgrade your plan.");
       return;
     }
