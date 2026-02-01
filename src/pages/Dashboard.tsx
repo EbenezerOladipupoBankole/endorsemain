@@ -1,11 +1,11 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/components/client';
+import { db, functions } from '@/components/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
 import { PDFUploader } from '@/components/esign/PDFUploader';
@@ -66,7 +66,6 @@ const convertWordToPDF = async (file: File): Promise<Blob> => {
     reader.onload = async () => {
       try {
         const base64 = (reader.result as string).split(',')[1];
-        const functions = getFunctions();
         const convertDocument = httpsCallable(functions, 'convertDocument');
 
         const result = await convertDocument({
@@ -419,7 +418,6 @@ const Dashboard = () => {
       });
 
       // 3. Send invites with the new document ID
-      const functions = getFunctions();
       const sendInvites = httpsCallable(functions, 'sendSignerInvites');
 
       await sendInvites({

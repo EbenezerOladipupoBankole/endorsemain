@@ -24,6 +24,8 @@ function getTransporter() {
         user: gmailEmail.value(),
         pass: gmailPassword.value(),
       },
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 10000,   // 10 seconds
     });
   }
   return transporter;
@@ -77,16 +79,21 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
     throw new HttpsError("resource-exhausted", "You have reached the limit of 3 free documents. Please upgrade to continue.");
   }
 
+  console.log("inviteToSign called with data:", data);
+
   try {
     // 1. Get Original Document
+    console.log("Fetching original document:", documentId);
     const docRef = db.collection("documents").doc(documentId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
+      console.error("Document not found:", documentId);
       throw new HttpsError("not-found", "Document not found.");
     }
 
     const originalData = docSnap.data();
+    console.log("Original document data:", originalData);
 
     // 2. Create New Document (Clone)
     const newDocumentData = {
@@ -104,27 +111,37 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
     delete (newDocumentData as any).id;
 
     // 3. Save to Firestore
+    console.log("Creating new document clone...");
     const newDocRef = await db.collection("documents").add(newDocumentData);
+    console.log("New document created with ID:", newDocRef.id);
 
     // Increment document count for user
+    console.log("Incrementing document count for user:", request.auth.uid);
     await userRef.set({ documentsSigned: admin.firestore.FieldValue.increment(1) }, { merge: true });
 
     const documentLink = `${APP_URL}/sign/${newDocRef.id}`;
 
     // 4. Send Invitation Email
-    await getTransporter().sendMail({
+    console.log("Sending invitation email to:", recipientEmail);
+    const transporter = getTransporter();
+
+    // Set a timeout for the mail sending to avoid hanging forever
+    const mailOptions = {
       from: '"Endorse App" <ebenezerbankole7@gmail.com>',
       to: recipientEmail,
       subject: "You have been invited to sign a document",
       text: `You have been invited to sign "${originalData?.name}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
       html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
-    });
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("Invitation email sent successfully.");
 
     return { success: true, newDocumentId: newDocRef.id };
 
   } catch (error: any) {
-    console.error("Invite Error:", error);
-    // Ensure we return the specific error message from Nodemailer or Firestore
+    console.error("Invite Error Exception:", error);
+    // Ensure we return the specific error message
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     throw new HttpsError("internal", errorMessage);
   }
@@ -148,10 +165,12 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }
   const documentLink = customLink || (documentId ? `${APP_URL}/sign/${documentId}` : APP_URL);
   console.log(`Sending invite email with link: ${documentLink}`);
 
+  console.log(`Starting bulk invite for document: ${documentName}, ID: ${documentId}`);
   const results = [];
 
   for (const signer of signers) {
     try {
+      console.log(`Sending invite email to: ${signer.email}`);
       await getTransporter().sendMail({
         from: '"Endorse App" <ebenezerbankole7@gmail.com>',
         to: signer.email,
@@ -159,6 +178,7 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }
         text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
         html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
       });
+      console.log(`Invite sent successfully to: ${signer.email}`);
       results.push({ email: signer.email, status: 'sent' });
     } catch (error: any) {
       console.error(`Failed to send email to ${signer.email}:`, error);
