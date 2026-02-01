@@ -1,6 +1,5 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getFunctions } from "firebase/functions";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -27,12 +26,18 @@ for (const [key, value] of Object.entries(firebaseConfig)) {
 }
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig); 
+const app = initializeApp(firebaseConfig);
 console.log("Firebase initialized:", app);
 
 // Initialize Cloud Functions and get a reference to the service
 export const analytics = getAnalytics(app);
-export const functions = getFunctions(app);
+export const functions = getFunctions(app, "us-central1");
+// Connect to emulator in development
+if (window.location.hostname === "localhost") {
+  connectFunctionsEmulator(functions, "localhost", 5001);
+  console.log("Connected to Functions emulator");
+}
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
