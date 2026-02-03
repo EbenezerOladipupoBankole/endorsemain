@@ -20,11 +20,12 @@ export function InviteUserForm({ documentId }: InviteUserFormProps) {
       return;
     }
 
-    // Check if user is on a paid plan (Bypass for admin email)
+    // Check if user is on a paid plan (Bypass for admin email or localhost)
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
     const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
+    const isLocal = window.location.hostname === 'localhost';
 
-    if (!isPro && !isAdmin) {
+    if (!isPro && !isAdmin && !isLocal) {
       toast.error("Inviting signers is a Pro feature. Please upgrade your plan.");
       return;
     }
