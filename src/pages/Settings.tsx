@@ -122,6 +122,7 @@ const Settings = () => {
   const handleManageBilling = async () => {
     setIsUpgrading(true);
     try {
+      // TODO: This uses Paystack, but your upgrade flow uses PayPal. You should unify these to use the same provider.
       const managePaystackSubscription = httpsCallable(functions, 'managePaystackSubscription');
       const { data }: any = await managePaystackSubscription({
         returnUrl: window.location.href,
