@@ -400,48 +400,82 @@ const Dashboard = () => {
       return;
     }
 
-    const promise = async () => {
+    // Firestore has a 1MB limit per document. Base64 adds ~33% overhead.
+    // We limit file size to 600KB to ensure successful upload.
+    if (pdfFile.size > 600 * 1024) {
+      toast.error("Document is too large. Please use a file smaller than 600KB.");
+      return;
+    }
+
+    const toastId = toast.loading("Processing document and sending invitations...");
+
+    try {
       // 1. Convert PDF to Base64 (simple solution for now, ideally upload to Storage)
-      const buffer = await pdfFile.arrayBuffer();
-      const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
-      const pdfBase64 = `data:application/pdf;base64,${base64}`;
+      const pdfBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(pdfFile);
+      });
 
       // 2. Create the document in Firestore immediately
-      const docRef = await addDoc(collection(db, "documents"), {
+      // Wrap in a timeout to prevent hanging
+      const createDocPromise = addDoc(collection(db, "documents"), {
         name: pdfFile.name,
         status: 'pending',
         ownerEmail: user?.email,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         pdfBase64: pdfBase64, // Storing base64 for simplicity in this demo. For prod, use Storage.
-        signers: signers.map(s => ({ ...s, status: 'pending' })),
+        signers: signers.map(s => ({
+          email: s.email,
+          role: s.role || 'signer',
+          status: 'pending'
+        })),
         invitedBy: user?.uid,
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Database operation timed out. The file might be too large or connection is slow.")), 60000)
+      );
+
+      const docRef = await Promise.race([createDocPromise, timeoutPromise]) as any;
+
 
       // 3. Send invites with the new document ID
       const sendInvites = httpsCallable(functions, 'sendSignerInvites');
 
-      await sendInvites({
+      const invitePromise = sendInvites({
         signers: signers,
         documentName: pdfFile.name,
-        uploaderName: user?.email?.split('@')[0] || 'A user',
+        uploaderName: user?.displayName || user?.email?.split('@')[0] || 'A user',
         uploaderEmail: user?.email,
         documentId: docRef.id, // Pass the ID effectively
         signingLink: `${window.location.origin}/sign/${docRef.id}`, // Explicit link
       });
 
+      const inviteTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Email service timed out. Document saved, but invites might not have sent.")), 40000)
+      );
+
+      await Promise.race([invitePromise, inviteTimeoutPromise]);
+
+      // Small delay to let user see 100%
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      toast.success('Invitations sent successfully!', { id: toastId });
+
       // Update local stats
       setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }));
-    };
+    } catch (error: any) {
+      console.error("Error sending invitations:", error);
+      let msg = "Failed to send invitations.";
+      if (error?.message) msg = error.message;
+      if (error?.code === 'resource-exhausted') msg = "File too large for database.";
+      if (error?.code === 'permission-denied') msg = "Permission denied.";
 
-    toast.promise(promise(), {
-      loading: 'Sending invitations...',
-      success: 'Invitations sent successfully!',
-      error: (err) => {
-        console.error("Firebase function error:", err);
-        return "Failed to send invitations. Please try again.";
-      },
-    });
+      toast.error(msg, { id: toastId });
+    }
   };
 
   const toggleTheme = () => {
@@ -899,6 +933,7 @@ const Dashboard = () => {
           )}
         </main>
       </div>
+
       {showSignatureModal && pdfFile && (
         <SignatureModal
           document={{
