@@ -1,7 +1,9 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
 import { defineSecret } from "firebase-functions/params";
+import axios from "axios";
+import { Stripe } from "stripe";
 
 // Initialize Admin SDK
 if (admin.apps.length === 0) {
@@ -13,6 +15,9 @@ if (admin.apps.length === 0) {
 // Credentials are now stored securely using Firebase Secrets.
 const gmailEmail = defineSecret("GMAIL_EMAIL");
 const gmailPassword = defineSecret("GMAIL_PASSWORD");
+const paystackSecretKey = defineSecret("PAYSTACK_SECRET_KEY");
+const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
+const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 
 let transporter: nodemailer.Transporter | null = null;
 
@@ -294,4 +299,187 @@ export const convertDocument = onCall(async (request) => {
     console.error("Conversion Error:", error);
     throw new HttpsError("internal", error.message || "Failed to convert document.");
   }
+});
+
+// --- PAYMENT INTEGRATIONS ---
+
+// 1. Paystack Integration
+export const initializePaystackPayment = onCall({ secrets: [paystackSecretKey] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const { email, amount, planId, callbackUrl } = request.data;
+
+  try {
+    const response = await axios.post(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        email,
+        amount: Math.round(parseFloat(amount) * 100 * 1600), // Convert USD to NGN (example rate) and then to kobo
+        callback_url: callbackUrl,
+        metadata: {
+          planId,
+          userId: request.auth.uid,
+          email
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey.value()}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data.data; // Includes authorization_url and reference
+  } catch (error: any) {
+    console.error("Paystack Init Error:", error.response?.data || error.message);
+    throw new HttpsError("internal", "Failed to initialize Paystack payment");
+  }
+});
+
+// 2. Stripe Integration
+export const initializeStripeSession = onCall({ secrets: [stripeSecretKey] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const { planId, amount, successUrl, cancelUrl } = request.data;
+  const stripe = new Stripe(stripeSecretKey.value(), { apiVersion: "2023-10-16" as any });
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `${planId.toUpperCase()} Plan Subscription`,
+              description: `Upgrade to ${planId} plan on Endorse`,
+            },
+            unit_amount: Math.round(parseFloat(amount) * 100), // amount in cents
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment", // Use 'subscription' for recurring
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      customer_email: request.auth.token.email,
+      metadata: {
+        planId,
+        userId: request.auth.uid,
+      },
+    });
+
+    return { sessionId: session.id, url: session.url };
+  } catch (error: any) {
+    console.error("Stripe Session Error:", error);
+    throw new HttpsError("internal", error.message);
+  }
+});
+
+// 3. Webhook to handle successful payments (Generic for both if possible, or separate)
+export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, paystackSecretKey, stripeWebhookSecret] }, async (req, res) => {
+  const db = admin.firestore();
+
+  // Stripe Webhook Logic
+  if (req.headers["stripe-signature"]) {
+    const stripe = new Stripe(stripeSecretKey.value(), { apiVersion: "2023-10-16" as any });
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.rawBody,
+        req.headers["stripe-signature"] as string,
+        stripeWebhookSecret.value()
+      );
+    } catch (err: any) {
+      res.status(400).send(`Webhook Error: ${err.message}`);
+      return;
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const { userId, planId } = session.metadata || {};
+
+      if (userId && planId) {
+        await db.collection("users").doc(userId).set({
+          plan: planId,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+    }
+  }
+
+  // Paystack Webhook Logic
+  else if (req.headers["x-paystack-signature"]) {
+    // Verify signature then update
+    const event = req.body;
+    if (event.event === "charge.success") {
+      const { userId, planId } = event.data.metadata;
+      if (userId && planId) {
+        await db.collection("users").doc(userId).set({
+          plan: planId,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+    }
+  }
+
+  res.json({ received: true });
+});
+
+// 4. Billing Management
+export const manageStripeSubscription = onCall({ secrets: [stripeSecretKey] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const { returnUrl } = request.data;
+  const stripe = new Stripe(stripeSecretKey.value(), { apiVersion: "2025-01-27v2" as any });
+
+  try {
+    // We need to find or create a Stripe customer ID associated with this user
+    const db = admin.firestore();
+    const userDoc = await db.collection("users").doc(request.auth.uid).get();
+    const userData = userDoc.data();
+
+    let customerId = userData?.stripeCustomerId;
+
+    if (!customerId) {
+      // Create a new customer if they don't have one
+      const customer = await stripe.customers.create({
+        email: request.auth.token.email,
+        metadata: { userId: request.auth.uid }
+      });
+      customerId = customer.id;
+      await db.collection("users").doc(request.auth.uid).update({ stripeCustomerId: customerId });
+    }
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl || APP_URL,
+    });
+
+    return { url: portalSession.url };
+  } catch (error: any) {
+    console.error("Stripe Portal Error:", error);
+    throw new HttpsError("internal", error.message);
+  }
+});
+
+export const managePaystackSubscription = onCall({ secrets: [paystackSecretKey] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  // Paystack doesn't have a hosted portal like Stripe. 
+  // We can return a URL to a custom page or simply inform the user.
+  return {
+    url: "https://dashboard.paystack.com", // Or a link to your support/custom billing page
+    message: "Paystack subscription management is handled via your dashboard or contact support."
+  };
 });

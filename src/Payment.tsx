@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { loadStripe } from "@stripe/stripe-js";
 import { useAuth } from "./components/AuthContext";
 import { doc, setDoc } from "firebase/firestore";
 import { db, functions } from "./components/client";
@@ -37,16 +37,11 @@ const Payment = () => {
   const [searchParams] = useSearchParams();
   const [selectedPlan, setSelectedPlan] = useState(PLANS[0]);
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'paystack'>('paypal');
+  const [paymentMethod] = useState<'stripe' | 'paystack'>('paystack');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  // Detect if we are on the live domain for PayPal Client ID
-  // We check for a '?test=true' query param to force test mode on live sites
   const forceTestMode = searchParams.get("test") === "true";
-  const isProduction = !forceTestMode && (window.location.hostname === "e-ndorse.site" ||
-    window.location.hostname === "www.e-ndorse.site" ||
-    window.location.hostname === "e-ndorse.online" ||
-    window.location.hostname === "endorse-app.web.app");
+  const isProduction = window.location.hostname !== "localhost" && !forceTestMode;
 
   useEffect(() => {
     const planFromUrl = searchParams.get("plan")?.toLowerCase();
@@ -75,7 +70,6 @@ const Payment = () => {
   const handlePaystackPayment = async () => {
     setIsLoading(true);
     try {
-      // This calls a Cloud Function to initialize the transaction securely on the server
       const initializePaystack = httpsCallable(functions, 'initializePaystackPayment');
       const { data }: any = await initializePaystack({
         email: user?.email,
@@ -91,8 +85,36 @@ const Payment = () => {
       }
     } catch (error: any) {
       console.error("Paystack Error:", error);
-      // Show the actual error message from the server to help debugging
-      toast.error(error.message || "Failed to connect to Paystack. Please try PayPal instead.");
+      toast.error(error.message || "Failed to connect to Paystack.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStripePayment = async () => {
+    setIsLoading(true);
+    try {
+      const initializeStripeSession = httpsCallable(functions, 'initializeStripeSession');
+      const { data }: any = await initializeStripeSession({
+        planId: selectedPlan.id,
+        amount: selectedPlan.price,
+        successUrl: window.location.origin + "/payment?payment=success",
+        cancelUrl: window.location.origin + "/payment?payment=cancel",
+      });
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else if (data?.sessionId) {
+        const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+        if (stripe) {
+          await stripe.redirectToCheckout({ sessionId: data.sessionId });
+        }
+      } else {
+        toast.error("Could not initialize Stripe session.");
+      }
+    } catch (error: any) {
+      console.error("Stripe Error:", error);
+      toast.error(error.message || "Failed to connect to Stripe.");
     } finally {
       setIsLoading(false);
     }
@@ -205,91 +227,15 @@ const Payment = () => {
           <div className="max-w-md mx-auto w-full">
             <h3 className="text-xl font-bold text-slate-900 mb-6">Payment Details</h3>
 
-            {/* Payment Method Switcher */}
-            <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
-              <button
-                onClick={() => setPaymentMethod('paypal')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${paymentMethod === 'paypal' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-              >
-                <Globe className="w-4 h-4" /> International (PayPal)
-              </button>
-              <button
-                onClick={() => setPaymentMethod('paystack')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${paymentMethod === 'paystack' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-              >
-                <CreditCard className="w-4 h-4" /> Nigeria / Africa
-              </button>
+            {/* Payment Method Switcher Hidden */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 text-sm">
+                <CreditCard className="w-4 h-4" />
+                <span className="font-medium">Secure local payment via Paystack</span>
+              </div>
             </div>
 
-            {/* PayPal Section */}
-            {paymentMethod === 'paypal' && (
-              <div className="mb-6">
-                <div className="relative z-0">
-                  <PayPalScriptProvider options={{
-                    "client-id": isProduction
-                      ? "YOUR_PAYPAL_LIVE_CLIENT_ID"
-                      : "test", // Using "test" ensures buttons appear. Replace with your Sandbox Client ID to process real test payments.
-                    currency: "USD",
-                    intent: "capture" // TODO: For recurring subscriptions, change to 'subscription' and add 'vault: true'
-                  }}>
-                    <PayPalButtons
-                      forceReRender={[selectedPlan.id]}
-                      style={{
-                        layout: "vertical",
-                        color: "gold",
-                        shape: "rect",
-                        label: "pay"
-                      }}
-                      // TODO: This creates a one-time payment. For monthly subscriptions, use createSubscription with a Plan ID instead of createOrder.
-                      createOrder={(data, actions) => {
-                        return actions.order.create({
-                          intent: "CAPTURE",
-                          purchase_units: [
-                            {
-                              amount: {
-                                currency_code: "USD",
-                                value: selectedPlan.price,
-                              },
-                              description: `Endorse App Upgrade - ${selectedPlan.name}`,
-                            },
-                          ],
-                        });
-                      }}
-                      onApprove={async (data, actions) => {
-                        if (actions.order) {
-                          setIsLoading(true);
-                          try {
-                            const details = await actions.order.capture();
-                            console.log("PayPal Success:", details);
-
-                            const success = await updatePlanInFirestore(selectedPlan.id);
-                            if (success) {
-                              setPaymentSuccess(true);
-                              toast.success(`Successfully upgraded to ${selectedPlan.name}!`);
-                            }
-                          } catch (err) {
-                            console.error("Capture error:", err);
-                            toast.error("Payment was successful but we couldn't update your account. Please contact support.");
-                          } finally {
-                            setIsLoading(false);
-                          }
-                        }
-                      }}
-                      onError={(err) => {
-                        console.error("PayPal Error:", err);
-                        toast.error("An error occurred with PayPal. Please try again.");
-                      }}
-                    />
-                  </PayPalScriptProvider>
-                </div>
-                <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg text-xs text-slate-500 mt-4">
-                  <Lock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                  <p>Secure payment processing by PayPal. Accepts international Visa and Mastercard.</p>
-                </div>
-              </div>
-            )}
+            {/* Stripe Section Hidden */}
 
             {/* Paystack Section */}
             {paymentMethod === 'paystack' && (

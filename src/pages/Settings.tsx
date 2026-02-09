@@ -122,13 +122,21 @@ const Settings = () => {
   const handleManageBilling = async () => {
     setIsUpgrading(true);
     try {
-      // TODO: This uses Paystack, but your upgrade flow uses PayPal. You should unify these to use the same provider.
-      const managePaystackSubscription = httpsCallable(functions, 'managePaystackSubscription');
-      const { data }: any = await managePaystackSubscription({
+      // Determine which billing portal to use. 
+      // If the user has a stripeCustomerId, they likely used Stripe.
+      const useStripe = !!userProfile?.stripeCustomerId || (window.location.hostname !== "localhost" && !searchParams.get("local"));
+
+      const functionName = useStripe ? 'manageStripeSubscription' : 'managePaystackSubscription';
+      const manageSubscription = httpsCallable(functions, functionName);
+
+      const { data }: any = await manageSubscription({
         returnUrl: window.location.href,
       });
+
       if (data?.url) {
         window.location.href = data.url;
+      } else if (data?.message) {
+        toast.info(data.message);
       }
     } catch (error: any) {
       console.error(error);
