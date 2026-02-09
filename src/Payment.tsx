@@ -41,10 +41,12 @@ const Payment = () => {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Detect if we are on the live domain for PayPal Client ID
-  const isProduction = window.location.hostname === "e-ndorse.site" ||
+  // We check for a '?test=true' query param to force test mode on live sites
+  const forceTestMode = searchParams.get("test") === "true";
+  const isProduction = !forceTestMode && (window.location.hostname === "e-ndorse.site" ||
     window.location.hostname === "www.e-ndorse.site" ||
     window.location.hostname === "e-ndorse.online" ||
-    window.location.hostname === "endorse-app.web.app";
+    window.location.hostname === "endorse-app.web.app");
 
   useEffect(() => {
     const planFromUrl = searchParams.get("plan")?.toLowerCase();
@@ -87,9 +89,10 @@ const Payment = () => {
       } else {
         toast.error("Could not initialize payment. Please try again.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Paystack Error:", error);
-      toast.error("Failed to connect to Paystack. Please try PayPal instead.");
+      // Show the actual error message from the server to help debugging
+      toast.error(error.message || "Failed to connect to Paystack. Please try PayPal instead.");
     } finally {
       setIsLoading(false);
     }
