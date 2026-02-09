@@ -75,7 +75,8 @@ const Payment = () => {
         email: user?.email,
         planId: selectedPlan.id,
         amount: selectedPlan.price,
-        callbackUrl: window.location.origin + "/payment?payment=success"
+        // Using window.location.href to handle GitHub Pages subpaths and routing
+        callbackUrl: window.location.href.split('?')[0] + "?payment=success"
       });
 
       if (data?.authorization_url) {
