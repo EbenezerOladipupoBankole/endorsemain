@@ -131,9 +131,15 @@ const Dashboard = () => {
   useEffect(() => {
     const paymentSuccess = searchParams.get("payment") === "success" || searchParams.get("reference");
     if (paymentSuccess) {
-      toast.success("Payment successful! Your plan has been updated.");
+      toast.success("Payment successful! Your plan is updated. Refreshing page...");
+      // We replace the URL to prevent a refresh loop and then reload the page
+      // to ensure the new user profile (with the updated plan) is fetched.
+      navigate('/dashboard', { replace: true });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500); // Delay for user to see the toast
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
   useEffect(() => {
     const fetchRecentDocs = async () => {

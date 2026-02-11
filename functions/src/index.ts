@@ -1,6 +1,7 @@
 import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
+import * as crypto from "crypto";
 import { defineSecret } from "firebase-functions/params";
 import axios from "axios";
 import { Stripe } from "stripe";
@@ -15,7 +16,8 @@ if (admin.apps.length === 0) {
 // Credentials are now stored securely using Firebase Secrets.
 const gmailEmail = defineSecret("GMAIL_EMAIL");
 const gmailPassword = defineSecret("GMAIL_PASSWORD");
-const paystackSecretKey = defineSecret("PAYSTACK_SECRET_KEY");
+const paystackSecretKeyTest = defineSecret("PAYSTACK_SECRET_KEY_TEST");
+const paystackSecretKeyLive = defineSecret("PAYSTACK_SECRET_KEY_LIVE");
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 
@@ -304,29 +306,35 @@ export const convertDocument = onCall(async (request) => {
 // --- PAYMENT INTEGRATIONS ---
 
 // 1. Paystack Integration
-export const initializePaystackPayment = onCall({ secrets: [paystackSecretKey] }, async (request) => {
+export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTest, paystackSecretKeyLive] }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
-  const { email, amount, planId, callbackUrl } = request.data;
+  const { email, amount, planId, callbackUrl, mode } = request.data;
+
+  const isLiveMode = mode === 'live';
+  const secretKey = isLiveMode ? paystackSecretKeyLive.value() : paystackSecretKeyTest.value();
 
   try {
     const response = await axios.post(
       "https://api.paystack.co/transaction/initialize",
       {
         email,
-        amount: Math.round(parseFloat(amount) * 100 * 1600), // Convert USD to NGN (example rate) and then to kobo
+        // The amount is converted from USD to NGN (at a rate of 1600) and then to kobo.
+        // For live transactions, you may want a dynamic exchange rate.
+        amount: Math.round(parseFloat(amount) * 100 * 1600),
         callback_url: callbackUrl,
         metadata: {
           planId,
           userId: request.auth.uid,
-          email
+          email,
+          mode: isLiveMode ? 'live' : 'test'
         },
       },
       {
         headers: {
-          Authorization: `Bearer ${paystackSecretKey.value()}`,
+          Authorization: `Bearer ${secretKey}`,
           "Content-Type": "application/json",
         },
       }
@@ -382,7 +390,7 @@ export const initializeStripeSession = onCall({ secrets: [stripeSecretKey] }, as
 });
 
 // 3. Webhook to handle successful payments (Generic for both if possible, or separate)
-export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, paystackSecretKey, stripeWebhookSecret] }, async (req, res) => {
+export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, stripeWebhookSecret, paystackSecretKeyTest, paystackSecretKeyLive] }, async (req, res) => {
   const db = admin.firestore();
 
   // Stripe Webhook Logic
@@ -417,13 +425,27 @@ export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, payst
   // Paystack Webhook Logic
   else if (req.headers["x-paystack-signature"]) {
     // Verify signature then update
+    const secret = req.body.data?.metadata?.mode === 'live' ? paystackSecretKeyLive.value() : paystackSecretKeyTest.value();
+
+    const hash = crypto.createHmac("sha512", secret)
+      .update(JSON.stringify(req.body))
+      .digest("hex");
+
+    if (hash !== req.headers["x-paystack-signature"]) {
+      res.status(400).send("Invalid Paystack signature");
+      return;
+    }
+
     const event = req.body;
     if (event.event === "charge.success") {
-      const { userId, planId } = event.data.metadata;
+      const { userId, planId } = event.data.metadata || {};
       if (userId && planId) {
         await db.collection("users").doc(userId).set({
           plan: planId,
+          paymentProvider: "paystack",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          // Clear stripe ID if they switch to paystack
+          stripeCustomerId: null,
         }, { merge: true });
       }
     }
@@ -471,7 +493,7 @@ export const manageStripeSubscription = onCall({ secrets: [stripeSecretKey] }, a
   }
 });
 
-export const managePaystackSubscription = onCall({ secrets: [paystackSecretKey] }, async (request) => {
+export const managePaystackSubscription = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }

@@ -15,6 +15,11 @@ const ProtectedRoute = () => {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
+  if (!user.emailVerified) {
+    // Redirect to auth page if email is not verified
+    return <Navigate to="/auth" replace />;
+  }
+
   return <Outlet />;
 };
 

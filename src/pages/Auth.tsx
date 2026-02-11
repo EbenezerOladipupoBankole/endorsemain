@@ -13,7 +13,9 @@ import {
   signInWithPopup,
   getMultiFactorResolver,
   TotpMultiFactorGenerator,
-  MultiFactorError
+  MultiFactorError,
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { auth } from "@/components/client";
 import { useAuth } from "@/components/AuthContext";
@@ -29,6 +31,9 @@ const Auth = () => {
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaResolver, setMfaResolver] = useState<any>(null);
   const [verificationCode, setVerificationCode] = useState("");
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [forgotPassword, setForgotPassword] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -36,7 +41,7 @@ const Auth = () => {
   const from = location.state?.from?.pathname || "/dashboard";
 
   useEffect(() => {
-    if (user) {
+    if (user && user.emailVerified) {
       navigate(from, { replace: true });
     }
   }, [user, navigate, from]);
@@ -47,15 +52,19 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        // Note: Firebase doesn't store full_name on sign-up directly like this.
-        // This is typically done by creating a user document in Firestore.
-        await createUserWithEmailAndPassword(auth, email, password);
-        toast.success("Account created successfully!");
-        navigate("/dashboard");
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(userCredential.user);
+        setNeedsVerification(true);
+        toast.success("Verification email sent! Please check your inbox.");
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
-        toast.success("Welcome back!");
-        navigate("/dashboard");
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        if (!userCredential.user.emailVerified) {
+          setNeedsVerification(true);
+          toast.info("Please verify your email before continuing.");
+        } else {
+          toast.success("Welcome back!");
+          navigate("/dashboard");
+        }
       }
     } catch (error: any) {
       if (error.code === 'auth/multi-factor-auth-required') {
@@ -67,6 +76,53 @@ const Auth = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (auth.currentUser) {
+      setLoading(true);
+      try {
+        await sendEmailVerification(auth.currentUser);
+        toast.success("Verification email resent!");
+      } catch (error: any) {
+        toast.error(error.message || "Failed to resend email.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetSent(true);
+      toast.success("Password reset email sent!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send reset email.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefreshStatus = async () => {
+    if (auth.currentUser) {
+      setLoading(true);
+      try {
+        await auth.currentUser.reload();
+        if (auth.currentUser.emailVerified) {
+          toast.success("Email verified! Redirecting...");
+          navigate("/dashboard");
+        } else {
+          toast.info("Email not verified yet. Please check your inbox.");
+        }
+      } catch (error: any) {
+        toast.error("Failed to refresh status.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -111,7 +167,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-primary relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1f2c] relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2670&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay" />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <Link to="/" className="flex items-center gap-2.5">
@@ -119,28 +175,16 @@ const Auth = () => {
           </Link>
 
           <div className="space-y-6">
-            <h1 className="font-display text-4xl font-bold text-primary-foreground leading-tight">
+            <h1 className="font-display text-4xl font-bold text-white leading-tight">
               Sign documents<br />with confidence
             </h1>
-            <p className="text-primary-foreground/80 text-lg max-w-md leading-relaxed">
-              Join who trust Endorse for secure,
+            <p className="text-white/80 text-lg max-w-md leading-relaxed">
+              Join thousands of businesses who trust Endorse for secure,
               legally binding electronic signatures.
             </p>
-            <div className="flex items-center gap-4 pt-4">
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="w-10 h-10 rounded-full bg-primary-foreground/30 border-2 border-primary-foreground/50 flex items-center justify-center">
-                    <User className="w-5 h-5 text-primary-foreground/70" />
-                  </div>
-                ))}
-              </div>
-              <p className="text-primary-foreground/80 text-sm">
-
-              </p>
-            </div>
           </div>
 
-          <p className="text-primary-foreground/60 text-sm">
+          <p className="text-white/60 text-sm">
             © 2025 Endorse. Enterprise-grade security.
           </p>
         </div>
@@ -155,22 +199,19 @@ const Auth = () => {
             Back to home
           </Link>
 
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <Logo className="h-10 w-auto" />
-          </div>
-
           {/* Form Header */}
-          <div className="mb-8">
+          <div className="mb-8 text-center lg:text-left">
             <h2 className="font-display text-2xl font-bold text-foreground mb-2">
-              {mfaRequired ? "Two-Factor Authentication" : isSignUp ? "Create your account" : "Welcome back"}
+              {mfaRequired ? "Two-Factor Authentication" : needsVerification ? "Verify Email" : isSignUp ? "Create your account" : "Welcome back"}
             </h2>
             <p className="text-muted-foreground">
               {mfaRequired
                 ? "Enter the 6-digit code from your authenticator app"
-                : isSignUp
-                  ? "Start your free 14-day trial today"
-                  : "Sign in to continue to your dashboard"
+                : needsVerification
+                  ? "Check your inbox to activate your account"
+                  : isSignUp
+                    ? "Start your free 14-day trial today"
+                    : "Sign in to continue to your dashboard"
               }
             </p>
           </div>
@@ -194,7 +235,7 @@ const Auth = () => {
                   />
                 </div>
               </div>
-              <Button type="submit" variant="hero" className="w-full h-11 font-medium" disabled={loading || verificationCode.length !== 6}>
+              <Button type="submit" variant="hero" className="w-full h-11 font-medium bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black border-none" disabled={loading || verificationCode.length !== 6}>
                 {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Verify"}
               </Button>
               <Button
@@ -206,26 +247,107 @@ const Auth = () => {
                 Back to Login
               </Button>
             </form>
+          ) : needsVerification ? (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-100 p-8 rounded-2xl text-center shadow-sm">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Mail className="w-8 h-8 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Verify your email</h3>
+                <p className="text-slate-600 mb-8 text-sm leading-relaxed">
+                  We've sent a verification link to <span className="font-semibold text-blue-600">{email}</span>.
+                  Please click the link in your email to activate your account and start signing.
+                </p>
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleRefreshStatus}
+                    disabled={loading}
+                    className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "I've Verified My Email"}
+                  </Button>
+                  <Button
+                    onClick={handleResendVerification}
+                    disabled={loading}
+                    variant="outline"
+                    className="w-full h-12 border-blue-200 hover:bg-blue-50 text-blue-700"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Resend Verification Email"}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setNeedsVerification(false);
+                      auth.signOut();
+                    }}
+                    variant="ghost"
+                    className="w-full text-slate-500 hover:text-slate-900"
+                  >
+                    Back to Sign In
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-center text-slate-400">
+                Can't find the email? Check your spam folder.
+              </p>
+            </div>
+          ) : forgotPassword ? (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-4">
+                {resetSent ? (
+                  <div className="bg-green-50 border border-green-100 p-4 rounded-xl text-green-700 text-sm mb-4">
+                    Check your inbox for the reset link we just sent.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-10 h-11"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90" disabled={loading || resetSent}>
+                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Send Reset Link"}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setForgotPassword(false)}
+                  className="w-full text-center text-sm text-slate-500 hover:text-slate-900 font-medium"
+                >
+                  Return to Sign In
+                </button>
+              </div>
+            </form>
           ) : (
             <>
               {/* Security Check */}
-              <div className="mb-6 bg-secondary/30 p-4 rounded-lg border border-border/50">
+              <div className="mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
+                  <div className="mt-1">
                     <input
                       type="checkbox"
                       id="security-check"
                       checked={agreedToTerms}
                       onChange={(e) => setAgreedToTerms(e.target.checked)}
-                      className="h-4 w-4 rounded border-primary text-primary focus:ring-primary cursor-pointer accent-primary"
+                      className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
                     />
                   </div>
-                  <label htmlFor="security-check" className="text-sm text-muted-foreground cursor-pointer select-none">
-                    <span className="font-medium text-foreground flex items-center gap-1.5 mb-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                      Security Check
+                  <label htmlFor="security-check" className="text-sm text-slate-600 cursor-pointer select-none">
+                    <span className="font-bold text-slate-900 flex items-center gap-1.5 mb-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                      Security & Compliance
                     </span>
-                    I confirm I am authorized to access this system and agree to the Terms of Service.
+                    I confirm I'm authorized to use this system and agree to the Terms of Service.
                   </label>
                 </div>
               </div>
@@ -233,11 +355,11 @@ const Auth = () => {
               {/* Google Sign In */}
               <Button
                 variant="outline"
-                className="w-full h-11 mb-6 font-medium"
+                className="w-full h-12 mb-8 font-semibold border-slate-200 hover:bg-slate-50 shadow-sm"
                 onClick={handleGoogleSignIn}
                 disabled={loading || !agreedToTerms}
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -258,29 +380,29 @@ const Auth = () => {
                 Continue with Google
               </Button>
 
-              <div className="relative mb-6">
+              <div className="relative mb-8">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
+                  <span className="w-full border-t border-slate-200" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-3 text-muted-foreground">Or continue with email</span>
+                  <span className="bg-white px-4 text-slate-400 font-bold tracking-widest">Or email</span>
                 </div>
               </div>
 
               {/* Email Form */}
-              <form onSubmit={handleEmailAuth} className="space-y-4">
+              <form onSubmit={handleEmailAuth} className="space-y-5">
                 {isSignUp && (
                   <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
+                    <Label htmlFor="fullName" className="text-sm font-bold text-slate-700">Full Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
                         id="fullName"
                         type="text"
-                        placeholder="John Doe"
+                        placeholder="Ebenezer Bankole"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="pl-10 h-11"
+                        className="pl-10 h-12 bg-slate-50/50 border-slate-200"
                         required={isSignUp}
                       />
                     </div>
@@ -288,57 +410,67 @@ const Auth = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                  <Label htmlFor="email" className="text-sm font-bold text-slate-700">Work Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
                       id="email"
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="name@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-11"
+                      className="pl-10 h-12 bg-slate-50/50 border-slate-200"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="password" name="Password" className="text-sm font-bold text-slate-700">Password</Label>
+                    {!isSignUp && (
+                      <button
+                        type="button"
+                        onClick={() => setForgotPassword(true)}
+                        className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+                      >
+                        Forgot?
+                      </button>
+                    )}
+                  </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
                       id="password"
                       type="password"
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 h-11"
+                      className="pl-10 h-12 bg-slate-50/50 border-slate-200"
                       required
                       minLength={6}
                     />
                   </div>
                 </div>
 
-                <Button type="submit" variant="hero" className="w-full h-11 font-medium" disabled={loading || !agreedToTerms}>
+                <Button type="submit" className="w-full h-12 text-base font-bold bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black border-none shadow-md shadow-[#FFC83D]/20 mt-2" disabled={loading || !agreedToTerms}>
                   {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Please wait...
-                    </>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" /> Preparing...
+                    </div>
                   ) : (
-                    isSignUp ? "Create Account" : "Sign In"
+                    isSignUp ? "Create My Account" : "Sign In to Endorse"
                   )}
                 </Button>
               </form>
 
               {/* Toggle Sign Up / Sign In */}
-              <p className="text-center text-muted-foreground mt-6 text-sm">
-                {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+              <p className="text-center text-slate-500 mt-8 text-sm">
+                {isSignUp ? "Already a member?" : "New to Endorse?"}{" "}
                 <button
                   type="button"
                   onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-primary hover:underline font-medium"
+                  className="text-primary hover:text-primary/80 font-bold underline decoration-2 underline-offset-4"
                 >
                   {isSignUp ? "Sign in" : "Sign up for free"}
                 </button>
