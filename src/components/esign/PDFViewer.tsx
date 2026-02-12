@@ -41,17 +41,21 @@ export const PDFViewer = ({
   };
 
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Prevent placement if we just finished dragging
-    if (Date.now() - lastDragEndTime.current < 200) return;
+    // Prevent placement if we just finished dragging (increased timeout for safety)
+    if (Date.now() - lastDragEndTime.current < 500) return;
 
     // Also check if we clicked on an existing signature (safety net)
     if ((e.target as HTMLElement).closest('.signature-item')) return;
 
     if (!signatureImage || draggedIndex !== null) return;
 
+    // Additional check: valid coordinates
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    // Ignore clicks outside reasonable bounds (optional but good)
+    if (x < 0 || x > 100 || y < 0 || y > 100) return;
 
     onSignaturePlace({ x, y, page: currentPage });
   };
