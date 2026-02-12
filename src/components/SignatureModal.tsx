@@ -584,7 +584,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                         style: { width: "100%", height: "160px" }
                       }}
                       backgroundColor="transparent"
-                      penColor="#1e293b"
+                      penColor="#000000"
                     />
 
                     {/* Floating Tools */}

@@ -67,7 +67,7 @@ export const SignaturePad = ({ onSignatureCreate }: SignaturePadProps) => {
           <div className="bg-background rounded-md border border-input">
             <SignatureCanvas
               ref={sigCanvas}
-              penColor="black"
+              penColor="#000000"
               canvasProps={{ className: "w-full h-[150px]" }}
             />
           </div>
