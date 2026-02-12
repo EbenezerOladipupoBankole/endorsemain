@@ -314,7 +314,15 @@ export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTes
   const { email, amount, planId, callbackUrl, mode } = request.data;
 
   const isLiveMode = mode === 'live';
-  const secretKey = isLiveMode ? paystackSecretKeyLive.value() : paystackSecretKeyTest.value();
+  // Use secret.value() if available, otherwise fallback to process.env (for local dev)
+  const secretKey = isLiveMode
+    ? (paystackSecretKeyLive.value() || process.env.PAYSTACK_SECRET_KEY_LIVE)
+    : (paystackSecretKeyTest.value() || process.env.PAYSTACK_SECRET_KEY_TEST);
+
+  if (!secretKey) {
+    console.error("Missing Paystack Secret Key. Mode:", mode);
+    throw new HttpsError("failed-precondition", "Payment configuration is missing.");
+  }
 
   try {
     const response = await axios.post(
@@ -342,8 +350,8 @@ export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTes
 
     return response.data.data; // Includes authorization_url and reference
   } catch (error: any) {
-    console.error("Paystack Init Error:", error.response?.data || error.message);
-    throw new HttpsError("internal", "Failed to initialize Paystack payment");
+    console.error("Paystack Init Error Details:", error.response?.data || error.message);
+    throw new HttpsError("internal", `Failed to initialize Paystack payment: ${error.response?.data?.message || error.message}`);
   }
 });
 
