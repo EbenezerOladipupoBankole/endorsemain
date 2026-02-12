@@ -12,3 +12,4 @@ node_modules/
 # Secrets and environment variables
 .env
 .env.*
+.secret.local
