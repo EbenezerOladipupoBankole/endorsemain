@@ -18,7 +18,7 @@ interface SignaturePosition {
 const SignDocument = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(true);
   const [documentData, setDocumentData] = useState<any>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -31,19 +31,19 @@ const SignDocument = () => {
   useEffect(() => {
     const fetchDocument = async () => {
       if (!id) return;
-      
+
       try {
         const docRef = doc(db, "documents", id);
         const docSnap = await getDoc(docRef);
-        
+
         if (docSnap.exists()) {
           const data = docSnap.data();
           setDocumentData(data);
-          
+
           if (data.status === 'completed' || data.status === 'signed') {
-             setIsSuccess(true);
-             setLoading(false);
-             return;
+            setIsSuccess(true);
+            setLoading(false);
+            return;
           }
 
           // Load PDF File from URL or Base64
@@ -53,10 +53,10 @@ const SignDocument = () => {
             const file = new File([blob], data.name || "document.pdf", { type: "application/pdf" });
             setPdfFile(file);
           } else if (data.pdfBase64) {
-             const res = await fetch(data.pdfBase64);
-             const blob = await res.blob();
-             const file = new File([blob], data.name || "document.pdf", { type: "application/pdf" });
-             setPdfFile(file);
+            const res = await fetch(data.pdfBase64);
+            const blob = await res.blob();
+            const file = new File([blob], data.name || "document.pdf", { type: "application/pdf" });
+            setPdfFile(file);
           } else {
             toast.error("Document file not found.");
           }
@@ -100,7 +100,7 @@ const SignDocument = () => {
         signature_positions: signaturePositions,
         signedAt: serverTimestamp(),
       });
-      
+
       setIsSuccess(true);
       toast.success("Document signed successfully!");
     } catch (error) {
@@ -139,27 +139,29 @@ const SignDocument = () => {
       </header>
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-             <div className="p-4 border-b border-border bg-muted/20 flex justify-between items-center">
-               <h2 className="font-semibold flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> {documentData?.name}</h2>
-               {!signature && <Button size="sm" variant="outline" onClick={() => setShowSignatureModal(true)}>Create Signature</Button>}
-             </div>
-             <div className="p-6 bg-muted/10 min-h-[600px] flex justify-center">
-               {pdfFile && <PDFViewer 
-                 file={pdfFile} 
-                 signatureImage={signature} 
-                 signaturePositions={signaturePositions} 
-                 signaturePosition={signaturePositions.length > 0 ? signaturePositions[signaturePositions.length - 1] : null}
-                 onSignaturePlace={handleSignaturePlace} 
-                 onSignatureMove={(pos) => {
-                 setSignaturePositions(prev => {
-                   const newPositions = [...prev];
-                   if (newPositions.length > 0) {
-                     newPositions[newPositions.length - 1] = pos;
-                   }
-                   return newPositions;
-                 });
-               }} />}
-             </div>
+          <div className="p-4 border-b border-border bg-muted/20 flex justify-between items-center">
+            <h2 className="font-semibold flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> {documentData?.name}</h2>
+            {!signature && <Button size="sm" variant="outline" onClick={() => setShowSignatureModal(true)}>Create Signature</Button>}
+          </div>
+          <div className="p-6 bg-muted/10 min-h-[600px] flex justify-center">
+            {pdfFile && <PDFViewer
+              file={pdfFile}
+              signatureImage={signature}
+              signaturePositions={signaturePositions}
+              onSignaturePlace={handleSignaturePlace}
+              onSignatureMove={(pos, index) => {
+                setSignaturePositions(prev => {
+                  const newPositions = [...prev];
+                  if (index >= 0 && index < newPositions.length) {
+                    newPositions[index] = pos;
+                  }
+                  return newPositions;
+                });
+              }}
+              onSignatureDelete={(index) => {
+                setSignaturePositions(prev => prev.filter((_, i) => i !== index));
+              }} />}
+          </div>
         </div>
       </main>
       {showSignatureModal && (

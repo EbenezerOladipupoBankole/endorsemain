@@ -279,11 +279,11 @@ const Dashboard = () => {
     toast.success('Signature placed!');
   };
 
-  const handleSignatureMove = (position: SignaturePosition) => {
+  const handleSignatureMove = (position: SignaturePosition, index: number) => {
     setSignaturePositions(prev => {
       const newPositions = [...prev];
-      if (newPositions.length > 0) {
-        newPositions[newPositions.length - 1] = position;
+      if (index >= 0 && index < newPositions.length) {
+        newPositions[index] = position;
       }
       return newPositions;
     });
@@ -891,9 +891,11 @@ const Dashboard = () => {
                         file={pdfFile}
                         signatureImage={signature}
                         signaturePositions={signaturePositions}
-                        signaturePosition={signaturePositions.length > 0 ? signaturePositions[signaturePositions.length - 1] : null}
                         onSignaturePlace={handleSignaturePlace}
                         onSignatureMove={handleSignatureMove}
+                        onSignatureDelete={(index) => {
+                          setSignaturePositions(prev => prev.filter((_, i) => i !== index));
+                        }}
                       />
                     </Suspense>
                   </div>
