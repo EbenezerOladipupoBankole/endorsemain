@@ -298,6 +298,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const signatureRef = useRef<SignatureCanvas>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0]);
@@ -426,9 +427,11 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       toast.error("Please add your signature first");
       return;
     }
+    setIsSaving(true);
     // If mode is type, we converted it to an image data URL, so treat it as 'upload' for PDF generation
     const finalMode = mode === "type" ? "upload" : mode;
     onSave(signatureData, finalMode);
+    onClose();
   };
 
   const handleDownload = async () => {
@@ -834,10 +837,16 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
               className="flex-1 h-9 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black"
               size="sm"
               onClick={handleSave}
-              disabled={!agreedToTerms}
+              disabled={!agreedToTerms || isSaving}
             >
-              <PenTool className="w-3.5 h-3.5 mr-1.5" />
-              Sign Document
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <PenTool className="w-3.5 h-3.5 mr-1.5" />
+                  Sign Document
+                </>
+              )}
             </Button>
           ) : (
             <>

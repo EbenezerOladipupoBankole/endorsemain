@@ -16,29 +16,38 @@ interface SignaturePosition {
 interface PDFViewerProps {
   file: File;
   signatureImage: string | null;
-  signaturePosition: SignaturePosition | null;
+  signaturePositions: SignaturePosition[];
   onSignaturePlace: (position: SignaturePosition) => void;
-  onSignatureMove: (position: SignaturePosition) => void;
+  onSignatureMove: (position: SignaturePosition, index: number) => void;
+  onSignatureDelete?: (index: number) => void;
 }
 
 export const PDFViewer = ({
   file,
   signatureImage,
-  signaturePosition,
+  signaturePositions,
   onSignaturePlace,
   onSignatureMove,
+  onSignatureDelete,
 }: PDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isDragging, setIsDragging] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastDragEndTime = useRef<number>(0);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   };
 
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!signatureImage || isDragging) return;
+    // Prevent placement if we just finished dragging
+    if (Date.now() - lastDragEndTime.current < 200) return;
+
+    // Also check if we clicked on an existing signature (safety net)
+    if ((e.target as HTMLElement).closest('.signature-item')) return;
+
+    if (!signatureImage || draggedIndex !== null) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -47,23 +56,27 @@ export const PDFViewer = ({
     onSignaturePlace({ x, y, page: currentPage });
   };
 
-  const handleDragStart = (e: React.MouseEvent) => {
+  const handleDragStart = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
-    setIsDragging(true);
+    e.stopPropagation();
+    setDraggedIndex(index);
   };
 
   const handleDrag = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging || !signaturePosition) return;
+    if (draggedIndex === null || !signaturePositions) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
 
-    onSignatureMove({ x, y, page: signaturePosition.page });
+    onSignatureMove({ x, y, page: signaturePositions[draggedIndex].page }, draggedIndex);
   };
 
   const handleDragEnd = () => {
-    setIsDragging(false);
+    if (draggedIndex !== null) {
+      lastDragEndTime.current = Date.now();
+    }
+    setDraggedIndex(null);
   };
 
   return (
@@ -107,27 +120,43 @@ export const PDFViewer = ({
           />
         </Document>
 
-        {signatureImage && signaturePosition && signaturePosition.page === currentPage && (
-          <div
-            className="absolute cursor-move select-none"
-            style={{
-              left: `${signaturePosition.x}%`,
-              top: `${signaturePosition.y}%`,
-              transform: "translate(-50%, -50%)",
-            }}
-            onMouseDown={handleDragStart}
-          >
-            <img
-              src={signatureImage}
-              alt="Signature"
-              className="max-w-[200px] max-h-[80px] pointer-events-none"
-              draggable={false}
-            />
-          </div>
-        )}
+        {signatureImage && signaturePositions && signaturePositions.map((pos, index) => (
+          pos.page === currentPage && (
+            <div
+              key={index}
+              className="absolute cursor-move select-none group z-50 signature-item"
+              style={{
+                left: `${pos.x}%`,
+                top: `${pos.y}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+              onMouseDown={(e) => handleDragStart(e, index)}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={signatureImage}
+                alt="Signature"
+                className="max-w-[200px] max-h-[80px] pointer-events-none"
+                draggable={false}
+              />
+              {onSignatureDelete && (
+                <button
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSignatureDelete(index);
+                  }}
+                  title="Remove signature"
+                >
+                  <span className="text-xs font-bold leading-none">&times;</span>
+                </button>
+              )}
+            </div>
+          )
+        ))}
       </div>
 
-      {signatureImage && !signaturePosition && (
+      {signatureImage && (!signaturePositions || signaturePositions.length === 0) && (
         <p className="mt-4 text-sm text-muted-foreground">
           Click on the document to place your signature
         </p>
