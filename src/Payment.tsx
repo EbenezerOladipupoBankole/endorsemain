@@ -77,7 +77,7 @@ const Payment = () => {
         amount: selectedPlan.price,
         // Using window.location.href to handle GitHub Pages subpaths and routing
         callbackUrl: window.location.href.split('?')[0] + "?payment=success",
-        mode: isProduction ? 'live' : 'test' // Tell the backend which mode to use
+        mode: 'live' // Force live mode for testing with live keys
       });
 
       if (data?.authorization_url) {
