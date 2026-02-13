@@ -319,6 +319,10 @@ export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTes
     ? (paystackSecretKeyLive.value() || process.env.PAYSTACK_SECRET_KEY_LIVE)
     : (paystackSecretKeyTest.value() || process.env.PAYSTACK_SECRET_KEY_TEST);
 
+  console.log(`[Payment Init] Mode: ${mode}, IsLive: ${isLiveMode}`);
+  const keyPrefix = secretKey ? secretKey.substring(0, 15) : "UNDEFINED";
+  console.log(`[Payment Init] Secret Key Prefix: ${keyPrefix}...`); // Logs first 15 chars to check sk_live vs sk_test
+
   if (!secretKey) {
     console.error("Missing Paystack Secret Key. Mode:", mode);
     throw new HttpsError("failed-precondition", "Payment configuration is missing.");
