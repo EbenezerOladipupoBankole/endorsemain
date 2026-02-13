@@ -35,13 +35,17 @@ export const PDFViewer = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastDragEndTime = useRef<number>(0);
+  const isDraggingRef = useRef(false);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   };
 
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Prevent placement if we just finished dragging (increased timeout for safety)
+    // Prevent placement if we are currently dragging or just finished (sync check)
+    if (isDraggingRef.current) return;
+
+    // Prevent placement if we just finished dragging (timestamp check fallback)
     if (Date.now() - lastDragEndTime.current < 500) return;
 
     // Also check if we clicked on an existing signature (safety net)
@@ -63,13 +67,18 @@ export const PDFViewer = ({
   const handleDragStart = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
     e.stopPropagation();
+    isDraggingRef.current = true;
     setDraggedIndex(index);
   };
 
   const handleDrag = (e: React.MouseEvent<HTMLDivElement>) => {
     if (draggedIndex === null || !signaturePositions) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    // Use specific container for reference dimensions
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
 
@@ -77,10 +86,14 @@ export const PDFViewer = ({
   };
 
   const handleDragEnd = () => {
-    if (draggedIndex !== null) {
+    if (draggedIndex !== null || isDraggingRef.current) {
       lastDragEndTime.current = Date.now();
     }
     setDraggedIndex(null);
+    // Keep ref true for a safety window to block subsequent clicks
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 500);
   };
 
   return (
@@ -111,9 +124,6 @@ export const PDFViewer = ({
         ref={containerRef}
         className="relative border border-border rounded-lg overflow-hidden cursor-crosshair"
         onClick={handlePageClick}
-        onMouseMove={handleDrag}
-        onMouseUp={handleDragEnd}
-        onMouseLeave={handleDragEnd}
       >
         <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
           <Page
@@ -158,6 +168,18 @@ export const PDFViewer = ({
             </div>
           )
         ))}
+
+        {/* Global Drag Overlay */}
+        {draggedIndex !== null && (
+          <div
+            className="fixed inset-0 z-[100] cursor-grabbing"
+            style={{ touchAction: 'none' }}
+            onMouseMove={handleDrag}
+            onMouseUp={handleDragEnd}
+            onClick={(e) => e.stopPropagation()}
+            onMouseLeave={handleDragEnd}
+          />
+        )}
       </div>
 
       {signatureImage && (!signaturePositions || signaturePositions.length === 0) && (
