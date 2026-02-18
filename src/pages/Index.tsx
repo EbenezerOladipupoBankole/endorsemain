@@ -15,6 +15,7 @@ interface SignaturePosition {
   x: number;
   y: number;
   page: number;
+  width: number;
 }
 
 // Helper to convert Word to PDF via Cloud Function
@@ -91,8 +92,8 @@ const Index = () => {
     toast.success("Signature created!");
   };
 
-  const handleSignaturePlace = (position: SignaturePosition) => {
-    setSignaturePositions(prev => [...prev, position]);
+  const handleSignaturePlace = (position: Omit<SignaturePosition, 'width'>) => {
+    setSignaturePositions(prev => [...prev, { ...position, width: 20 }]);
   };
 
   const handleSignatureMove = (position: SignaturePosition, index: number) => {
@@ -137,7 +138,7 @@ const Index = () => {
     setSignaturePositions([]);
   };
 
-  const handleModalSave = (signatureData: string) => {
+  const handleModalSave = (signatureData: string, signatureType: "draw" | "type" | "upload") => {
     setSignatureImage(signatureData);
     setSignaturePositions([]);
     setShowSignatureModal(false);

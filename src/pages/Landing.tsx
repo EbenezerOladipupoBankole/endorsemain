@@ -20,34 +20,25 @@ const tiers = [
     name: 'Free',
     price: 'Free',
     frequency: '',
-    features: ['5 documents/month', 'Basic signatures'],
+    features: ['Unlimited documents', 'Basic signatures'],
     color: 'text-green-600',
     buttonColor: 'bg-green-600 hover:bg-green-700 focus-visible:outline-green-600',
     badgeColor: 'bg-green-100 text-green-600',
   },
   {
-    name: 'Starter',
-    price: '$4.99',
-    frequency: '/month',
-    features: ['20 documents', 'Audit trail', 'Email notifications'],
-    color: 'text-blue-600',
-    buttonColor: 'bg-blue-600 hover:bg-blue-700 focus-visible:outline-blue-600',
-    badgeColor: 'bg-blue-100 text-blue-600',
-  },
-  {
     name: 'Pro',
-    price: '$9.99',
+    price: '$15',
     frequency: '/month',
-    features: ['50 documents', 'Custom branding', 'Priority support'],
+    features: ['Unlimited documents', 'Invite signers', 'Audit trails'],
     color: 'text-purple-600',
     buttonColor: 'bg-purple-600 hover:bg-purple-700 focus-visible:outline-purple-600',
     badgeColor: 'bg-purple-100 text-purple-600',
   },
   {
     name: 'Business',
-    price: '$25',
+    price: '$49',
     frequency: '/month',
-    features: ['Unlimited documents', 'Teams', 'Admin control'],
+    features: ['Everything in Pro', 'Team management', 'Custom branding'],
     color: 'text-orange-600',
     buttonColor: 'bg-orange-600 hover:bg-orange-700 focus-visible:outline-orange-600',
     badgeColor: 'bg-orange-100 text-orange-600',
@@ -95,7 +86,7 @@ const Landing = () => {
   const getBotResponse = (text: string) => {
     const lower = text.toLowerCase();
     if (lower.includes("price") || lower.includes("cost") || lower.includes("plan") || lower.includes("free")) {
-      return "We offer a Free plan (5 docs/mo), Starter ($4.99/mo), and Pro ($9.99/mo). Check out our Pricing section below for more details!";
+      return "We offer a Free plan (3 docs/mo), a Pro plan ($15/mo), and a Business plan ($49/mo). You can see all the details in our Pricing section!";
     }
     if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
       return "Hi there! Ready to sign some documents? 📄 How can I help you today?";
@@ -731,7 +722,7 @@ const Landing = () => {
               Choose the right plan for you
             </p>
           </div>
-          <div className="isolate mx-auto mt-10 grid max-w-md grid-cols-1 gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-4">
+          <div className="isolate mx-auto mt-10 grid max-w-md grid-cols-1 gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3">
             {tiers.map((tier) => (
               <div
                 key={tier.name}

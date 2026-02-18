@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { PDFViewer } from '@/components/esign/PDFViewer';
 import SignatureModal from '@/components/SignatureModal';
-import { Loader2, CheckCircle2, AlertCircle, PenTool } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, PenTool, Trash2 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 
 interface SignaturePosition {
   x: number;
   y: number;
   page: number;
+  width: number;
 }
 
 const SignDocument = () => {
@@ -75,14 +76,14 @@ const SignDocument = () => {
     fetchDocument();
   }, [id, navigate]);
 
-  const handleModalSave = (signatureData: string) => {
+  const handleModalSave = (signatureData: string, signatureType: "draw" | "type" | "upload") => {
     setSignature(signatureData);
     setShowSignatureModal(false);
     toast.success('Signature created! Click on the document to place it.');
   };
 
-  const handleSignaturePlace = (position: SignaturePosition) => {
-    setSignaturePositions(prev => [...prev, position]);
+  const handleSignaturePlace = (position: Omit<SignaturePosition, 'width'>) => {
+    setSignaturePositions(prev => [...prev, { ...position, width: 20 }]); // Default width 20%
     toast.success('Signature placed!');
   };
 
@@ -141,7 +142,24 @@ const SignDocument = () => {
         <div className="max-w-5xl mx-auto bg-card rounded-xl shadow-sm border border-border overflow-hidden">
           <div className="p-4 border-b border-border bg-muted/20 flex justify-between items-center">
             <h2 className="font-semibold flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> {documentData?.name}</h2>
-            {!signature && <Button size="sm" variant="outline" onClick={() => setShowSignatureModal(true)}>Create Signature</Button>}
+            {signature ? (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  setSignature(null);
+                  setSignaturePositions([]);
+                  toast.info("Signature removed");
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Remove Signature
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setShowSignatureModal(true)}>
+                Create Signature
+              </Button>
+            )}
           </div>
           <div className="p-6 bg-muted/10 min-h-[600px] flex justify-center">
             {pdfFile && <PDFViewer
@@ -153,13 +171,22 @@ const SignDocument = () => {
                 setSignaturePositions(prev => {
                   const newPositions = [...prev];
                   if (index >= 0 && index < newPositions.length) {
-                    newPositions[index] = pos;
+                    newPositions[index] = pos; // This now handles move and resize
                   }
                   return newPositions;
                 });
               }}
               onSignatureDelete={(index) => {
-                setSignaturePositions(prev => prev.filter((_, i) => i !== index));
+                setSignaturePositions(prev => {
+                  const newPositions = prev.filter((_, i) => i !== index);
+                  if (newPositions.length === 0) {
+                    setTimeout(() => {
+                      setSignature(null);
+                      toast.info("Signature removed");
+                    }, 0);
+                  }
+                  return newPositions;
+                });
               }} />}
           </div>
         </div>

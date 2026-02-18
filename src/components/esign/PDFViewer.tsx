@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
@@ -11,13 +11,14 @@ interface SignaturePosition {
   x: number;
   y: number;
   page: number;
+  width: number;
 }
 
 interface PDFViewerProps {
   file: File;
   signatureImage: string | null;
   signaturePositions: SignaturePosition[];
-  onSignaturePlace: (position: SignaturePosition) => void;
+  onSignaturePlace: (position: Omit<SignaturePosition, 'width'>) => void;
   onSignatureMove: (position: SignaturePosition, index: number) => void;
   onSignatureDelete?: (index: number) => void;
 }
@@ -33,6 +34,7 @@ export const PDFViewer = ({
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [resizingState, setResizingState] = useState<{ index: number; initialX: number; initialWidth: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastDragEndTime = useRef<number>(0);
   const isDraggingRef = useRef(false);
@@ -82,7 +84,8 @@ export const PDFViewer = ({
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
 
-    onSignatureMove({ x, y, page: signaturePositions[draggedIndex].page }, draggedIndex);
+    const newPosition = { ...signaturePositions[draggedIndex], x, y };
+    onSignatureMove(newPosition, draggedIndex);
   };
 
   const handleDragEnd = () => {
@@ -94,6 +97,39 @@ export const PDFViewer = ({
     setTimeout(() => {
       isDraggingRef.current = false;
     }, 500);
+  };
+
+  const handleResizeStart = (e: React.MouseEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!containerRef.current) return;
+
+    setResizingState({
+      index,
+      initialX: e.clientX,
+      initialWidth: (signaturePositions[index].width / 100) * containerRef.current.offsetWidth,
+    });
+  };
+
+  const handleResize = (e: React.MouseEvent) => {
+    if (!resizingState || !containerRef.current) return;
+
+    const dx = e.clientX - resizingState.initialX;
+    const newWidthPx = resizingState.initialWidth + dx;
+    const containerWidth = containerRef.current.offsetWidth;
+
+    let newWidthPercent = (newWidthPx / containerWidth) * 100;
+
+    // Constraints
+    newWidthPercent = Math.max(10, Math.min(80, newWidthPercent));
+
+    const { index } = resizingState;
+    const newPosition = { ...signaturePositions[index], width: newWidthPercent };
+    onSignatureMove(newPosition, index);
+  };
+
+  const handleResizeEnd = () => {
+    setResizingState(null);
   };
 
   return (
@@ -143,6 +179,7 @@ export const PDFViewer = ({
                 left: `${pos.x}%`,
                 top: `${pos.y}%`,
                 transform: "translate(-50%, -50%)",
+                width: `${pos.width}%`,
               }}
               onMouseDown={(e) => handleDragStart(e, index)}
               onClick={(e) => e.stopPropagation()}
@@ -150,34 +187,49 @@ export const PDFViewer = ({
               <img
                 src={signatureImage}
                 alt="Signature"
-                className="max-w-[200px] max-h-[80px] pointer-events-none"
+                className="w-full h-auto pointer-events-none"
                 draggable={false}
               />
               {onSignatureDelete && (
                 <button
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  className="absolute -top-2.5 -right-2.5 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md hover:bg-red-600 transition-colors z-10"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSignatureDelete(index);
                   }}
+                  onMouseDown={(e) => e.stopPropagation()}
                   title="Remove signature"
                 >
-                  <span className="text-xs font-bold leading-none">&times;</span>
+                  <X className="w-3 h-3" />
                 </button>
               )}
+              {/* Resize Handle */}
+              <div
+                className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white cursor-se-resize z-20"
+                onMouseDown={(e) => handleResizeStart(e, index)}
+              />
             </div>
           )
         ))}
 
-        {/* Global Drag Overlay */}
-        {draggedIndex !== null && (
+        {/* Global Drag/Resize Overlay */}
+        {(draggedIndex !== null || resizingState !== null) && (
           <div
-            className="fixed inset-0 z-[100] cursor-grabbing"
-            style={{ touchAction: 'none' }}
-            onMouseMove={handleDrag}
-            onMouseUp={handleDragEnd}
+            className="fixed inset-0 z-[100]"
+            style={{ cursor: resizingState !== null ? 'se-resize' : 'grabbing', touchAction: 'none' }}
+            onMouseMove={(e) => {
+              if (draggedIndex !== null) handleDrag(e);
+              if (resizingState !== null) handleResize(e);
+            }}
+            onMouseUp={() => {
+              if (draggedIndex !== null) handleDragEnd();
+              if (resizingState !== null) handleResizeEnd();
+            }}
             onClick={(e) => e.stopPropagation()}
-            onMouseLeave={handleDragEnd}
+            onMouseLeave={() => {
+              if (draggedIndex !== null) handleDragEnd();
+              if (resizingState !== null) handleResizeEnd();
+            }}
           />
         )}
       </div>

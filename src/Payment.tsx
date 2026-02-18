@@ -14,7 +14,7 @@ const PLANS = [
   {
     id: "pro",
     name: "Pro Plan",
-    price: "9.99",
+    price: "15",
     description: "Perfect for individuals and professionals",
     features: ["Unlimited documents", "Invite up to 5 signers", "Audit trails", "Priority support"],
     color: "from-blue-500 to-indigo-600",
@@ -23,7 +23,7 @@ const PLANS = [
   {
     id: "business",
     name: "Business Plan",
-    price: "24.99",
+    price: "49",
     description: "Advanced features for teams and companies",
     features: ["Everything in Pro", "Unlimited signers", "Team management", "Custom branding", "24/7 Support"],
     color: "from-purple-500 to-pink-600",
