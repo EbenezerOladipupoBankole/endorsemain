@@ -383,6 +383,16 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
     }
   };
 
+  const handleStartCrop = () => {
+    if (signatureRef.current && !signatureRef.current.isEmpty()) {
+      const dataUrl = signatureRef.current.toDataURL("image/png");
+      setUploadSource(dataUrl);
+      setIsCropping(true);
+    } else {
+      toast.error("Please draw a signature first");
+    }
+  };
+
   const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
   };
@@ -394,6 +404,9 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
         if (croppedImage) {
           setUploadedSignature(croppedImage);
           setIsCropping(false);
+          if (mode === "draw") {
+            setMode("upload");
+          }
         }
       } catch (e) {
         console.error(e);
@@ -577,38 +590,97 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                 <Label className="mb-2 block text-sm">Your Signature</Label>
                 {mode === "draw" ? (
                   <div className="relative border-2 border-dashed border-border rounded-lg overflow-hidden bg-white">
-                    <SignatureCanvas
-                      ref={signatureRef}
-                      canvasProps={{
-                        className: `w-full h-40 ${isErasing ? "cursor-cell" : "cursor-crosshair"}`,
-                        style: { width: "100%", height: "160px" }
-                      }}
-                      backgroundColor="transparent"
-                      penColor="#000000"
-                    />
+                    <div style={{ display: isCropping ? 'none' : 'block' }}>
+                      <SignatureCanvas
+                        ref={signatureRef}
+                        canvasProps={{
+                          className: `w-full h-40 ${isErasing ? "cursor-cell" : "cursor-crosshair"}`,
+                          style: { width: "100%", height: "160px" }
+                        }}
+                        backgroundColor="transparent"
+                        penColor="#000000"
+                      />
 
-                    {/* Floating Tools */}
-                    <div className="absolute bottom-2 right-2 flex gap-1">
-                      <Button
-                        variant={isErasing ? "secondary" : "ghost"}
-                        size="sm"
-                        className={`h-8 px-2 backdrop-blur-sm ${isErasing ? "bg-white/80 text-primary shadow-sm" : "bg-white/40 text-muted-foreground hover:bg-white/60"}`}
-                        onClick={() => setIsErasing(!isErasing)}
-                        title={isErasing ? "Switch to Pen" : "Eraser"}
-                      >
-                        <Eraser className="w-4 h-4" />
-                        {isErasing && <span className="ml-1.5 text-xs">Erasing</span>}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 bg-white/40 text-muted-foreground hover:bg-white/60 backdrop-blur-sm"
-                        onClick={clearSignature}
-                        title="Clear Signature"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </Button>
+                      {/* Floating Tools */}
+                      <div className="absolute bottom-2 right-2 flex gap-1">
+                        <Button
+                          variant={isErasing ? "secondary" : "ghost"}
+                          size="sm"
+                          className={`h-8 px-2 backdrop-blur-sm ${isErasing ? "bg-white/80 text-primary shadow-sm" : "bg-white/40 text-muted-foreground hover:bg-white/60"}`}
+                          onClick={() => setIsErasing(!isErasing)}
+                          title={isErasing ? "Switch to Pen" : "Eraser"}
+                        >
+                          <Eraser className="w-4 h-4" />
+                          {isErasing && <span className="ml-1.5 text-xs">Erasing</span>}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 bg-white/40 text-muted-foreground hover:bg-white/60 backdrop-blur-sm"
+                          onClick={handleStartCrop}
+                          title="Crop Signature"
+                        >
+                          <CropIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 bg-white/40 text-muted-foreground hover:bg-white/60 backdrop-blur-sm"
+                          onClick={clearSignature}
+                          title="Clear Signature"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
+
+                    {isCropping && uploadSource && (
+                      <div className="w-full h-64 relative bg-black/5">
+                        <div className="absolute inset-0 bottom-12">
+                          <Cropper
+                            image={uploadSource}
+                            crop={crop}
+                            zoom={zoom}
+                            aspect={3 / 1}
+                            onCropChange={setCrop}
+                            onCropComplete={onCropComplete}
+                            onZoomChange={setZoom}
+                          />
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-background/90 backdrop-blur flex items-center px-4 gap-4 border-t border-border">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 mr-auto flex items-center justify-center"
+                            onClick={() => {
+                              setIsCropping(false);
+                              setUploadSource(null);
+                              setUploadedSignature(null);
+                              setTimeout(() => {
+                                signatureRef.current?.clear();
+                              }, 0);
+                            }}
+                            title="Delete Signature"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                          <span className="text-xs font-medium text-muted-foreground w-12">Zoom</span>
+                          <input
+                            type="range"
+                            value={zoom}
+                            min={1}
+                            max={3}
+                            step={0.1}
+                            aria-labelledby="Zoom"
+                            onChange={(e) => setZoom(Number(e.target.value))}
+                            className="flex-1 h-1 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                          />
+                          <Button size="sm" className="h-7 w-7 p-0 rounded-full" onClick={handleCropConfirm}>
+                            <Check className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : mode === "type" ? (
                   <div className="border-2 border-dashed border-border rounded-lg p-5 bg-white">
@@ -693,6 +765,19 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                           />
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 h-12 bg-background/90 backdrop-blur flex items-center px-4 gap-4 border-t border-border">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 mr-auto flex items-center justify-center"
+                            onClick={() => {
+                              setIsCropping(false);
+                              setUploadSource(null);
+                              setUploadedSignature(null);
+                            }}
+                            title="Delete Signature"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                           <span className="text-xs font-medium text-muted-foreground w-12">Zoom</span>
                           <input
                             type="range"
@@ -711,6 +796,18 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                       </div>
                     ) : uploadedSignature ? (
                       <div className="relative w-full flex flex-col items-center justify-center p-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm"
+                          onClick={() => {
+                            setUploadedSignature(null);
+                            setUploadSource(null);
+                          }}
+                          title="Delete Signature"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
                         <img src={uploadedSignature} alt="Uploaded signature" className="max-h-32 object-contain mb-4" />
                         <Button variant="outline" size="sm" onClick={() => setIsCropping(true)}>
                           <CropIcon className="w-3.5 h-3.5 mr-1.5" />
