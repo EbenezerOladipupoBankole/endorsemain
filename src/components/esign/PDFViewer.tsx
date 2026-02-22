@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
@@ -60,8 +61,23 @@ export const PDFViewer = ({
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    // Ignore clicks outside reasonable bounds (optional but good)
-    if (x < 0 || x > 100 || y < 0 || y > 100) return;
+    // Prevent placement if too close to an existing signature (avoid accidental double-placement/clustering)
+    const tooClose = signaturePositions?.some(pos =>
+      pos.page === currentPage &&
+      Math.abs(pos.x - x) < 5 && // 5% distance threshold
+      Math.abs(pos.y - y) < 5
+    );
+
+    if (tooClose) {
+      toast.info("Signature is already placed near this spot.");
+      return;
+    }
+
+    // Prevent placement if a signature is already placed (single placement mode)
+    if (signaturePositions && signaturePositions.length > 0) {
+      toast.info("Signature already placed. Move it or delete it to place again.");
+      return;
+    }
 
     onSignaturePlace({ x, y, page: currentPage });
   };
@@ -99,22 +115,25 @@ export const PDFViewer = ({
     }, 500);
   };
 
-  const handleResizeStart = (e: React.MouseEvent, index: number) => {
+  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent, index: number) => {
     e.preventDefault();
     e.stopPropagation();
     if (!containerRef.current) return;
 
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+
     setResizingState({
       index,
-      initialX: e.clientX,
+      initialX: clientX,
       initialWidth: (signaturePositions[index].width / 100) * containerRef.current.offsetWidth,
     });
   };
 
-  const handleResize = (e: React.MouseEvent) => {
+  const handleResize = (e: React.MouseEvent | React.TouchEvent) => {
     if (!resizingState || !containerRef.current) return;
 
-    const dx = e.clientX - resizingState.initialX;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const dx = clientX - resizingState.initialX;
     const newWidthPx = resizingState.initialWidth + dx;
     const containerWidth = containerRef.current.offsetWidth;
 
@@ -130,6 +149,29 @@ export const PDFViewer = ({
 
   const handleResizeEnd = () => {
     setResizingState(null);
+  };
+
+  // Touch event wrappers
+  const handleTouchStart = (e: React.TouchEvent, index: number) => {
+    isDraggingRef.current = true;
+    setDraggedIndex(index);
+    // Don't preventDefault here as it might block scrolling if not moved
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (draggedIndex === null) return;
+    e.preventDefault(); // Prevent scrolling while dragging
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const touch = e.touches[0];
+    const rect = container.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((touch.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((touch.clientY - rect.top) / rect.height) * 100));
+
+    const newPosition = { ...signaturePositions[draggedIndex], x, y };
+    onSignatureMove(newPosition, draggedIndex);
   };
 
   return (
@@ -158,13 +200,13 @@ export const PDFViewer = ({
 
       <div
         ref={containerRef}
-        className="relative border border-border rounded-lg overflow-hidden cursor-crosshair"
+        className="relative border border-border rounded-lg overflow-hidden cursor-crosshair max-w-full"
         onClick={handlePageClick}
       >
         <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
           <Page
             pageNumber={currentPage}
-            width={600}
+            width={Math.min(600, window.innerWidth - 32)}
             renderTextLayer={true}
             renderAnnotationLayer={true}
           />
@@ -182,6 +224,7 @@ export const PDFViewer = ({
                 width: `${pos.width}%`,
               }}
               onMouseDown={(e) => handleDragStart(e, index)}
+              onTouchStart={(e) => handleTouchStart(e, index)}
               onClick={(e) => e.stopPropagation()}
             >
               <img
@@ -192,21 +235,24 @@ export const PDFViewer = ({
               />
               {onSignatureDelete && (
                 <button
-                  className="absolute -top-2.5 -right-2.5 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md hover:bg-red-600 transition-colors z-10"
+                  className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-md hover:bg-red-600 transition-colors z-10"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSignatureDelete(index);
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
                   title="Remove signature"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
               {/* Resize Handle */}
               <div
-                className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white cursor-se-resize z-20"
+                className="absolute -bottom-3 -right-3 w-6 h-6 bg-blue-500 rounded-full border-2 border-white cursor-se-resize z-20 flex items-center justify-center shadow-sm"
                 onMouseDown={(e) => handleResizeStart(e, index)}
+                onTouchStart={(e) => handleResizeStart(e, index)}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
           )
@@ -222,6 +268,14 @@ export const PDFViewer = ({
               if (resizingState !== null) handleResize(e);
             }}
             onMouseUp={() => {
+              if (draggedIndex !== null) handleDragEnd();
+              if (resizingState !== null) handleResizeEnd();
+            }}
+            onTouchMove={(e) => {
+              if (draggedIndex !== null) handleTouchMove(e);
+              if (resizingState !== null) handleResize(e);
+            }}
+            onTouchEnd={() => {
               if (draggedIndex !== null) handleDragEnd();
               if (resizingState !== null) handleResizeEnd();
             }}

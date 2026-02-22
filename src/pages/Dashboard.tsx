@@ -367,9 +367,10 @@ const Dashboard = () => {
 
       if (signedPdfBytes) {
         setPdfFile(currentFile);
-        setSignature(null);
+        // We keep the signature state so the user can easily "Add Another" 
+        // as the button name implies.
         setSignaturePositions([]);
-        toast.success('Signatures applied. You can now add another signature.');
+        toast.success('Signatures applied. You can now place your signature again.');
       }
     } catch (error) {
       console.error('Error applying signature:', error);
