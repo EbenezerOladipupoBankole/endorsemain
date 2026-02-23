@@ -1,4 +1,4 @@
-# Endorse App
+,# Endorse App
 
 A document signing and endorsement application built with React, Vite, Firebase, and Tailwind CSS.
 
