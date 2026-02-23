@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
-import { 
-  Upload, FileType, ArrowRight, Download, Loader2, 
-  FileText, Image as ImageIcon, CheckCircle2, X, 
+import {
+  Upload, FileType, ArrowRight, Download, Loader2,
+  FileText, Image as ImageIcon, CheckCircle2, X,
   ArrowLeft, FileImage, Zap, LayoutGrid, Sparkles, Lock
 } from "lucide-react";
 import { toast } from "sonner";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/components/client";
+import { useAuth } from "@/components/AuthContext";
 
 const tools = [
   {
@@ -58,11 +61,13 @@ const tools = [
 ];
 
 const FileConversion = () => {
+  const { user } = useAuth();
   const [selectedTool, setSelectedTool] = useState<typeof tools[0] | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [convertedBlob, setConvertedBlob] = useState<Blob | null>(null);
 
   const handleToolSelect = (tool: typeof tools[0]) => {
     setSelectedTool(tool);
@@ -98,7 +103,7 @@ const FileConversion = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       // In a production app, you might want to validate file type here
       setFile(e.dataTransfer.files[0]);
@@ -113,23 +118,73 @@ const FileConversion = () => {
     }
 
     setIsConverting(true);
-
-    // SIMULATION: In a real app, you would upload 'file' to Firebase Storage,
-    // then trigger a Cloud Function or call a conversion API here.
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Fake delay
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+      });
+
+      const convertDocument = httpsCallable(functions, 'convertDocument');
+      const result = await convertDocument({
+        file: base64,
+        filename: file.name,
+        mimeType: file.type,
+        targetFormat: selectedTool.targetFormat
+      });
+
+      const data = result.data as { pdfBase64?: string; fileBase64?: string };
+      const outputBase64 = data.pdfBase64 || data.fileBase64;
+
+      if (!outputBase64) {
+        throw new Error("No data returned from conversion service");
+      }
+
+      const byteCharacters = atob(outputBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+
+      let mimeType = "application/pdf";
+      if (selectedTool.targetFormat === "docx") mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      if (selectedTool.targetFormat === "jpg") mimeType = "image/jpeg";
+
+      const blob = new Blob([byteArray], { type: mimeType });
+      setConvertedBlob(blob);
       setIsSuccess(true);
       toast.success(`Successfully converted to ${selectedTool.targetFormat.toUpperCase()}`);
     } catch (error) {
+      console.error("Conversion error:", error);
       toast.error("Conversion failed. Please try again.");
     } finally {
       setIsConverting(false);
     }
   };
 
+  const handleDownload = () => {
+    if (!convertedBlob || !selectedTool || !file) return;
+
+    const url = URL.createObjectURL(convertedBlob);
+    const link = document.createElement('a');
+    link.href = url;
+
+    const newFileName = file.name.substring(0, file.name.lastIndexOf('.')) + '.' + selectedTool.targetFormat;
+    link.download = newFileName;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Download started!");
+  };
+
   const handleReset = () => {
     setFile(null);
     setIsSuccess(false);
+    setConvertedBlob(null);
     setIsDragging(false);
   };
 
@@ -142,12 +197,20 @@ const FileConversion = () => {
             <Logo className="h-8 w-auto" />
           </Link>
           <div className="flex items-center gap-4">
-            <Link to="/dashboard">
-              <Button variant="ghost">Dashboard</Button>
-            </Link>
-            <Link to="/auth">
-              <Button>Sign In</Button>
-            </Link>
+            {user ? (
+              <Link to="/dashboard">
+                <Button variant="ghost">Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link to="/auth?mode=signup">
+                  <Button>Get Started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -240,12 +303,11 @@ const FileConversion = () => {
               <div className={`absolute inset-0 ${selectedTool.bgColor} opacity-5 pointer-events-none`} />
               <CardContent className="p-8 md:p-16 flex flex-col items-center justify-center gap-8 min-h-[400px]">
                 {!file ? (
-                  <div 
-                    className={`w-full flex flex-col items-center justify-center p-10 rounded-3xl transition-all duration-300 border-2 border-dashed ${
-                      isDragging 
-                        ? "border-primary bg-primary/5 scale-[1.02]" 
-                        : "border-transparent"
-                    }`}
+                  <div
+                    className={`w-full flex flex-col items-center justify-center p-10 rounded-3xl transition-all duration-300 border-2 border-dashed ${isDragging
+                      ? "border-primary bg-primary/5 scale-[1.02]"
+                      : "border-transparent"
+                      }`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
@@ -262,10 +324,10 @@ const FileConversion = () => {
                           Supported files: <span className="font-mono bg-secondary px-1 rounded">{selectedTool.accept.replace(/,/g, ', ')}</span>
                         </p>
                       </div>
-                      <input 
-                        id="file-upload" 
-                        type="file" 
-                        className="hidden" 
+                      <input
+                        id="file-upload"
+                        type="file"
+                        className="hidden"
                         onChange={handleFileChange}
                         accept={selectedTool.accept}
                       />
@@ -289,10 +351,10 @@ const FileConversion = () => {
                     </div>
 
                     {!isSuccess ? (
-                      <Button 
-                        size="lg" 
-                        className="w-full h-14 text-lg bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 shadow-lg shadow-orange-500/10" 
-                        onClick={handleConvert} 
+                      <Button
+                        size="lg"
+                        className="w-full h-14 text-lg bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 shadow-lg shadow-orange-500/10"
+                        onClick={handleConvert}
                         disabled={isConverting}
                       >
                         {isConverting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <ArrowRight className="w-5 h-5 mr-2" />}
@@ -303,7 +365,7 @@ const FileConversion = () => {
                         <div className="flex items-center gap-2 text-green-600 justify-center font-medium p-4 bg-green-50 rounded-xl border border-green-100">
                           <CheckCircle2 className="w-5 h-5" /> Conversion Complete
                         </div>
-                        <Button className="w-full h-14 text-lg font-semibold" size="lg">
+                        <Button className="w-full h-14 text-lg font-semibold" size="lg" onClick={handleDownload}>
                           <Download className="w-4 h-4 mr-2" /> Download {selectedTool.targetFormat.toUpperCase()}
                         </Button>
                         <Button variant="ghost" onClick={handleReset}>Convert Another File</Button>

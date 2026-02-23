@@ -39,7 +39,8 @@ import {
   Bell,
   HelpCircle,
   MessageCircle,
-  Code
+  Code,
+  FileType
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -664,6 +665,12 @@ const Dashboard = () => {
                   Dashboard
                 </Link>
               </Button>
+              <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                <Link to="/conversion">
+                  <FileType className="mr-2 h-4 w-4" />
+                  File Converter
+                </Link>
+              </Button>
             </div>
             <div className="mt-auto pt-8">
               <Card>
@@ -707,6 +714,12 @@ const Dashboard = () => {
                 <Link to="/dashboard">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Dashboard
+                </Link>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start" asChild>
+                <Link to="/conversion">
+                  <FileType className="mr-2 h-4 w-4" />
+                  File Converter
                 </Link>
               </Button>
             </div>
