@@ -5,6 +5,9 @@ import * as crypto from "crypto";
 import { defineSecret } from "firebase-functions/params";
 import axios from "axios";
 import { Stripe } from "stripe";
+const mammoth = require("mammoth");
+const { Document, Packer, Paragraph, TextRun } = require("docx");
+const pdfParse = require("pdf-parse");
 
 // Initialize Admin SDK
 if (admin.apps.length === 0) {
@@ -228,77 +231,165 @@ export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
   }
 });
 
-// Function to convert Word document to PDF
-export const convertDocument = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "User must be logged in.");
-  }
+// Function to convert documents between formats
+export const convertDocument = onCall({
+  memory: "1GiB",
+  timeoutSeconds: 300,
+}, async (request) => {
+  const { file, filename, mimeType, targetFormat } = request.data as {
+    file: string;
+    filename: string;
+    mimeType: string;
+    targetFormat: string;
+  };
 
-  const { file, filename } = request.data as { file: string; filename: string; mimeType: string };
   if (!file || !filename) {
     throw new HttpsError("invalid-argument", "Missing file or filename.");
   }
 
+  console.log(`Starting conversion for file: ${filename}, from: ${mimeType}, to: ${targetFormat}`);
+
   try {
-    const mammoth = await import("mammoth");
-    const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
-
-    // Word documents (DOCX) are based on XML. Mammoth extracts the text.
     const buffer = Buffer.from(file, "base64");
+    console.log(`Buffer size: ${buffer.length} bytes`);
 
-    // Convert DOCX to HTML/Text using Mammoth
-    const result = await mammoth.extractRawText({ buffer });
-    const text = result.value;
+    // --- MODE 1: IMAGE TO PDF ---
+    if (mimeType.startsWith("image/") || (filename.match(/\.(jpg|jpeg|png)$/i) && targetFormat === "pdf")) {
+      console.log("Mode: Image to PDF");
+      const { PDFDocument } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage();
+      const { width, height } = page.getSize();
 
-    // Create a new PDF document from the text
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-    // Basic text wrapping logic for PDF
-    const lines = text.split("\n");
-    let page = pdfDoc.addPage();
-    const { width, height } = page.getSize();
-    const fontSize = 12;
-    const margin = 50;
-    let y = height - margin;
-
-    for (const line of lines) {
-      if (y < margin + fontSize) {
-        page = pdfDoc.addPage();
-        y = height - margin;
+      let image;
+      if (mimeType === "image/png" || filename.toLowerCase().endsWith(".png")) {
+        image = await pdfDoc.embedPng(buffer);
+      } else {
+        image = await pdfDoc.embedJpg(buffer);
       }
 
-      // Handle long lines by splitting them
-      const words = line.split(" ");
-      let currentLine = "";
+      const dims = image.scaleToFit(width - 100, height - 100);
+      page.drawImage(image, {
+        x: (width - dims.width) / 2,
+        y: (height - dims.height) / 2,
+        width: dims.width,
+        height: dims.height,
+      });
 
-      for (const word of words) {
-        const testLine = currentLine + word + " ";
-        const textWidth = font.widthOfTextAtSize(testLine, fontSize);
+      const pdfBase64 = await pdfDoc.saveAsBase64();
+      return { pdfBase64 };
+    }
 
-        if (textWidth > width - (margin * 2)) {
-          page.drawText(currentLine, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-          y -= fontSize * 1.5;
-          currentLine = word + " ";
+    // --- MODE 2: WORD TO PDF ---
+    if (filename.match(/\.(doc|docx)$/i) || mimeType.includes("word")) {
+      console.log("Mode: Word to PDF");
+      const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+      const mammothLib = (mammoth as any).default || mammoth;
+      const result = await mammothLib.extractRawText({ buffer });
+      const text = result.value;
 
-          if (y < margin + fontSize) {
-            page = pdfDoc.addPage();
-            y = height - margin;
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const lines = text.split("\n");
+      let page = pdfDoc.addPage();
+      const { width, height } = page.getSize();
+      const fontSize = 12;
+      const margin = 50;
+      let y = height - margin;
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine && line !== "") continue;
+
+        if (y < margin + fontSize) {
+          page = pdfDoc.addPage();
+          y = height - margin;
+        }
+
+        const words = trimmedLine.split(/\s+/);
+        let currentLine = "";
+
+        for (const word of words) {
+          const testLine = currentLine + word + " ";
+          const textWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+          if (textWidth > width - (margin * 2)) {
+            if (currentLine) {
+              page.drawText(currentLine.trim(), { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+              y -= fontSize * 1.5;
+            }
+            currentLine = word + " ";
+            if (y < margin + fontSize) {
+              page = pdfDoc.addPage();
+              y = height - margin;
+            }
+          } else {
+            currentLine = testLine;
           }
-        } else {
-          currentLine = testLine;
+        }
+        if (currentLine.trim()) {
+          page.drawText(currentLine.trim(), { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+          y -= fontSize * 1.5;
         }
       }
 
-      page.drawText(currentLine, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-      y -= fontSize * 1.5;
+      const pdfBase64 = await pdfDoc.saveAsBase64();
+      return { pdfBase64 };
     }
 
-    const pdfBase64 = await pdfDoc.saveAsBase64();
-    return { pdfBase64 };
+    // --- MODE 3: PDF TO WORD ---
+    if (targetFormat === "docx" && (mimeType === "application/pdf" || filename.toLowerCase().endsWith(".pdf"))) {
+      console.log("Mode: PDF to Word");
+      const data = await pdfParse(buffer);
+      const text = data.text || "";
+      console.log(`Extracted text length: ${text.length} chars`);
+
+      // Clean text to remove control characters that might break XML in docx
+      const cleanedText = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: cleanedText.split("\n").map((line: string) => {
+            const l = line.trim();
+            if (!l) return new Paragraph({ children: [] });
+            return new Paragraph({
+              children: [new TextRun(l)],
+            });
+          }),
+        }],
+      });
+
+      console.log("Packing docx document...");
+      const docBuffer = await Packer.toBuffer(doc);
+      console.log(`Docx packed, size: ${docBuffer.length} bytes`);
+      return { fileBase64: docBuffer.toString("base64") };
+    }
+
+    // --- MODE 4: PDF TO IMAGE ---
+    if (targetFormat === "jpg" && (mimeType === "application/pdf" || filename.toLowerCase().endsWith(".pdf"))) {
+      console.log("Mode: PDF to Image - Currently Disabled for Maintenance");
+      throw new HttpsError("unimplemented", "PDF to Image is currently under maintenance. Please try Word or Image conversion.");
+      /*
+      // @ts-ignore
+      const pdfImgConvert = require("pdf-img-convert");
+      const images = await pdfImgConvert.convert(buffer, {
+        width: 1200,
+        page_numbers: [1]
+      });
+      const imageBuffer = Buffer.from(images[0]);
+      return { fileBase64: imageBuffer.toString("base64") };
+      */
+    }
+
+    // --- UNSUPPORTED MODES ---
+    throw new HttpsError(
+      "unimplemented",
+      `Conversion from ${mimeType} to ${targetFormat} is not yet supported.`
+    );
 
   } catch (error: any) {
-    console.error("Conversion Error:", error);
+    console.error("Conversion Error Exception:", error);
     throw new HttpsError("internal", error.message || "Failed to convert document.");
   }
 });
