@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
-      
+
       if (user) {
         try {
           const docRef = doc(db, "users", user.uid);
@@ -46,8 +46,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           } else {
             setUserProfile({ plan: 'free' });
           }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
+        } catch (error: any) {
+          if (error.code !== 'unavailable') {
+            console.error("Error fetching user profile:", error);
+          }
           setUserProfile({ plan: 'free' });
         }
       } else {

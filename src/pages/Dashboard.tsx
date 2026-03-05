@@ -13,11 +13,11 @@ import { SignerManager } from '@/components/esign/SignerManager';
 import type { Signer } from '@/components/esign/SignerManager';
 import SignatureModal from '@/components/SignatureModal';
 import { Logo } from '@/components/Logo';
-import { 
-  FileSignature, 
-  Download, 
-  RefreshCw, 
-  LogOut, 
+import {
+  FileSignature,
+  Download,
+  RefreshCw,
+  LogOut,
   Loader2,
   User,
   ChevronDown,
@@ -52,12 +52,6 @@ import {
 // Lazy load heavy components to reduce initial bundle size
 const PDFViewer = lazy(() => import('@/components/esign/PDFViewer').then(module => ({ default: module.PDFViewer })));
 
-interface SignaturePosition {
-  x: number;
-  y: number;
-  page: number;
-}
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -65,7 +59,8 @@ const Dashboard = () => {
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
-  const [signaturePositions, setSignaturePositions] = useState<SignaturePosition[]>([]);
+  const [isPlacingSignature, setIsPlacingSignature] = useState(false);
+  const [placedItems, setPlacedItems] = useState<any[]>([]);
   const [signers, setSigners] = useState<Signer[]>([]);
   const [recentDocs, setRecentDocs] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -104,14 +99,14 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchRecentDocs = async () => {
       if (!user?.email) return;
-      
+
       try {
         const q = query(
           collection(db, "documents"),
           where("ownerEmail", "==", user.email),
           orderBy("createdAt", "desc")
         );
-        
+
         const querySnapshot = await getDocs(q);
         const docs = querySnapshot.docs.map(doc => ({
           id: doc.id,
@@ -175,34 +170,36 @@ const Dashboard = () => {
   const handleFileSelect = (file: File) => {
     setPdfFile(file);
     setSignature(null);
-    setSignaturePositions([]);
+    setPlacedItems([]);
     setSigners([]);
   };
 
   const handleModalSave = (signatureData: string) => {
     setSignature(signatureData);
+    setIsPlacingSignature(true);
     setShowSignatureModal(false);
     toast.success('Signature created! Click on the document to place it.');
   };
 
-  const handleSignaturePlace = (position: SignaturePosition) => {
-    setSignaturePositions(prev => [...prev, position]);
-    toast.success('Signature placed!');
+  const handleItemPlace = (item: any) => {
+    const newItem = { ...item, id: Math.random().toString(36).substring(7) };
+    setPlacedItems(prev => [...prev, newItem]);
+    setIsPlacingSignature(false); // Only deselect the tool, don't clear signature data
+    toast.success('Item placed!');
   };
 
-  const handleSignatureMove = (position: SignaturePosition) => {
-    setSignaturePositions(prev => {
-      const newPositions = [...prev];
-      if (newPositions.length > 0) {
-        newPositions[newPositions.length - 1] = position;
-      }
-      return newPositions;
-    });
+  const handleItemUpdate = (id: string, updates: any) => {
+    setPlacedItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const handleItemDelete = (id: string) => {
+    setPlacedItems(prev => prev.filter(item => item.id !== id));
+    toast.success('Item removed');
   };
 
   const handleDownload = async () => {
-    if (!pdfFile || !signature || signaturePositions.length === 0) {
-      toast.error('Please upload a document and place at least one signature.');
+    if (!pdfFile || placedItems.length === 0) {
+      toast.error('Please upload a document and place at least one item.');
       return;
     }
 
@@ -218,20 +215,10 @@ const Dashboard = () => {
     setIsDownloading(true);
     try {
       // Dynamically import PDF utils only when the user clicks download
-      const { embedSignatureInPDF, downloadPDF } = await import('@/lib/pdfUtils');
-      
-      let currentFile = pdfFile;
-      let signedPdfBytes = null;
+      const { embedItemsInPDF, downloadPDF } = await import('@/lib/pdfUtils');
 
-      for (const position of signaturePositions) {
-        signedPdfBytes = await embedSignatureInPDF(
-          currentFile,
-          signature,
-          position
-        );
-        currentFile = new File([signedPdfBytes], pdfFile.name, { type: 'application/pdf' });
-      }
-      
+      const signedPdfBytes = await embedItemsInPDF(pdfFile, placedItems);
+
       if (signedPdfBytes) {
         downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
         toast.success('Signed document downloaded!');
@@ -253,7 +240,7 @@ const Dashboard = () => {
   const handleReset = () => {
     setPdfFile(null);
     setSignature(null);
-    setSignaturePositions([]);
+    setPlacedItems([]);
     setSigners([]);
   };
 
@@ -277,7 +264,7 @@ const Dashboard = () => {
     const promise = async () => {
       const functions = getFunctions();
       const sendInvites = httpsCallable(functions, 'sendSignerInvites');
-      
+
       await sendInvites({
         signers: signers,
         documentName: pdfFile.name,
@@ -393,7 +380,7 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between w-full">
                         <span className={`font-medium text-sm ${!notif.read ? 'text-foreground' : 'text-muted-foreground'}`}>{notif.title}</span>
                         <span className="text-[10px] text-muted-foreground">
-                          {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                          {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">{notif.message || notif.desc}</p>
@@ -403,7 +390,7 @@ const Dashboard = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {pdfFile && signature && signaturePosition && (
+            {pdfFile && placedItems.length > 0 && (
               <Button
                 onClick={handleDownload}
                 disabled={isDownloading}
@@ -486,8 +473,8 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="p-4 pt-2">
                   <p className="text-xs text-muted-foreground mb-3">
-                    {userProfile?.plan === 'free' || !userProfile?.plan 
-                      ? 'Upgrade to unlock unlimited documents.' 
+                    {userProfile?.plan === 'free' || !userProfile?.plan
+                      ? 'Upgrade to unlock unlimited documents.'
                       : 'Your plan is active.'}
                   </p>
                 </CardContent>
@@ -520,8 +507,8 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="p-4 pt-2">
                 <p className="text-xs text-muted-foreground mb-3">
-                  {userProfile?.plan === 'free' || !userProfile?.plan 
-                    ? 'Upgrade to unlock unlimited documents.' 
+                  {userProfile?.plan === 'free' || !userProfile?.plan
+                    ? 'Upgrade to unlock unlimited documents.'
                     : 'Your plan is active.'}
                 </p>
               </CardContent>
@@ -530,183 +517,197 @@ const Dashboard = () => {
         )}
 
         <main className="flex-1 min-w-0">
-        {!pdfFile ? (
-          <div className="max-w-5xl mx-auto space-y-8">
-            {/* Welcome & Actions */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-                <p className="text-gray-500">Manage your documents and signatures.</p>
-              </div>
-              <div className="flex gap-3">
-                 <Button variant="outline" className="bg-white">
-                   <Settings className="w-4 h-4 mr-2" /> Settings
-                 </Button>
-                 <label htmlFor="pdf-upload-hidden" className="cursor-pointer">
+          {!pdfFile ? (
+            <div className="max-w-5xl mx-auto space-y-8">
+              {/* Welcome & Actions */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+                  <p className="text-gray-500">Manage your documents and signatures.</p>
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="bg-white">
+                    <Settings className="w-4 h-4 mr-2" /> Settings
+                  </Button>
+                  <label htmlFor="pdf-upload-hidden" className="cursor-pointer">
                     <Button className="bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-medium pointer-events-none">
                       <PenTool className="w-4 h-4 mr-2" />
                       New Document
                     </Button>
-                 </label>
-              </div>
-            </div>
-
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Documents</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                  <p className="text-xs text-gray-500 mt-1">All documents</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Signed</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.signed}</div>
-                  <p className="text-xs text-gray-500 mt-1">Completed documents</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.pending}</div>
-                  <p className="text-xs text-orange-600 font-medium mt-1">Action required</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Upload Area */}
-            <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors shadow-none">
-              <CardContent className="pt-6">
-                 <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} />
-              </CardContent>
-            </Card>
-            
-            {/* Recent Documents Section */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-gray-500" />
-                  Recent Documents
-                </h2>
-                <Button variant="ghost" size="sm" className="text-primary h-8 text-xs">View All</Button>
-              </div>
-              
-              <div className="divide-y divide-gray-100">
-                {loadingDocs ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : recentDocs.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <FileText className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                    <p>No recent documents found</p>
-                  </div>
-                ) : (
-                  recentDocs.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
-                    <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                        <FileText className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-medium text-gray-900 truncate">{doc.name}</h3>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span>{doc.createdAt?.seconds ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown date'}</span>
-                          <span>•</span>
-                          <span>{doc.ownerEmail}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 md:gap-4 pl-2">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        doc.status === 'Signed' || doc.status === 'completed' ? 'bg-green-500/10 text-green-500' :
-                        doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-600' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {doc.status || 'Draft'}
-                      </span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 hover:bg-red-50"
-                        onClick={(e) => handleDeleteDoc(e, doc.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* PDF Viewer */}
-            <div className="lg:col-span-2">
-              <div className="gradient-card rounded-2xl border border-border/50 shadow-soft overflow-hidden">
-                <div className="p-4 border-b border-border/50 bg-muted/30">
-                  <h2 className="font-display font-semibold flex items-center gap-2">
-                    <FileSignature className="w-5 h-5 text-primary" />
-                    {pdfFile.name}
-                  </h2>
-                </div>
-                <div className="p-4">
-                  <Suspense fallback={
-                    <div className="h-[600px] flex items-center justify-center bg-muted/10 rounded-lg">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    </div>
-                  }>
-                    <PDFViewer
-                      file={pdfFile}
-                      signatureImage={signature}
-                      signaturePositions={signaturePositions}
-                      onSignaturePlace={handleSignaturePlace}
-                      onSignatureMove={handleSignatureMove}
-                    />
-                  </Suspense>
+                  </label>
                 </div>
               </div>
-            </div>
 
-            {/* Signature Pad */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-24">
-                <Card className="border-border/60 shadow-sm">
-                  <CardContent className="p-6 space-y-6">
-                    <h3 className="font-semibold flex items-center gap-2"><PenTool className="w-4 h-4" /> Signature Tools</h3>
-                  <Button onClick={() => setShowSignatureModal(true)} className="w-full" variant="outline">
-                    <PenTool className="w-4 h-4 mr-2" />
-                    Create Signature
-                  </Button>
-                  {signature && (
-                    <Button 
-                      variant="ghost" 
-                      className="w-full text-destructive hover:text-destructive hover:bg-destructive/10" 
-                      onClick={() => { setSignature(null); setSignaturePositions([]); toast.info("Signature cleared"); }}
-                    >
-                      Clear Current Signature
-                    </Button>
-                  )}
-                  <Separator />
-                  <SignerManager signers={signers} setSigners={setSigners} onSendInvites={handleSendInvites} />
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-white shadow-sm border-gray-200">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Total Documents</CardTitle>
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                    <p className="text-xs text-gray-500 mt-1">All documents</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-white shadow-sm border-gray-200">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Signed</CardTitle>
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900">{stats.signed}</div>
+                    <p className="text-xs text-gray-500 mt-1">Completed documents</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-white shadow-sm border-gray-200">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-orange-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900">{stats.pending}</div>
+                    <p className="text-xs text-orange-600 font-medium mt-1">Action required</p>
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Upload Area */}
+              <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors shadow-none">
+                <CardContent className="pt-6">
+                  <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} />
+                </CardContent>
+              </Card>
+
+              {/* Recent Documents Section */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                    Recent Documents
+                  </h2>
+                  <Button variant="ghost" size="sm" className="text-primary h-8 text-xs">View All</Button>
+                </div>
+
+                <div className="divide-y divide-gray-100">
+                  {loadingDocs ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : recentDocs.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <FileText className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                      <p>No recent documents found</p>
+                    </div>
+                  ) : (
+                    recentDocs.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-medium text-gray-900 truncate">{doc.name}</h3>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span>{doc.createdAt?.seconds ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown date'}</span>
+                              <span>•</span>
+                              <span>{doc.ownerEmail}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 md:gap-4 pl-2">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${doc.status === 'Signed' || doc.status === 'completed' ? 'bg-green-500/10 text-green-500' :
+                            doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-600' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                            {doc.status || 'Draft'}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={(e) => handleDeleteDoc(e, doc.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* PDF Viewer */}
+              <div className="lg:col-span-2">
+                <div className="gradient-card rounded-2xl border border-border/50 shadow-soft overflow-hidden">
+                  <div className="p-4 border-b border-border/50 bg-muted/30">
+                    <h2 className="font-display font-semibold flex items-center gap-2">
+                      <FileSignature className="w-5 h-5 text-primary" />
+                      {pdfFile.name}
+                    </h2>
+                  </div>
+                  <div className="p-4">
+                    <Suspense fallback={
+                      <div className="h-[600px] flex items-center justify-center bg-muted/10 rounded-lg">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      </div>
+                    }>
+                      <PDFViewer
+                        file={pdfFile}
+                        activeStamp={signature && isPlacingSignature ? { type: "signature", data: signature } : null}
+                        placedItems={placedItems}
+                        onItemPlace={handleItemPlace}
+                        onItemUpdate={handleItemUpdate}
+                        onItemDelete={handleItemDelete}
+                      />
+                    </Suspense>
+                  </div>
+                </div>
+              </div>
+
+              {/* Signature Pad */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-24">
+                  <Card className="border-border/60 shadow-sm">
+                    <CardContent className="p-6 space-y-6">
+                      <h3 className="font-semibold flex items-center gap-2"><PenTool className="w-4 h-4" /> Signature Tools</h3>
+                      <Button onClick={() => setShowSignatureModal(true)} className="w-full" variant="outline">
+                        <PenTool className="w-4 h-4 mr-2" />
+                        Create Signature
+                      </Button>
+                      {signature && (
+                        <div className="space-y-2">
+                          <Button
+                            variant={isPlacingSignature ? "default" : "outline"}
+                            className={`w-full ${isPlacingSignature ? "bg-primary/20 border-primary text-primary" : ""}`}
+                            onClick={() => setIsPlacingSignature(!isPlacingSignature)}
+                          >
+                            <PenTool className="w-4 h-4 mr-2" />
+                            {isPlacingSignature ? "Placement Active" : "Use This Signature"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 text-xs h-8"
+                            onClick={() => {
+                              setSignature(null);
+                              setIsPlacingSignature(false);
+                              toast.info("Signature cleared");
+                            }}
+                          >
+                            Remove Saved Signature
+                          </Button>
+                        </div>
+                      )}
+                      <Separator />
+                      <SignerManager signers={signers} setSigners={setSigners} onSendInvites={handleSendInvites} />
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
       {showSignatureModal && pdfFile && (

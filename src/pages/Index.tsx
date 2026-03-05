@@ -19,45 +19,59 @@ interface SignaturePosition {
 const Index = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
-  const [signaturePosition, setSignaturePosition] = useState<SignaturePosition | null>(null);
+  const [isPlacingSignature, setIsPlacingSignature] = useState(false);
+  const [placedItems, setPlacedItems] = useState<any[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   const handleFileSelect = (file: File) => {
     setPdfFile(file);
-    setSignaturePosition(null);
+    setPlacedItems([]);
     toast.success("PDF uploaded successfully!");
   };
 
   const handleSignatureCreate = (dataUrl: string) => {
     setSignatureImage(dataUrl);
-    setSignaturePosition(null);
+    setIsPlacingSignature(true);
     toast.success("Signature created!");
   };
 
   const handleModalSave = (signatureData: string) => {
     setSignatureImage(signatureData);
+    setIsPlacingSignature(true);
     setShowSignatureModal(false);
     toast.success("Signature created! Click on the document to place it.");
   };
 
-  const handleSignaturePlace = (position: SignaturePosition) => {
-    setSignaturePosition(position);
+  const handleItemPlace = (item: any) => {
+    const newItem = { ...item, id: Math.random().toString(36).substring(7) };
+    setPlacedItems(prev => [...prev, newItem]);
+    setIsPlacingSignature(false); // Deselect after placing but keep data
+    toast.success("Item placed!");
   };
 
-  const handleSignatureMove = (position: SignaturePosition) => {
-    setSignaturePosition(position);
+  const handleItemUpdate = (id: string, updates: any) => {
+    setPlacedItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const handleItemDelete = (id: string) => {
+    setPlacedItems(prev => prev.filter(item => item.id !== id));
+    toast.success("Item removed");
   };
 
   const handleDownload = async () => {
-    if (!pdfFile || !signatureImage || !signaturePosition) return;
+    if (!pdfFile || placedItems.length === 0) return;
 
     setIsDownloading(true);
     try {
-      const pdfBytes = await embedSignatureInPDF(pdfFile, signatureImage, signaturePosition);
-      const filename = pdfFile.name.replace(".pdf", "_signed.pdf");
-      downloadPDF(pdfBytes, filename);
-      toast.success("Signed PDF downloaded!");
+      const { embedItemsInPDF, downloadPDF } = await import("@/lib/pdfUtils");
+      const signedPdfBytes = await embedItemsInPDF(pdfFile, placedItems);
+
+      if (signedPdfBytes) {
+        const filename = pdfFile.name.replace(".pdf", "_signed.pdf");
+        downloadPDF(signedPdfBytes, filename);
+        toast.success("Signed PDF downloaded!");
+      }
     } catch (error) {
       console.error("Error creating signed PDF:", error);
       toast.error("Failed to create signed PDF");
@@ -69,10 +83,10 @@ const Index = () => {
   const handleReset = () => {
     setPdfFile(null);
     setSignatureImage(null);
-    setSignaturePosition(null);
+    setPlacedItems([]);
   };
 
-  const canDownload = pdfFile && signatureImage && signaturePosition;
+  const canDownload = pdfFile && placedItems.length > 0;
 
   return (
     <div className="min-h-screen bg-muted/30 font-sans">
@@ -186,24 +200,33 @@ const Index = () => {
                   {signatureImage && (
                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
                       <label className="text-sm font-medium text-muted-foreground">Preview</label>
-                      <div className="border border-border rounded-lg p-4 bg-background/50 flex justify-center">
-                      <img
-                        src={signatureImage}
-                        alt="Your signature"
+                      <div className="border border-border rounded-lg p-4 bg-background/50 flex flex-col items-center gap-3">
+                        <img
+                          src={signatureImage}
+                          alt="Your signature"
                           className="max-h-16 object-contain"
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                        size="sm"
-                        className="w-full text-xs h-8 mt-2"
-                      onClick={() => {
-                        setSignatureImage(null);
-                        setSignaturePosition(null);
-                      }}
-                    >
-                        Clear Signature
-                    </Button>
+                        />
+                        <div className="flex gap-2 w-full">
+                          <Button
+                            variant={isPlacingSignature ? "default" : "outline"}
+                            className={`flex-1 text-xs h-8 ${isPlacingSignature ? "bg-primary/20 border-primary text-primary" : ""}`}
+                            onClick={() => setIsPlacingSignature(!isPlacingSignature)}
+                          >
+                            {isPlacingSignature ? "Placing..." : "Use Again"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-8 text-destructive px-2"
+                            onClick={() => {
+                              setSignatureImage(null);
+                              setIsPlacingSignature(false);
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -237,24 +260,25 @@ const Index = () => {
                     <div className="truncate">
                       <CardTitle className="text-sm font-medium truncate">{pdfFile.name}</CardTitle>
                       <CardDescription className="text-xs truncate">
-                    {signatureImage
-                      ? signaturePosition
-                        ? "Drag the signature to reposition it"
-                        : "Click on the document to place your signature"
-                      : "Create your signature first, then place it on the document"}
-                  </CardDescription>
+                        {signatureImage
+                          ? placedItems.length > 0
+                            ? "Drag items to reposition them"
+                            : "Click on the document to place your signature"
+                          : "Create your signature first, then place it on the document"}
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 bg-muted/10 overflow-hidden relative">
                   <div className="absolute inset-0 overflow-auto p-4 flex justify-center">
-                  <PDFViewer
-                    file={pdfFile}
-                    signatureImage={signatureImage}
-                    signaturePosition={signaturePosition}
-                    onSignaturePlace={handleSignaturePlace}
-                    onSignatureMove={handleSignatureMove}
-                  />
+                    <PDFViewer
+                      file={pdfFile}
+                      activeStamp={signatureImage && isPlacingSignature ? { type: "signature", data: signatureImage } : null}
+                      placedItems={placedItems}
+                      onItemPlace={handleItemPlace}
+                      onItemUpdate={handleItemUpdate}
+                      onItemDelete={handleItemDelete}
+                    />
                   </div>
                 </CardContent>
               </Card>
