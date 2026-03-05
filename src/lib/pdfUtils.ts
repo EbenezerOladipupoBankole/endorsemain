@@ -9,7 +9,7 @@ interface SignaturePosition {
 export const embedSignatureInPDF = async (
   pdfFile: File,
   signatureImage: string,
-  position: SignaturePosition
+  position: SignaturePosition & { width: number }
 ): Promise<Uint8Array> => {
   const existingPdfBytes = await pdfFile.arrayBuffer();
   const pdfDoc = await PDFDocument.load(existingPdfBytes);
@@ -19,11 +19,15 @@ export const embedSignatureInPDF = async (
   const page = pdfDoc.getPage(position.page - 1);
   const { width, height } = page.getSize();
 
+  // Convert percentage width to PDF points
+  const sigWidth = (position.width / 100) * width;
+  const sigHeight = (sigWidth / signaturePng.width) * signaturePng.height;
+
   page.drawImage(signaturePng, {
-    x: (position.x / 100) * width - 100, // Center the image on the x-coordinate
-    y: height - ((position.y / 100) * height) - 40, // Center the image on the y-coordinate
-    width: 200,
-    height: 80,
+    x: (position.x / 100) * width - (sigWidth / 2),
+    y: height - ((position.y / 100) * height) - (sigHeight / 2),
+    width: sigWidth,
+    height: sigHeight,
   });
 
   return pdfDoc.save();

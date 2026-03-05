@@ -1,0 +1,82 @@
+﻿{
+  "status": "success",
+  "result": [
+    {
+      "projectId": "endorse-app",
+      "projectNumber": "661681554342",
+      "displayName": "Endorse App",
+      "name": "projects/endorse-app",
+      "resources": {
+        "hostingSite": "endorse-app"
+      },
+      "state": "ACTIVE",
+      "etag": "1_6e237c37-529a-4ce7-8982-76c41bf36c61"
+    },
+    {
+      "projectId": "excessbot-ec825",
+      "projectNumber": "608075568834",
+      "displayName": "ExcessBot",
+      "name": "projects/excessbot-ec825",
+      "resources": {
+        "hostingSite": "excessbot-ec825"
+      },
+      "state": "ACTIVE",
+      "etag": "1_99dee260-9462-46e1-8215-b0164c6f1dd0"
+    },
+    {
+      "projectId": "gatheringplace-cb028",
+      "projectNumber": "220428030760",
+      "displayName": "gatheringplace",
+      "name": "projects/gatheringplace-cb028",
+      "resources": {
+        "hostingSite": "gatheringplace-cb028"
+      },
+      "state": "ACTIVE",
+      "etag": "1_d04c33ac-9ffa-43b0-be9e-97a4adac887a"
+    },
+    {
+      "projectId": "music-assists",
+      "projectNumber": "276698594895",
+      "displayName": "music-assists",
+      "name": "projects/music-assists",
+      "resources": {
+        "hostingSite": "music-assists"
+      },
+      "state": "ACTIVE",
+      "etag": "1_09977bbc-5276-4690-bef1-0ec96bad8cd0"
+    },
+    {
+      "projectId": "music-assits",
+      "projectNumber": "158647252148",
+      "displayName": "music-assist",
+      "name": "projects/music-assits",
+      "resources": {
+        "hostingSite": "music-assits"
+      },
+      "state": "ACTIVE",
+      "etag": "1_c01530f3-df7d-4874-b777-9d8fbf5f992f"
+    },
+    {
+      "projectId": "vitehire-app",
+      "projectNumber": "803154669211",
+      "displayName": "ViteHire",
+      "name": "projects/vitehire-app",
+      "resources": {
+        "hostingSite": "vitehire-app"
+      },
+      "state": "ACTIVE",
+      "etag": "1_f156a57f-ef82-4925-aab1-07baec83c7b3"
+    },
+    {
+      "projectId": "vitehire-web-2026",
+      "projectNumber": "169663563462",
+      "displayName": "ViteHire Web",
+      "name": "projects/vitehire-web-2026",
+      "resources": {
+        "hostingSite": "vitehire-web-2026"
+      },
+      "state": "ACTIVE",
+      "etag": "1_13393d51-a7b9-4693-a178-f72e74a91a94"
+    }
+  ]
+}

@@ -105,7 +105,7 @@ const Blog = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                  <Link to="/conversion" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
                       <FileType className="w-5 h-5 text-primary" />
                     </div>
@@ -194,7 +194,7 @@ const Blog = () => {
               {mobileProductOpen && (
                 <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
                   <Link to="/#features" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><PenTool className="w-4 h-4" /> eSign</Link>
-                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileType className="w-4 h-4" /> File Conversion</Link>
+                  <Link to="/conversion" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileType className="w-4 h-4" /> File Conversion</Link>
                 </div>
               )}
             </div>
@@ -358,7 +358,8 @@ const Blog = () => {
           <div className="flex gap-6 text-sm text-muted-foreground">
             <Link to="/" className="hover:text-foreground">Home</Link>
             <Link to="/auth" className="hover:text-foreground">Sign In</Link>
-            <a href="#" className="hover:text-foreground">Privacy</a>
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/terms" className="hover:text-foreground">Terms</Link>
           </div>
         </div>
       </footer>
