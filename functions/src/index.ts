@@ -64,11 +64,6 @@ interface SendSignerInvitesPayload {
   documentId: string;
 }
 
-interface InviteTeamMemberPayload {
-  inviteEmail: string;
-  role: 'admin' | 'member';
-}
-
 interface AcceptInvitePayload {
   token: string;
 }
