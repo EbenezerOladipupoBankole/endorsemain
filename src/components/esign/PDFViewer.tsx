@@ -1,181 +1,216 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-interface SignaturePosition {
+export interface PlacedItem {
+  id: string;
+  type: "signature" | "initials" | "name" | "date" | "text" | "stamp";
   x: number;
   y: number;
   page: number;
-  width: number;
+  scale: number;
+  data: string;
 }
 
 interface PDFViewerProps {
   file: File;
-  signatureImage: string | null;
-  signaturePositions: SignaturePosition[];
-  onSignaturePlace: (position: Omit<SignaturePosition, 'width'>) => void;
-  onSignatureMove: (position: SignaturePosition, index: number) => void;
-  onSignatureDelete?: (index: number) => void;
+  activeStamp: { type: "signature" | "initials" | "name" | "date" | "text" | "stamp", data: string } | null;
+  placedItems: PlacedItem[];
+  onItemPlace: (item: Omit<PlacedItem, "id">) => void;
+  onItemUpdate: (id: string, updates: Partial<PlacedItem>) => void;
+  onItemDelete: (id: string) => void;
 }
 
 export const PDFViewer = ({
   file,
-  signatureImage,
-  signaturePositions,
-  onSignaturePlace,
-  onSignatureMove,
-  onSignatureDelete,
+  activeStamp,
+  placedItems,
+  onItemPlace,
+  onItemUpdate,
+  onItemDelete,
 }: PDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [resizingState, setResizingState] = useState<{ index: number; initialX: number; initialWidth: number } | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const lastDragEndTime = useRef<number>(0);
-  const isDraggingRef = useRef(false);
+  const lastPlacementTime = useRef<number>(0);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   };
 
-  const handlePageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Prevent placement if we are currently dragging or just finished (sync check)
-    if (isDraggingRef.current) return;
+  const handlePageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (draggingId) return; // Ignore click if we were dragging
 
-    // Prevent placement if we just finished dragging (timestamp check fallback)
-    if (Date.now() - lastDragEndTime.current < 500) return;
+    // Only respond to clicks directly on the container element itself, not bubbled events
+    if (e.currentTarget !== containerRef.current) return;
 
-    // Also check if we clicked on an existing signature (safety net)
-    if ((e.target as HTMLElement).closest('.signature-item')) return;
+    // If an item is selected, deselect it first
+    if (selectedItemId) {
+      setSelectedItemId(null);
+      return;
+    }
 
-    if (!signatureImage || draggedIndex !== null) return;
+    if (!activeStamp) return;
 
-    // Additional check: valid coordinates
+    // Debounce: prevent duplicate placements from rapid clicks
+    const now = Date.now();
+    if (now - lastPlacementTime.current < 500) return;
+    lastPlacementTime.current = now;
+
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    // Prevent placement if too close to an existing signature (avoid accidental double-placement/clustering)
-    const tooClose = signaturePositions?.some(pos =>
-      pos.page === currentPage &&
-      Math.abs(pos.x - x) < 5 && // 5% distance threshold
-      Math.abs(pos.y - y) < 5
-    );
+    onItemPlace({
+      type: activeStamp.type,
+      data: activeStamp.data,
+      x,
+      y,
+      page: currentPage,
+      scale: 1,
+    });
+  }, [draggingId, selectedItemId, activeStamp, currentPage, onItemPlace]);
 
-    if (tooClose) {
-      toast.info("Signature is already placed near this spot.");
-      return;
-    }
-
-    // Prevent placement if a signature is already placed (single placement mode)
-    if (signaturePositions && signaturePositions.length > 0) {
-      toast.info("Signature already placed. Move it or delete it to place again.");
-      return;
-    }
-
-    onSignaturePlace({ x, y, page: currentPage });
-  };
-
-  const handleDragStart = (e: React.MouseEvent, index: number) => {
-    e.preventDefault();
+  const handleDragStart = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    isDraggingRef.current = true;
-    setDraggedIndex(index);
+    e.preventDefault();
+    setDraggingId(id);
+    setSelectedItemId(id);
   };
 
   const handleDrag = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (draggedIndex === null || !signaturePositions) return;
+    if (!draggingId) return;
 
-    // Use specific container for reference dimensions
-    const container = containerRef.current;
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
 
-    const newPosition = { ...signaturePositions[draggedIndex], x, y };
-    onSignatureMove(newPosition, draggedIndex);
+    onItemUpdate(draggingId, { x, y });
   };
 
   const handleDragEnd = () => {
-    if (draggedIndex !== null || isDraggingRef.current) {
-      lastDragEndTime.current = Date.now();
-    }
-    setDraggedIndex(null);
-    // Keep ref true for a safety window to block subsequent clicks
-    setTimeout(() => {
-      isDraggingRef.current = false;
-    }, 500);
+    setDraggingId(null);
   };
 
-  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent, index: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!containerRef.current) return;
+  const renderPlacedItems = () => {
+    return placedItems
+      .filter((item) => item.page === currentPage)
+      .map((item) => {
+        const isSelected = selectedItemId === item.id;
+        // Default box width & height
+        const defaultWidth = 200;
+        const defaultHeight = 80;
 
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        return (
+          <div
+            key={item.id}
+            className={`absolute cursor-move select-none ${isSelected ? "ring-2 ring-primary ring-offset-2 rounded" : ""}`}
+            style={{
+              left: `${item.x}%`,
+              top: `${item.y}%`,
+              transform: `translate(-50%, -50%) scale(${item.scale})`,
+              transformOrigin: "center",
+              zIndex: isSelected ? 50 : 10,
+            }}
+            onMouseDown={(e) => handleDragStart(e, item.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedItemId(item.id);
+            }}
+          >
+            {/* Toolbar for selected item */}
+            {isSelected && !draggingId && (
+              <div
+                className="absolute flex items-center gap-1 bg-white border border-border shadow-md rounded-md p-1"
+                style={{
+                  top: '-40px',
+                  left: '50%',
+                  transform: `translateX(-50%) scale(${1 / item.scale})`, // keep toolbar size constant regardless of item scale
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onItemUpdate(item.id, { scale: Math.max(0.5, item.scale - 0.1) })}
+                  title="Decrease Size"
+                >
+                  <Type className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onItemUpdate(item.id, { scale: Math.min(3, item.scale + 0.1) })}
+                  title="Increase Size"
+                >
+                  <Type className="h-4 w-4" />
+                </Button>
+                <div className="w-[1px] h-4 bg-border mx-1"></div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    onItemDelete(item.id);
+                    setSelectedItemId(null);
+                  }}
+                  title="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
-    setResizingState({
-      index,
-      initialX: clientX,
-      initialWidth: (signaturePositions[index].width / 100) * containerRef.current.offsetWidth,
-    });
-  };
-
-  const handleResize = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!resizingState || !containerRef.current) return;
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const dx = clientX - resizingState.initialX;
-    const newWidthPx = resizingState.initialWidth + dx;
-    const containerWidth = containerRef.current.offsetWidth;
-
-    let newWidthPercent = (newWidthPx / containerWidth) * 100;
-
-    // Constraints
-    newWidthPercent = Math.max(10, Math.min(80, newWidthPercent));
-
-    const { index } = resizingState;
-    const newPosition = { ...signaturePositions[index], width: newWidthPercent };
-    onSignatureMove(newPosition, index);
-  };
-
-  const handleResizeEnd = () => {
-    setResizingState(null);
-  };
-
-  // Touch event wrappers
-  const handleTouchStart = (e: React.TouchEvent, index: number) => {
-    isDraggingRef.current = true;
-    setDraggedIndex(index);
-    // Don't preventDefault here as it might block scrolling if not moved
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (draggedIndex === null) return;
-    e.preventDefault(); // Prevent scrolling while dragging
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const touch = e.touches[0];
-    const rect = container.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((touch.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((touch.clientY - rect.top) / rect.height) * 100));
-
-    const newPosition = { ...signaturePositions[draggedIndex], x, y };
-    onSignatureMove(newPosition, draggedIndex);
+            {["signature", "initials", "stamp"].includes(item.type) ? (
+              <img
+                src={item.data}
+                alt={item.type}
+                style={{
+                  maxWidth: `${defaultWidth}px`,
+                  maxHeight: `${defaultHeight}px`,
+                }}
+                className="pointer-events-none"
+                draggable={false}
+              />
+            ) : (
+              <div
+                className={`min-w-[80px] border border-transparent rounded flex items-center p-1 cursor-text ${isSelected ? 'bg-white/50' : 'bg-transparent hover:border-primary/30'}`}
+                style={{
+                  color: "#1e293b",
+                  fontFamily: "sans-serif"
+                }}
+              >
+                <input
+                  type="text"
+                  value={item.data}
+                  onChange={(e) => onItemUpdate(item.id, { data: e.target.value })}
+                  className="bg-transparent border-none outline-none w-full h-full text-foreground placeholder:text-muted-foreground"
+                  style={{ fontSize: "16px", minWidth: `${Math.max(80, item.data.length * 9)}px` }}
+                  onMouseDown={(e) => {
+                    if (isSelected) e.stopPropagation();
+                  }}
+                  readOnly={!isSelected}
+                  placeholder={item.type === "text" ? "Type here..." : item.type}
+                />
+              </div>
+            )}
+          </div>
+        );
+      });
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center select-none w-full max-w-full overflow-hidden">
       <div className="flex items-center gap-4 mb-4">
         <Button
           variant="outline"
@@ -185,7 +220,7 @@ export const PDFViewer = ({
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground font-medium">
           Page {currentPage} of {numPages}
         </span>
         <Button
@@ -200,99 +235,37 @@ export const PDFViewer = ({
 
       <div
         ref={containerRef}
-        className="relative border border-border rounded-lg overflow-hidden cursor-crosshair max-w-full"
+        className="relative border border-border bg-white shadow-xl rounded-sm overflow-hidden"
+        style={{ cursor: activeStamp ? "crosshair" : "default" }}
         onClick={handlePageClick}
+        onMouseMove={handleDrag}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={handleDragEnd}
       >
-        <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
+        <Document file={file} onLoadSuccess={onDocumentLoadSuccess} className="max-w-full">
           <Page
             pageNumber={currentPage}
-            width={Math.min(600, window.innerWidth - 32)}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
+            width={800}
+            renderTextLayer={false}
+            renderAnnotationLayer={false}
+            className="shadow-sm"
           />
         </Document>
 
-        {signatureImage && signaturePositions && signaturePositions.map((pos, index) => (
-          pos.page === currentPage && (
-            <div
-              key={index}
-              className="absolute cursor-move select-none group z-50 signature-item"
-              style={{
-                left: `${pos.x}%`,
-                top: `${pos.y}%`,
-                transform: "translate(-50%, -50%)",
-                width: `${pos.width}%`,
-              }}
-              onMouseDown={(e) => handleDragStart(e, index)}
-              onTouchStart={(e) => handleTouchStart(e, index)}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <img
-                src={signatureImage}
-                alt="Signature"
-                className="w-full h-auto pointer-events-none"
-                draggable={false}
-              />
-              {onSignatureDelete && (
-                <button
-                  className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-md hover:bg-red-600 transition-colors z-10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSignatureDelete(index);
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  title="Remove signature"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-              {/* Resize Handle */}
-              <div
-                className="absolute -bottom-3 -right-3 w-6 h-6 bg-blue-500 rounded-full border-2 border-white cursor-se-resize z-20 flex items-center justify-center shadow-sm"
-                onMouseDown={(e) => handleResizeStart(e, index)}
-                onTouchStart={(e) => handleResizeStart(e, index)}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          )
-        ))}
-
-        {/* Global Drag/Resize Overlay */}
-        {(draggedIndex !== null || resizingState !== null) && (
-          <div
-            className="fixed inset-0 z-[100]"
-            style={{ cursor: resizingState !== null ? 'se-resize' : 'grabbing', touchAction: 'none' }}
-            onMouseMove={(e) => {
-              if (draggedIndex !== null) handleDrag(e);
-              if (resizingState !== null) handleResize(e);
-            }}
-            onMouseUp={() => {
-              if (draggedIndex !== null) handleDragEnd();
-              if (resizingState !== null) handleResizeEnd();
-            }}
-            onTouchMove={(e) => {
-              if (draggedIndex !== null) handleTouchMove(e);
-              if (resizingState !== null) handleResize(e);
-            }}
-            onTouchEnd={() => {
-              if (draggedIndex !== null) handleDragEnd();
-              if (resizingState !== null) handleResizeEnd();
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onMouseLeave={() => {
-              if (draggedIndex !== null) handleDragEnd();
-              if (resizingState !== null) handleResizeEnd();
-            }}
-          />
-        )}
+        {renderPlacedItems()}
       </div>
 
-      {signatureImage && (!signaturePositions || signaturePositions.length === 0) && (
-        <p className="mt-4 text-sm text-muted-foreground">
-          Click on the document to place your signature
+      {!activeStamp && placedItems.length === 0 && (
+        <p className="mt-4 text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-full">
+          Select a tool from the left panel to start signing
+        </p>
+      )}
+      {activeStamp && (
+        <p className="mt-4 text-sm text-primary font-medium bg-primary/10 px-4 py-2 rounded-full">
+          Click anywhere on the document to place {activeStamp.type}
         </p>
       )}
     </div>
   );
 };
+

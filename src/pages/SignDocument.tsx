@@ -4,28 +4,28 @@ import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/components/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { PDFViewer } from '@/components/esign/PDFViewer';
+import { PDFViewer, PlacedItem } from '@/components/esign/PDFViewer';
 import SignatureModal from '@/components/SignatureModal';
-import { Loader2, CheckCircle2, AlertCircle, PenTool, Trash2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, PenTool, Plus, X, Type, User, Calendar, FileText } from 'lucide-react';
 import { Logo } from '@/components/Logo';
-
-interface SignaturePosition {
-  x: number;
-  y: number;
-  page: number;
-  width: number;
-}
+import { useAuth } from '@/components/AuthContext';
 
 const SignDocument = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [documentData, setDocumentData] = useState<any>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+
   const [signature, setSignature] = useState<string | null>(null);
-  const [signaturePositions, setSignaturePositions] = useState<SignaturePosition[]>([]);
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [initials, setInitials] = useState<string | null>(null);
+  const [activeStampType, setActiveStampType] = useState<"signature" | "initials" | "name" | "date" | "text" | null>(null);
+
+  const [placedItems, setPlacedItems] = useState<PlacedItem[]>([]);
+
+  const [showSignatureModal, setShowSignatureModal] = useState<"signature" | "initials" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -47,7 +47,6 @@ const SignDocument = () => {
             return;
           }
 
-          // Load PDF File from URL or Base64
           if (data.fileUrl) {
             const response = await fetch(data.fileUrl);
             const blob = await response.blob();
@@ -76,20 +75,40 @@ const SignDocument = () => {
     fetchDocument();
   }, [id, navigate]);
 
-  const handleModalSave = (signatureData: string, signatureType: "draw" | "type" | "upload") => {
-    setSignature(signatureData);
-    setShowSignatureModal(false);
-    toast.success('Signature created! Click on the document to place it.');
+  const handleModalSave = (signatureData: string) => {
+    if (showSignatureModal === "signature") {
+      setSignature(signatureData);
+      setActiveStampType("signature");
+      toast.success('Signature created! Click on the document to place it.');
+    } else if (showSignatureModal === "initials") {
+      setInitials(signatureData);
+      setActiveStampType("initials");
+      toast.success('Initials created! Click on the document to place it.');
+    }
+    setShowSignatureModal(null);
   };
 
-  const handleSignaturePlace = (position: Omit<SignaturePosition, 'width'>) => {
-    setSignaturePositions(prev => [...prev, { ...position, width: 20 }]); // Default width 20%
-    toast.success('Signature placed!');
+  const onItemPlace = (item: Omit<PlacedItem, "id">) => {
+    const newItem: PlacedItem = {
+      ...item,
+      id: Math.random().toString(36).substring(7),
+    };
+    setPlacedItems(prev => [...prev, newItem]);
+    setActiveStampType(null); // Deselect after placing
+  };
+
+  const onItemUpdate = (id: string, updates: Partial<PlacedItem>) => {
+    setPlacedItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const onItemDelete = (id: string) => {
+    setPlacedItems(prev => prev.filter(item => item.id !== id));
+    toast.success('Item removed');
   };
 
   const handleCompleteSigning = async () => {
-    if (!signature || signaturePositions.length === 0 || !id) {
-      toast.error("Please place at least one signature on the document.");
+    if (placedItems.length === 0 || !id) {
+      toast.error("Please place at least one signature or initials on the document.");
       return;
     }
 
@@ -97,8 +116,8 @@ const SignDocument = () => {
     try {
       await updateDoc(doc(db, "documents", id), {
         status: 'signed',
-        signature_data: signature,
-        signature_positions: signaturePositions,
+        signature_data: signature || initials || placedItems[0].data,
+        signature_positions: placedItems,
         signedAt: serverTimestamp(),
       });
 
@@ -127,74 +146,150 @@ const SignDocument = () => {
     );
   }
 
+  const activeStampData = (() => {
+    switch (activeStampType) {
+      case "signature": return signature;
+      case "initials": return initials;
+      case "name": return userProfile?.displayName || userProfile?.email?.split('@')[0] || "Signer Name";
+      case "date": return new Date().toLocaleDateString();
+      case "text": return "";
+      default: return null;
+    }
+  })();
+
+  const handleToolClick = (toolId: string) => {
+    if (toolId === 'signature') {
+      if (!signature) {
+        setShowSignatureModal('signature');
+      } else {
+        setActiveStampType(activeStampType === 'signature' ? null : 'signature');
+      }
+    } else if (toolId === 'initials') {
+      if (!initials) {
+        setShowSignatureModal('initials');
+      } else {
+        setActiveStampType(activeStampType === 'initials' ? null : 'initials');
+      }
+    } else {
+      setActiveStampType(activeStampType === toolId ? null : toolId as any);
+    }
+  };
+
+  const ToolButton = ({ id, icon: Icon, label, hasData, isActive, onClick, onClear }: any) => {
+    return (
+      <div className="flex flex-col w-full mb-1">
+        <Button
+          variant="outline"
+          className={`w-full justify-start text-left h-12 transition-all border ${isActive
+            ? 'bg-primary/10 hover:bg-primary/20 border-primary text-foreground ring-1 ring-primary'
+            : 'bg-card border-border hover:border-primary/50 text-foreground shadow-sm'
+            }`}
+          onClick={onClick}
+        >
+          <div className={`p-1.5 rounded-md mr-3 ${isActive ? 'bg-primary' : 'bg-muted text-muted-foreground'}`}>
+            <Icon className={`w-4 h-4 ${isActive ? 'text-primary-foreground' : 'text-current'}`} />
+          </div>
+          <span className="flex-1 font-medium text-sm">{label}</span>
+          {!hasData && <Plus className="w-4 h-4 text-muted-foreground" />}
+        </Button>
+        {hasData && onClear && (
+          <div className="flex justify-end mt-1 pr-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); onClear(); if (isActive) setActiveStampType(null); }}
+              className="text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+            >
+              <X className="w-3 h-3" /> Remove {label.toLowerCase()}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-background border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Logo className="h-8 w-auto" />
-          <Button onClick={handleCompleteSigning} disabled={!signature || signaturePositions.length === 0 || isSubmitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
+          <Button onClick={handleCompleteSigning} disabled={placedItems.length === 0 || isSubmitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin md:mr-2" /> : <PenTool className="w-4 h-4 md:mr-2" />}
             <span className="hidden md:inline">Finish Signing</span>
           </Button>
         </div>
       </header>
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="p-4 border-b border-border bg-muted/20 flex justify-between items-center">
-            <h2 className="font-semibold flex items-center gap-2"><AlertCircle className="w-4 h-4 text-primary" /> {documentData?.name}</h2>
-            {signature ? (
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => {
-                  setSignature(null);
-                  setSignaturePositions([]);
-                  toast.info("Signature removed");
-                }}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Remove Signature
-              </Button>
-            ) : (
-              <Button size="sm" variant="outline" onClick={() => setShowSignatureModal(true)}>
-                Create Signature
-              </Button>
-            )}
+      <main className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar */}
+        <div className="w-72 bg-card border-r border-border p-4 flex flex-col gap-6 overflow-y-auto z-10 shadow-sm">
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Standard Fields</h3>
+
+            <div className="space-y-2">
+              <ToolButton
+                id="signature"
+                icon={PenTool}
+                label="Signature"
+                hasData={!!signature}
+                isActive={activeStampType === 'signature'}
+                onClick={() => handleToolClick('signature')}
+                onClear={() => setSignature(null)}
+              />
+              <ToolButton
+                id="initials"
+                icon={Type}
+                label="Initials"
+                hasData={!!initials}
+                isActive={activeStampType === 'initials'}
+                onClick={() => handleToolClick('initials')}
+                onClear={() => setInitials(null)}
+              />
+              <ToolButton
+                id="name"
+                icon={User}
+                label="Name"
+                hasData={true}
+                isActive={activeStampType === 'name'}
+                onClick={() => handleToolClick('name')}
+              />
+              <ToolButton
+                id="date"
+                icon={Calendar}
+                label="Date Signed"
+                hasData={true}
+                isActive={activeStampType === 'date'}
+                onClick={() => handleToolClick('date')}
+              />
+              <ToolButton
+                id="text"
+                icon={FileText}
+                label="Text"
+                hasData={true}
+                isActive={activeStampType === 'text'}
+                onClick={() => handleToolClick('text')}
+              />
+            </div>
           </div>
-          <div className="p-6 bg-muted/10 min-h-[600px] flex justify-center">
-            {pdfFile && <PDFViewer
-              file={pdfFile}
-              signatureImage={signature}
-              signaturePositions={signaturePositions}
-              onSignaturePlace={handleSignaturePlace}
-              onSignatureMove={(pos, index) => {
-                setSignaturePositions(prev => {
-                  const newPositions = [...prev];
-                  if (index >= 0 && index < newPositions.length) {
-                    newPositions[index] = pos; // This now handles move and resize
-                  }
-                  return newPositions;
-                });
-              }}
-              onSignatureDelete={(index) => {
-                setSignaturePositions(prev => {
-                  const newPositions = prev.filter((_, i) => i !== index);
-                  if (newPositions.length === 0) {
-                    setTimeout(() => {
-                      setSignature(null);
-                      toast.info("Signature removed");
-                    }, 0);
-                  }
-                  return newPositions;
-                });
-              }} />}
+        </div>
+
+        {/* Document Area */}
+        <div className="flex-1 bg-muted/30 overflow-y-auto p-4 md:p-8 flex justify-center">
+          <div className="max-w-5xl w-full bg-transparent mx-auto">
+            <div className="min-h-[600px] flex justify-center">
+              {pdfFile && <PDFViewer
+                file={pdfFile}
+                activeStamp={activeStampData && activeStampType ? { type: activeStampType, data: activeStampData } : null}
+                placedItems={placedItems}
+                onItemPlace={onItemPlace}
+                onItemUpdate={onItemUpdate}
+                onItemDelete={onItemDelete}
+              />}
+            </div>
           </div>
         </div>
       </main>
       {showSignatureModal && (
         <SignatureModal
           document={{ id: id || 'temp', name: documentData?.name || 'Document', status: 'pending', signature_data: null, signature_type: null }}
-          onClose={() => setShowSignatureModal(false)}
+          onClose={() => setShowSignatureModal(null)}
           onSave={handleModalSave}
         />
       )}

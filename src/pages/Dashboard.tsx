@@ -1,12 +1,11 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { httpsCallable } from 'firebase/functions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, functions } from '@/components/client';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment } from 'firebase/firestore';
+import { db } from '@/components/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
 import { PDFUploader } from '@/components/esign/PDFUploader';
@@ -41,8 +40,7 @@ import {
   Bell,
   HelpCircle,
   MessageCircle,
-  Code,
-  FileType
+  Code
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -94,8 +92,6 @@ const convertWordToPDF = async (file: File): Promise<Blob> => {
   });
 };
 
-const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -104,15 +100,14 @@ const Dashboard = () => {
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
-  const [signaturePositions, setSignaturePositions] = useState<SignaturePosition[]>([]);
+  const [isPlacingSignature, setIsPlacingSignature] = useState(false);
+  const [placedItems, setPlacedItems] = useState<any[]>([]);
   const [signers, setSigners] = useState<Signer[]>([]);
   const [recentDocs, setRecentDocs] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [usageCount, setUsageCount] = useState(userProfile?.documentsSigned || 0);
   const [stats, setStats] = useState({ total: 0, signed: 0, pending: 0 });
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isApplying, setIsApplying] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -138,15 +133,9 @@ const Dashboard = () => {
   useEffect(() => {
     const paymentSuccess = searchParams.get("payment") === "success" || searchParams.get("reference");
     if (paymentSuccess) {
-      toast.success("Payment successful! Your plan is updated. Refreshing page...");
-      // We replace the URL to prevent a refresh loop and then reload the page
-      // to ensure the new user profile (with the updated plan) is fetched.
-      navigate('/dashboard', { replace: true });
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500); // Delay for user to see the toast
+      toast.success("Payment successful! Your plan has been updated.");
     }
-  }, [searchParams, navigate]);
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchRecentDocs = async () => {
@@ -179,21 +168,6 @@ const Dashboard = () => {
     };
 
     fetchRecentDocs();
-  }, [user]);
-
-  // Real-time listener for usage count
-  useEffect(() => {
-    if (user?.uid) {
-      const unsubscribe = onSnapshot(doc(db, "users", user.uid), (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
-          setUsageCount(data.documentsSigned || 0);
-        }
-      }, (error) => {
-        console.error("Error listening to usage count:", error);
-      });
-      return () => unsubscribe();
-    }
   }, [user]);
 
   // Fetch Notifications
@@ -238,7 +212,8 @@ const Dashboard = () => {
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
     const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
-    if (!isPro && !isAdmin && documentsSigned >= 3) {
+
+    if (!isPro && documentsSigned >= 3) {
       toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
       navigate('/settings?tab=billing');
       return;
@@ -276,35 +251,38 @@ const Dashboard = () => {
 
   const handleModalSave = (signatureData: string, signatureType: "draw" | "type" | "upload") => {
     setSignature(signatureData);
+    setIsPlacingSignature(true);
     setShowSignatureModal(false);
     toast.success('Signature created! Click on the document to place it.');
   };
 
-  const handleSignaturePlace = (position: Omit<SignaturePosition, 'width'>) => {
-    setSignaturePositions(prev => [...prev, { ...position, width: 20 }]); // Default width 20%
-    toast.success('Signature placed!');
+  const handleItemPlace = (item: any) => {
+    const newItem = { ...item, id: Math.random().toString(36).substring(7) };
+    setPlacedItems(prev => [...prev, newItem]);
+    setIsPlacingSignature(false); // Only deselect the tool, don't clear signature data
+    toast.success('Item placed!');
   };
 
-  const handleSignatureMove = (position: SignaturePosition, index: number) => {
-    setSignaturePositions(prev => {
-      const newPositions = [...prev];
-      if (index >= 0 && index < newPositions.length) {
-        newPositions[index] = position;
-      }
-      return newPositions;
-    });
+  const handleItemUpdate = (id: string, updates: any) => {
+    setPlacedItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const handleItemDelete = (id: string) => {
+    setPlacedItems(prev => prev.filter(item => item.id !== id));
+    toast.success('Item removed');
   };
 
   const handleDownload = async () => {
-    if (!pdfFile || !signature || signaturePositions.length === 0) {
-      toast.error('Please upload a document and place at least one signature.');
+    if (!pdfFile || placedItems.length === 0) {
+      toast.error('Please upload a document and place at least one item.');
       return;
     }
 
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
     const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
-    if (!isPro && !isAdmin && documentsSigned >= 3) {
+
+    if (!isPro && documentsSigned >= 3) {
       toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
       navigate('/settings?tab=billing');
       return;
@@ -313,81 +291,32 @@ const Dashboard = () => {
     setIsDownloading(true);
     try {
       // Dynamically import PDF utils only when the user clicks download
-      const { embedSignatureInPDF, downloadPDF } = await import('@/lib/pdfUtils');
+      const { embedItemsInPDF, downloadPDF } = await import('@/lib/pdfUtils');
 
-      let currentFile = pdfFile;
-      let signedPdfBytes = null;
-
-      for (const position of signaturePositions) {
-        signedPdfBytes = await embedSignatureInPDF(
-          currentFile,
-          signature,
-          position
-        );
-        currentFile = new File([signedPdfBytes], pdfFile.name, { type: 'application/pdf' });
-      }
+      const signedPdfBytes = await embedItemsInPDF(pdfFile, placedItems);
 
       if (signedPdfBytes) {
         downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
         toast.success('Signed document downloaded!');
+      }
 
-        // Increment document count - Fire and forget to prevent blocking UI
-        if (user?.uid) {
-          setDoc(doc(db, "users", user.uid), {
-            documentsSigned: increment(1)
-          }, { merge: true }).then(() => {
-          }).catch((dbError) => {
-            console.error("Background update failed (non-critical):", dbError);
-          });
-        }
+      // Increment document count
+      if (user?.uid) {
+        await updateDoc(doc(db, "users", user.uid), {
+          documentsSigned: increment(1)
+        });
       }
     } catch (error) {
       console.error('Error downloading PDF:', error);
       toast.error('Failed to download signed document. Please try again.');
-    } finally {
-      setIsDownloading(false);
     }
-  };
-
-  const handleApplySignature = async () => {
-    if (!pdfFile || !signature || signaturePositions.length === 0) return;
-
-    setIsApplying(true);
-    try {
-      // Dynamically import PDF utils
-      const { embedSignatureInPDF } = await import('@/lib/pdfUtils');
-
-      let currentFile = pdfFile;
-      let signedPdfBytes = null;
-
-      for (const position of signaturePositions) {
-        signedPdfBytes = await embedSignatureInPDF(
-          currentFile,
-          signature,
-          position
-        );
-        currentFile = new File([signedPdfBytes], pdfFile.name, { type: 'application/pdf' });
-      }
-
-      if (signedPdfBytes) {
-        setPdfFile(currentFile);
-        // We keep the signature state so the user can easily "Add Another" 
-        // as the button name implies.
-        setSignaturePositions([]);
-        toast.success('Signatures applied. You can now place your signature again.');
-      }
-    } catch (error) {
-      console.error('Error applying signature:', error);
-      toast.error('Failed to apply signature.');
-    } finally {
-      setIsApplying(false);
-    }
+    setIsDownloading(false);
   };
 
   const handleReset = () => {
     setPdfFile(null);
     setSignature(null);
-    setSignaturePositions([]);
+    setPlacedItems([]);
     setSigners([]);
   };
 
@@ -404,6 +333,7 @@ const Dashboard = () => {
 
     // Check if user is on a paid plan (Bypass for admin email or localhost)
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
+    const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
     const isLocal = window.location.hostname === 'localhost';
 
     if (!isPro && !isAdmin && !isLocal) {
@@ -411,31 +341,33 @@ const Dashboard = () => {
       return;
     }
 
+    // Firestore has a 1MB limit per document. Base64 adds ~33% overhead.
+    // We limit file size to 600KB to ensure successful upload.
+    if (pdfFile.size > 600 * 1024) {
+      toast.error("Document is too large. Please use a file smaller than 600KB.");
+      return;
+    }
+
     const toastId = toast.loading("Processing document and sending invitations...");
 
     try {
-      // 1. Generate a new doc ref to get an ID upfront
-      const newDocRef = doc(collection(db, "documents"));
+      // 1. Convert PDF to Base64 (simple solution for now, ideally upload to Storage)
+      const pdfBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(pdfFile);
+      });
 
-      // 2. Upload file to Firebase Storage
-      const storage = getStorage();
-      const storagePath = `documents/${user?.uid}/${newDocRef.id}/${pdfFile.name}`;
-      const storageRef = ref(storage, storagePath);
-
-      toast.info("Uploading document...", { id: toastId });
-      const uploadTask = await uploadBytes(storageRef, pdfFile);
-      const downloadURL = await getDownloadURL(uploadTask.ref);
-
-      // 3. Create the document in Firestore with the URL
-      toast.info("Saving document details...", { id: toastId });
-      await setDoc(newDocRef, {
+      // 2. Create the document in Firestore immediately
+      // Wrap in a timeout to prevent hanging
+      const createDocPromise = addDoc(collection(db, "documents"), {
         name: pdfFile.name,
         status: 'pending',
         ownerEmail: user?.email,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        downloadURL: downloadURL,
-        storagePath: storagePath,
+        pdfBase64: pdfBase64, // Storing base64 for simplicity in this demo. For prod, use Storage.
         signers: signers.map(s => ({
           email: s.email,
           role: s.role || 'signer',
@@ -444,37 +376,33 @@ const Dashboard = () => {
         invitedBy: user?.uid,
       });
 
-      // 4. Send invites with the new document ID
-      toast.info("Sending invitations...", { id: toastId });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Database operation timed out. The file might be too large or connection is slow.")), 60000)
+      );
+
+      const docRef = await Promise.race([createDocPromise, timeoutPromise]) as any;
+
+
+      // 3. Send invites with the new document ID
       const sendInvites = httpsCallable(functions, 'sendSignerInvites');
 
       const invitePromise = sendInvites({
-        signers: signers.map(s => ({ email: s.email, role: s.role || 'signer' })),
+        signers: signers,
         documentName: pdfFile.name,
-        uploaderName: user?.displayName || user?.email?.split('@')[0] || 'A user',
+        uploaderName: user?.email?.split('@')[0] || 'A user',
         uploaderEmail: user?.email,
-        documentId: newDocRef.id, // Pass the ID effectively
-        signingLink: `${window.location.origin}/sign/${newDocRef.id}`, // Explicit link
+        documentId: docRef.id, // Pass the ID effectively
+        signingLink: `${window.location.origin}/sign/${docRef.id}`, // Explicit link
       });
 
       const inviteTimeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Email service timed out. Document saved, but invites might not have sent.")), 40000)
       );
 
-      const result = await Promise.race([invitePromise, inviteTimeoutPromise]) as any;
+      await Promise.race([invitePromise, inviteTimeoutPromise]);
 
-      // Check for partial failures in email sending
-      if (result?.data?.results) {
-        const failed = result.data.results.filter((r: any) => r.status === 'failed');
-        if (failed.length > 0) {
-          console.error("Failed invites:", failed);
-          const failedEmails = failed.map((f: any) => f.email).join(', ');
-          toast.error(`Document saved, but failed to send email to: ${failedEmails}. Please check the email address and try again.`, { id: toastId, duration: 5000 });
-          // We still update stats because the document was created
-          setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }));
-          return;
-        }
-      }
+      // Small delay to let user see 100%
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       toast.success('Invitations sent successfully!', { id: toastId });
 
@@ -598,7 +526,7 @@ const Dashboard = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {pdfFile && signature && signaturePositions.length > 0 && (
+            {pdfFile && placedItems.length > 0 && (
               <Button
                 onClick={handleDownload}
                 disabled={isDownloading}
@@ -676,14 +604,6 @@ const Dashboard = () => {
                   File Converter
                 </Link>
               </Button>
-              {isAdmin && (
-                <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
-                  <Link to="/team">
-                    <Users className="mr-2 h-4 w-4" />
-                    Team Management
-                  </Link>
-                </Button>
-              )}
             </div>
             <div className="mt-auto pt-8">
               <Card>
@@ -694,7 +614,7 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-2">
-                  {!isAdmin && (userProfile?.plan === 'free' || !userProfile?.plan) && (
+                  {(userProfile?.plan === 'free' || !userProfile?.plan) && (
                     <div className="mb-3">
                       <div className="flex justify-between text-xs font-medium mb-1">
                         <span>Free Usage</span>
@@ -735,14 +655,6 @@ const Dashboard = () => {
                   File Converter
                 </Link>
               </Button>
-              {isAdmin && (
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <Link to="/team">
-                    <Users className="mr-2 h-4 w-4" />
-                    Team Management
-                  </Link>
-                </Button>
-              )}
             </div>
 
             <Card className="bg-white shadow-sm border-gray-200">
@@ -753,7 +665,7 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-2">
-                {!isAdmin && (userProfile?.plan === 'free' || !userProfile?.plan) && (
+                {(userProfile?.plan === 'free' || !userProfile?.plan) && (
                   <div className="mb-3">
                     <div className="flex justify-between text-xs font-medium mb-1">
                       <span>Free Usage</span>
@@ -787,23 +699,12 @@ const Dashboard = () => {
                   <Button variant="outline" className="bg-white">
                     <Settings className="w-4 h-4 mr-2" /> Settings
                   </Button>
-                  <label htmlFor="new-doc-upload-input" className="cursor-pointer">
+                  <label htmlFor="pdf-upload-hidden" className="cursor-pointer">
                     <Button className="bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-medium pointer-events-none">
                       <PenTool className="w-4 h-4 mr-2" />
                       New Document
                     </Button>
                   </label>
-                  <input
-                    id="new-doc-upload-input"
-                    type="file"
-                    className="hidden"
-                    accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleFileSelect(e.target.files[0]);
-                      }
-                    }}
-                  />
                 </div>
               </div>
 
@@ -844,7 +745,7 @@ const Dashboard = () => {
               {/* Upload Area */}
               <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors shadow-none">
                 <CardContent className="pt-6">
-                  <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                  <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} />
                 </CardContent>
               </Card>
 
@@ -925,13 +826,11 @@ const Dashboard = () => {
                     }>
                       <PDFViewer
                         file={pdfFile}
-                        signatureImage={signature}
-                        signaturePositions={signaturePositions}
-                        onSignaturePlace={handleSignaturePlace}
-                        onSignatureMove={handleSignatureMove}
-                        onSignatureDelete={(index) => {
-                          setSignaturePositions(prev => prev.filter((_, i) => i !== index));
-                        }}
+                        activeStamp={signature && isPlacingSignature ? { type: "signature", data: signature } : null}
+                        placedItems={placedItems}
+                        onItemPlace={handleItemPlace}
+                        onItemUpdate={handleItemUpdate}
+                        onItemDelete={handleItemDelete}
                       />
                     </Suspense>
                   </div>
@@ -948,24 +847,28 @@ const Dashboard = () => {
                         <PenTool className="w-4 h-4 mr-2" />
                         Create Signature
                       </Button>
-                      {signaturePositions.length > 0 && (
-                        <>
+                      {signature && (
+                        <div className="space-y-2">
                           <Button
-                            className="w-full mb-2 bg-green-600 hover:bg-green-700 text-white"
-                            onClick={handleApplySignature}
-                            disabled={isApplying}
+                            variant={isPlacingSignature ? "default" : "outline"}
+                            className={`w-full ${isPlacingSignature ? "bg-primary/20 border-primary text-primary" : ""}`}
+                            onClick={() => setIsPlacingSignature(!isPlacingSignature)}
                           >
-                            {isApplying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                            Apply & Add Another
+                            <PenTool className="w-4 h-4 mr-2" />
+                            {isPlacingSignature ? "Placement Active" : "Use This Signature"}
                           </Button>
                           <Button
                             variant="ghost"
-                            className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => { setSignaturePositions([]); toast.info("All signature placements have been cleared."); }}
+                            className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 text-xs h-8"
+                            onClick={() => {
+                              setSignature(null);
+                              setIsPlacingSignature(false);
+                              toast.info("Signature cleared");
+                            }}
                           >
-                            Clear All Placements
+                            Remove Saved Signature
                           </Button>
-                        </>
+                        </div>
                       )}
                       <Separator />
                       <SignerManager signers={signers} setSigners={setSigners} onSendInvites={handleSendInvites} />
@@ -977,7 +880,6 @@ const Dashboard = () => {
           )}
         </main>
       </div>
-
       {showSignatureModal && pdfFile && (
         <SignatureModal
           document={{
