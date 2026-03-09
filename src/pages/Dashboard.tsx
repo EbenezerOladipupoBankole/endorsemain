@@ -40,7 +40,8 @@ import {
   Bell,
   HelpCircle,
   MessageCircle,
-  Code
+  Code,
+  FileType
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,6 +50,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
 
 // Lazy load heavy components to reduce initial bundle size
 const PDFViewer = lazy(() => import('@/components/esign/PDFViewer').then(module => ({ default: module.PDFViewer })));
@@ -211,7 +213,7 @@ const Dashboard = () => {
   const handleFileSelect = async (file: File) => {
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
+    const documentsSigned = userProfile?.documentsSigned || 0;
 
     if (!isPro && documentsSigned >= 3) {
       toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
@@ -280,7 +282,7 @@ const Dashboard = () => {
 
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
+    const documentsSigned = userProfile?.documentsSigned || 0;
 
     if (!isPro && documentsSigned >= 3) {
       toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
@@ -618,10 +620,10 @@ const Dashboard = () => {
                     <div className="mb-3">
                       <div className="flex justify-between text-xs font-medium mb-1">
                         <span>Free Usage</span>
-                        <span>{usageCount || userProfile?.documentsSigned || 0}/3 used</span>
+                        <span>{userProfile?.documentsSigned || 0}/3 used</span>
                       </div>
                       <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((usageCount || userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
+                        <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
                       </div>
                     </div>
                   )}
@@ -669,10 +671,10 @@ const Dashboard = () => {
                   <div className="mb-3">
                     <div className="flex justify-between text-xs font-medium mb-1">
                       <span>Free Usage</span>
-                      <span>{usageCount || userProfile?.documentsSigned || 0}/3 used</span>
+                      <span>{userProfile?.documentsSigned || 0}/3 used</span>
                     </div>
                     <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((usageCount || userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
+                      <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
                     </div>
                   </div>
                 )}
