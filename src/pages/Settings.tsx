@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Loader2, Shield, Zap, CreditCard, User, Lock, Smartphone, Copy, X } from "lucide-react";
+import { Check, Loader2, Shield, Zap, CreditCard, User, Lock, Smartphone, Copy, X, Users, Palette, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
@@ -12,6 +12,9 @@ import { Separator } from "@/components/ui/separator";
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, multiFactor, TotpMultiFactorGenerator, TotpSecret } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { functions, auth } from "@/components/client";
+
+const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
+                       
 
 const Settings = () => {
   const { user, userProfile, loading } = useAuth();
@@ -29,8 +32,12 @@ const Settings = () => {
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [totpSecret, setTotpSecret] = useState<TotpSecret | null>(null);
   const [verificationCode, setVerificationCode] = useState("");
+  const [primaryColor, setPrimaryColor] = useState(userProfile?.branding?.primaryColor || "#000000");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
 
-  const currentPlan = userProfile?.plan || "free";
+  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email) : false;
+  const currentPlan = isAdmin ? 'business' : (userProfile?.plan || "free");
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -53,29 +60,29 @@ const Settings = () => {
       // We replace the URL to prevent a refresh loop and then reload the page
       // to ensure the new user profile (with the updated plan) is fetched.
       navigate('/settings?tab=billing', { replace: true });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500); // Delay for user to see the toast
+    } else if (canceled) {
+      toast.info("Payment cancelled.");
+      navigate('/settings?tab=billing', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
-    }, [searchParams, navigate, setSear hPsetTimeout(() => {
-      window.location.reload();
-    eEff ct(() => {
-        if (user?.displayName) {
-        }, [searchParams, navigate, setSear hP}, 1500); // Delay for user to see the toast
-  } else if (canceled) {
-    eEff ct(() => {
+  useEffect(() => {
     if (user?.displayName) {
-    }, [searchParams, navigate, setSear hPtoast.info("Payment cancelled.");
-    navigate('/settings?tab=billing', { replace: true });
-    eEff
-  }ct(() => {
-    if (user?.displayName) {
-    }, [searchParams, navigate, setSearchParams]);
+      setDisplayName(user.displayName);
+    }
+    // Check if 2FA is already enabled
+    setIs2FAEnabled(user?.multiFactor?.enrolledFactors.length > 0);
 
-    useEffect(() => {
-      if (user?.displayName) {
-        setDisplayName(user.displayName);
+    // Set branding from profile
+    if (userProfile?.branding) {
+      if (userProfile.branding.primaryColor) {
+        setPrimaryColor(userProfile.branding.primaryColor);
       }
-      // Check if 2FA is already enabled
-      setIs2FAEnabled(user?.multiFactor?.enrolledFactors.length > 0);
-    }, [user]);
+    }
+  }, [user]);
 
     const handleTabChange = (tab: string) => {
       setActiveTab(tab);
@@ -130,6 +137,30 @@ const Settings = () => {
         }
       } finally {
         setIsChangingPassword(false);
+      }
+    };
+
+    const handleSaveBranding = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!user) return;
+      setIsSavingBranding(true);
+      toast.info("Saving branding settings... Note: Logo upload is a demo feature.");
+      // In a real app, you would upload the logoFile to Firebase Storage
+      // and get a download URL. For this demo, we'll just save the color.
+      try {
+        // const logoUrl = logoFile ? await uploadLogo(logoFile) : userProfile?.branding?.logoUrl;
+        await setDoc(doc(db, "users", user.uid), {
+          branding: {
+            primaryColor: primaryColor,
+            // logoUrl: logoUrl
+          }
+        }, { merge: true });
+        toast.success("Branding settings saved!");
+      } catch (error) {
+        console.error("Error saving branding:", error);
+        toast.error("Failed to save branding settings.");
+      } finally {
+        setIsSavingBranding(false);
       }
     };
 
@@ -287,6 +318,15 @@ const Settings = () => {
                 <CreditCard className="w-4 h-4 mr-2" />
                 Billing
               </Button>
+              {isAdmin && (
+                <Button
+                  variant={"ghost"}
+                  onClick={() => navigate('/team')}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Team
+                </Button>
+              )}
             </div>
 
             {activeTab === "profile" ? (
@@ -482,6 +522,46 @@ const Settings = () => {
                   </CardContent>
                 </Card>
 
+                {/* Custom Branding - Only for Business Plan or Admin */}
+                {isAdmin && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Custom Branding</CardTitle>
+                      <CardDescription>Customize the look and feel of your documents and emails.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleSaveBranding} className="space-y-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="logo-upload">Company Logo</Label>
+                          <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 bg-muted rounded-md flex items-center justify-center">
+                              {userProfile?.branding?.logoUrl ? <img src={userProfile.branding.logoUrl} alt="logo" className="object-contain h-full w-full" /> : <Upload className="w-6 h-6 text-muted-foreground" />}
+                            </div>
+                            <Input id="logo-upload" type="file" onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)} accept="image/png, image/jpeg" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="primary-color">Primary Color</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id="primary-color"
+                              type="color"
+                              value={primaryColor}
+                              onChange={(e) => setPrimaryColor(e.target.value)}
+                              className="w-12 h-10 p-1"
+                            />
+                            <Input type="text" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="#1a1f2c" />
+                          </div>
+                        </div>
+                        <Button type="submit" disabled={isSavingBranding}>
+                          {isSavingBranding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                          Save Branding
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Upgrade Options */}
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Available Plans</h2>
@@ -512,7 +592,7 @@ const Settings = () => {
                       <CardHeader>
                         <CardTitle>Pro</CardTitle>
                         <CardDescription>For professionals</CardDescription>
-                        <div className="mt-2 text-3xl font-bold">$15<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
+                        <div className="mt-2 text-3xl font-bold">$8<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
                       </CardHeader>
                       <CardContent className="flex-1">
                         <ul className="space-y-2 text-sm">
@@ -537,7 +617,7 @@ const Settings = () => {
                       <CardHeader>
                         <CardTitle>Business</CardTitle>
                         <CardDescription>For teams & organizations</CardDescription>
-                        <div className="mt-2 text-3xl font-bold">$49<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
+                        <div className="mt-2 text-3xl font-bold">$15<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
                       </CardHeader>
                       <CardContent className="flex-1">
                         <ul className="space-y-2 text-sm">

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, functions } from '@/components/client';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
 import { PDFUploader } from '@/components/esign/PDFUploader';
@@ -33,6 +34,7 @@ import {
   Settings,
   LayoutDashboard,
   CreditCard,
+  Users,
   Shield,
   Menu,
   X,
@@ -92,10 +94,13 @@ const convertWordToPDF = async (file: File): Promise<Blob> => {
   });
 };
 
+const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
+  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email) : false;
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
@@ -233,8 +238,7 @@ const Dashboard = () => {
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
     const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
-
-    if (!isPro && documentsSigned >= 3) {
+    if (!isPro && !isAdmin && documentsSigned >= 3) {
       toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
       navigate('/settings?tab=billing');
       return;
@@ -300,8 +304,7 @@ const Dashboard = () => {
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
     const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
-
-    if (!isPro && documentsSigned >= 3) {
+    if (!isPro && !isAdmin && documentsSigned >= 3) {
       toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
       navigate('/settings?tab=billing');
       return;
@@ -401,7 +404,6 @@ const Dashboard = () => {
 
     // Check if user is on a paid plan (Bypass for admin email or localhost)
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
     const isLocal = window.location.hostname === 'localhost';
 
     if (!isPro && !isAdmin && !isLocal) {
@@ -409,33 +411,31 @@ const Dashboard = () => {
       return;
     }
 
-    // Firestore has a 1MB limit per document. Base64 adds ~33% overhead.
-    // We limit file size to 600KB to ensure successful upload.
-    if (pdfFile.size > 600 * 1024) {
-      toast.error("Document is too large. Please use a file smaller than 600KB.");
-      return;
-    }
-
     const toastId = toast.loading("Processing document and sending invitations...");
 
     try {
-      // 1. Convert PDF to Base64 (simple solution for now, ideally upload to Storage)
-      const pdfBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(pdfFile);
-      });
+      // 1. Generate a new doc ref to get an ID upfront
+      const newDocRef = doc(collection(db, "documents"));
 
-      // 2. Create the document in Firestore immediately
-      // Wrap in a timeout to prevent hanging
-      const createDocPromise = addDoc(collection(db, "documents"), {
+      // 2. Upload file to Firebase Storage
+      const storage = getStorage();
+      const storagePath = `documents/${user?.uid}/${newDocRef.id}/${pdfFile.name}`;
+      const storageRef = ref(storage, storagePath);
+
+      toast.info("Uploading document...", { id: toastId });
+      const uploadTask = await uploadBytes(storageRef, pdfFile);
+      const downloadURL = await getDownloadURL(uploadTask.ref);
+
+      // 3. Create the document in Firestore with the URL
+      toast.info("Saving document details...", { id: toastId });
+      await setDoc(newDocRef, {
         name: pdfFile.name,
         status: 'pending',
         ownerEmail: user?.email,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        pdfBase64: pdfBase64, // Storing base64 for simplicity in this demo. For prod, use Storage.
+        downloadURL: downloadURL,
+        storagePath: storagePath,
         signers: signers.map(s => ({
           email: s.email,
           role: s.role || 'signer',
@@ -444,33 +444,37 @@ const Dashboard = () => {
         invitedBy: user?.uid,
       });
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Database operation timed out. The file might be too large or connection is slow.")), 60000)
-      );
-
-      const docRef = await Promise.race([createDocPromise, timeoutPromise]) as any;
-
-
-      // 3. Send invites with the new document ID
+      // 4. Send invites with the new document ID
+      toast.info("Sending invitations...", { id: toastId });
       const sendInvites = httpsCallable(functions, 'sendSignerInvites');
 
       const invitePromise = sendInvites({
-        signers: signers,
+        signers: signers.map(s => ({ email: s.email, role: s.role || 'signer' })),
         documentName: pdfFile.name,
         uploaderName: user?.displayName || user?.email?.split('@')[0] || 'A user',
         uploaderEmail: user?.email,
-        documentId: docRef.id, // Pass the ID effectively
-        signingLink: `${window.location.origin}/sign/${docRef.id}`, // Explicit link
+        documentId: newDocRef.id, // Pass the ID effectively
+        signingLink: `${window.location.origin}/sign/${newDocRef.id}`, // Explicit link
       });
 
       const inviteTimeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Email service timed out. Document saved, but invites might not have sent.")), 40000)
       );
 
-      await Promise.race([invitePromise, inviteTimeoutPromise]);
+      const result = await Promise.race([invitePromise, inviteTimeoutPromise]) as any;
 
-      // Small delay to let user see 100%
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Check for partial failures in email sending
+      if (result?.data?.results) {
+        const failed = result.data.results.filter((r: any) => r.status === 'failed');
+        if (failed.length > 0) {
+          console.error("Failed invites:", failed);
+          const failedEmails = failed.map((f: any) => f.email).join(', ');
+          toast.error(`Document saved, but failed to send email to: ${failedEmails}. Please check the email address and try again.`, { id: toastId, duration: 5000 });
+          // We still update stats because the document was created
+          setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }));
+          return;
+        }
+      }
 
       toast.success('Invitations sent successfully!', { id: toastId });
 
@@ -494,14 +498,15 @@ const Dashboard = () => {
 
   const handleDeleteDoc = async (e: React.MouseEvent, docId: string) => {
     e.stopPropagation();
+    const toastId = toast.loading("Deleting document...");
     if (window.confirm("Are you sure you want to delete this document?")) {
       try {
         await deleteDoc(doc(db, "documents", docId));
         setRecentDocs((prev) => prev.filter((d) => d.id !== docId));
-        toast.success("Document deleted successfully");
+        toast.success("Document deleted successfully", { id: toastId });
       } catch (error) {
+        toast.error("Failed to delete document", { id: toastId });
         console.error("Error deleting document:", error);
-        toast.error("Failed to delete document");
       }
     }
   };
@@ -671,17 +676,25 @@ const Dashboard = () => {
                   File Converter
                 </Link>
               </Button>
+              {isAdmin && (
+                <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                  <Link to="/team">
+                    <Users className="mr-2 h-4 w-4" />
+                    Team Management
+                  </Link>
+                </Button>
+              )}
             </div>
             <div className="mt-auto pt-8">
               <Card>
                 <CardHeader className="p-4 pb-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <Shield className="h-4 w-4 text-primary" />
-                    {userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                    {isAdmin ? 'Business' : userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-2">
-                  {(userProfile?.plan === 'free' || !userProfile?.plan) && (
+                  {!isAdmin && (userProfile?.plan === 'free' || !userProfile?.plan) && (
                     <div className="mb-3">
                       <div className="flex justify-between text-xs font-medium mb-1">
                         <span>Free Usage</span>
@@ -693,7 +706,7 @@ const Dashboard = () => {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground mb-3">
-                    {userProfile?.plan === 'free' || !userProfile?.plan
+                    {!isAdmin && (userProfile?.plan === 'free' || !userProfile?.plan)
                       ? 'Upgrade to unlock unlimited documents.'
                       : 'Your plan is active.'}
                   </p>
@@ -722,17 +735,25 @@ const Dashboard = () => {
                   File Converter
                 </Link>
               </Button>
+              {isAdmin && (
+                <Button variant="ghost" className="w-full justify-start" asChild>
+                  <Link to="/team">
+                    <Users className="mr-2 h-4 w-4" />
+                    Team Management
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <Card className="bg-white shadow-sm border-gray-200">
               <CardHeader className="p-4 pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Shield className="h-4 w-4 text-primary" />
-                  {userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                  {isAdmin ? 'Business' : userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-2">
-                {(userProfile?.plan === 'free' || !userProfile?.plan) && (
+                {!isAdmin && (userProfile?.plan === 'free' || !userProfile?.plan) && (
                   <div className="mb-3">
                     <div className="flex justify-between text-xs font-medium mb-1">
                       <span>Free Usage</span>
@@ -744,7 +765,7 @@ const Dashboard = () => {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground mb-3">
-                  {userProfile?.plan === 'free' || !userProfile?.plan
+                  {!isAdmin && (userProfile?.plan === 'free' || !userProfile?.plan)
                     ? 'Upgrade to unlock unlimited documents.'
                     : 'Your plan is active.'}
                 </p>

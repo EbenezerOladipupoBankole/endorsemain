@@ -43,6 +43,8 @@ function getTransporter() {
 
 const APP_URL = "https://e-ndorse.online"; // Updated to new custom domain
 
+const ADMIN_EMAILS = ["bankoleebenezer111@gmail.com", "omakaoe@gmail.com"];
+
 interface InvitePayload {
   documentId: string;
   recipientEmail: string;
@@ -60,6 +62,15 @@ interface SendSignerInvitesPayload {
   uploaderName: string;
   uploaderEmail: string;
   documentId: string;
+}
+
+interface InviteTeamMemberPayload {
+  inviteEmail: string;
+  role: 'admin' | 'member';
+}
+
+interface AcceptInvitePayload {
+  token: string;
 }
 
 // Function to invite a user to sign
@@ -83,7 +94,7 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
   const userData = userSnap.data();
   const documentsSigned = userData?.documentsSigned || 0;
   const isPro = userData?.plan === "pro" || userData?.plan === "business";
-  const isAdmin = request.auth.token.email === "bankoleebenezer111@gmail.com";
+  const isAdmin = request.auth.token.email && ADMIN_EMAILS.includes(request.auth.token.email);
 
   if (!isPro && !isAdmin && documentsSigned >= 3) {
     throw new HttpsError("resource-exhausted", "You have reached the limit of 3 free documents. Please upgrade to continue.");
@@ -137,7 +148,7 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
 
     // Set a timeout for the mail sending to avoid hanging forever
     const mailOptions = {
-      from: '"Endorse App" <ebenezerbankole7@gmail.com>',
+      from: `"Endorse App" <${gmailEmail.value()}>`,
       to: recipientEmail,
       subject: "You have been invited to sign a document",
       text: `You have been invited to sign "${originalData?.name}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
@@ -182,7 +193,7 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }
     try {
       console.log(`Sending invite email to: ${signer.email}`);
       await getTransporter().sendMail({
-        from: '"Endorse App" <ebenezerbankole7@gmail.com>',
+        from: `"Endorse App" <${gmailEmail.value()}>`,
         to: signer.email,
         subject: `${uploaderName} invited you to sign ${documentName}`,
         text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
@@ -199,6 +210,45 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }
   return { success: true, results };
 });
 
+export const acceptTeamInvite = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in to accept an invite.");
+  }
+  const { uid, email } = request.auth.token;
+  const { token } = request.data as AcceptInvitePayload;
+
+  const db = admin.firestore();
+  const invitesRef = db.collection('invites');
+  const inviteQuery = await invitesRef.where('token', '==', token).where('toEmail', '==', email).limit(1).get();
+
+  if (inviteQuery.empty) {
+    throw new HttpsError('not-found', 'Invitation not found, is invalid, or is for another email address.');
+  }
+
+  const inviteDoc = inviteQuery.docs[0];
+  const inviteData = inviteDoc.data();
+
+  if (inviteData.status !== 'pending') {
+    throw new HttpsError('already-exists', 'This invitation has already been accepted.');
+  }
+
+  const { teamId, role } = inviteData;
+
+  const batch = db.batch();
+
+  const memberRef = db.collection('teams').doc(teamId).collection('members').doc(uid);
+  batch.set(memberRef, { email, role, status: 'active', addedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+  const userRef = db.collection('users').doc(uid);
+  batch.set(userRef, { teamId, plan: 'business' }, { merge: true });
+
+  batch.update(inviteDoc.ref, { status: 'accepted', acceptedAt: admin.firestore.FieldValue.serverTimestamp(), acceptedByUid: uid });
+
+  await batch.commit();
+
+  return { success: true, message: 'Team joined successfully.' };
+});
+
 // Function to send the signed document via email
 export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
   if (!request.auth) {
@@ -211,7 +261,7 @@ export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
 
   try {
     await getTransporter().sendMail({
-      from: '"Endorse App" <ebenezerbankole7@gmail.com>',
+      from: `"Endorse App" <${gmailEmail.value()}>`,
       to: recipientEmail,
       subject: `Signed Document: ${documentName}`,
       text: `Please find attached the signed copy of ${documentName}.`,
@@ -607,4 +657,44 @@ export const managePaystackSubscription = onCall(async (request) => {
     url: "https://dashboard.paystack.com", // Or a link to your support/custom billing page
     message: "Paystack subscription management is handled via your dashboard or contact support."
   };
+});
+
+interface RemoveMemberPayload {
+  teamId: string;
+  memberId: string;
+}
+
+export const removeTeamMember = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+  const { uid: removerUid } = request.auth.token;
+  const { teamId, memberId } = request.data as RemoveMemberPayload;
+
+  const db = admin.firestore();
+  const memberRef = db.collection('teams').doc(teamId).collection('members').doc(memberId);
+  const removerRef = db.collection('teams').doc(teamId).collection('members').doc(removerUid);
+
+  const removerDoc = await removerRef.get();
+  if (!removerDoc.exists || removerDoc.data()?.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'You must be an admin to remove members.');
+  }
+
+  if (removerUid === memberId) {
+    const membersQuery = await db.collection('teams').doc(teamId).collection('members')
+      .where('role', '==', 'admin').get();
+    if (membersQuery.size <= 1) {
+      throw new HttpsError('failed-precondition', 'You cannot remove the last admin of the team.');
+    }
+  }
+
+  const batch = db.batch();
+  batch.delete(memberRef);
+
+  const userRef = db.collection('users').doc(memberId);
+  batch.update(userRef, { teamId: admin.firestore.FieldValue.delete() });
+
+  await batch.commit();
+
+  return { success: true, message: 'Member removed.' };
 });
