@@ -15,6 +15,7 @@ import Payment from "./Payment";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import CookiePolicy from "./pages/CookiePolicy";
+import Team from "./pages/Team";
 import FileConversion from "./pages/FileConversion";
 import { useAuth } from "./components/AuthContext";
 
@@ -39,6 +40,7 @@ const App = () => (
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sign/:id" element={<SignDocument />} />
+            <Route path="/team" element={<Team />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
