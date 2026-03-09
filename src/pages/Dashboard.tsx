@@ -33,6 +33,7 @@ import {
   Settings,
   LayoutDashboard,
   CreditCard,
+  Users,
   Shield,
   Menu,
   X,
@@ -52,10 +53,50 @@ import {
 // Lazy load heavy components to reduce initial bundle size
 const PDFViewer = lazy(() => import('@/components/esign/PDFViewer').then(module => ({ default: module.PDFViewer })));
 
+interface SignaturePosition {
+  x: number;
+  y: number;
+  page: number;
+  width: number;
+}
+
+// Helper to convert Word to PDF via Cloud Function
+const convertWordToPDF = async (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      try {
+        const base64 = (reader.result as string).split(',')[1];
+        const convertDocument = httpsCallable(functions, 'convertDocument');
+
+        const result = await convertDocument({
+          file: base64,
+          filename: file.name,
+          mimeType: file.type
+        });
+
+        const data = result.data as { pdfBase64: string };
+        const byteCharacters = atob(data.pdfBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        resolve(new Blob([byteArray], { type: 'application/pdf' }));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
+  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email) : false;
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
@@ -167,14 +208,48 @@ const Dashboard = () => {
     }
   };
 
-  const handleFileSelect = (file: File) => {
-    setPdfFile(file);
-    setSignature(null);
-    setPlacedItems([]);
-    setSigners([]);
+  const handleFileSelect = async (file: File) => {
+    // Check limits for free plan
+    const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
+    const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
+
+    if (!isPro && documentsSigned >= 3) {
+      toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
+      navigate('/settings?tab=billing');
+      return;
+    }
+
+    const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isWord = file.name.match(/\.(doc|docx)$/i) ||
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    if (isPDF) {
+      setPdfFile(file);
+      setSignature(null);
+      setSignaturePositions([]);
+      setSigners([]);
+    } else if (isWord) {
+      const toastId = toast.loading("Converting Word document to PDF...");
+      try {
+        const pdfBlob = await convertWordToPDF(file);
+        const convertedFile = new File([pdfBlob], file.name.replace(/\.(doc|docx)$/i, '.pdf'), { type: 'application/pdf' });
+
+        setPdfFile(convertedFile);
+        setSignature(null);
+        setSignaturePositions([]);
+        setSigners([]);
+        toast.success("Document converted successfully", { id: toastId });
+      } catch (error) {
+        console.error("Conversion error:", error);
+        toast.error("Failed to convert document. Please ensure you have a stable connection and try again.", { id: toastId });
+      }
+    } else {
+      toast.error("Unsupported file format. Please upload PDF or Word documents.");
+    }
   };
 
-  const handleModalSave = (signatureData: string) => {
+  const handleModalSave = (signatureData: string, signatureType: "draw" | "type" | "upload") => {
     setSignature(signatureData);
     setIsPlacingSignature(true);
     setShowSignatureModal(false);
@@ -205,10 +280,11 @@ const Dashboard = () => {
 
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const documentsSigned = userProfile?.documentsSigned || 0;
+    const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
 
     if (!isPro && documentsSigned >= 3) {
-      toast.error("You have reached the limit of 3 free documents. Please upgrade to continue.");
+      toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
+      navigate('/settings?tab=billing');
       return;
     }
 
@@ -255,33 +331,92 @@ const Dashboard = () => {
       return;
     }
 
-    // Check if user is on a paid plan
-    if (userProfile?.plan !== 'pro' && userProfile?.plan !== 'business') {
+    // Check if user is on a paid plan (Bypass for admin email or localhost)
+    const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
+    const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
+    const isLocal = window.location.hostname === 'localhost';
+
+    if (!isPro && !isAdmin && !isLocal) {
       toast.error("Inviting signers is a Pro feature. Please upgrade your plan.");
       return;
     }
 
-    const promise = async () => {
-      const functions = getFunctions();
+    // Firestore has a 1MB limit per document. Base64 adds ~33% overhead.
+    // We limit file size to 600KB to ensure successful upload.
+    if (pdfFile.size > 600 * 1024) {
+      toast.error("Document is too large. Please use a file smaller than 600KB.");
+      return;
+    }
+
+    const toastId = toast.loading("Processing document and sending invitations...");
+
+    try {
+      // 1. Convert PDF to Base64 (simple solution for now, ideally upload to Storage)
+      const pdfBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(pdfFile);
+      });
+
+      // 2. Create the document in Firestore immediately
+      // Wrap in a timeout to prevent hanging
+      const createDocPromise = addDoc(collection(db, "documents"), {
+        name: pdfFile.name,
+        status: 'pending',
+        ownerEmail: user?.email,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        pdfBase64: pdfBase64, // Storing base64 for simplicity in this demo. For prod, use Storage.
+        signers: signers.map(s => ({
+          email: s.email,
+          role: s.role || 'signer',
+          status: 'pending'
+        })),
+        invitedBy: user?.uid,
+      });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Database operation timed out. The file might be too large or connection is slow.")), 60000)
+      );
+
+      const docRef = await Promise.race([createDocPromise, timeoutPromise]) as any;
+
+
+      // 3. Send invites with the new document ID
       const sendInvites = httpsCallable(functions, 'sendSignerInvites');
 
-      await sendInvites({
+      const invitePromise = sendInvites({
         signers: signers,
         documentName: pdfFile.name,
         uploaderName: user?.email?.split('@')[0] || 'A user',
         uploaderEmail: user?.email,
-        signingLink: `${window.location.origin}/dashboard`,
+        documentId: docRef.id, // Pass the ID effectively
+        signingLink: `${window.location.origin}/sign/${docRef.id}`, // Explicit link
       });
-    };
 
-    toast.promise(promise(), {
-      loading: 'Sending invitations...',
-      success: 'Invitations sent successfully!',
-      error: (err) => {
-        console.error("Firebase function error:", err);
-        return "Failed to send invitations. Please try again.";
-      },
-    });
+      const inviteTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Email service timed out. Document saved, but invites might not have sent.")), 40000)
+      );
+
+      await Promise.race([invitePromise, inviteTimeoutPromise]);
+
+      // Small delay to let user see 100%
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      toast.success('Invitations sent successfully!', { id: toastId });
+
+      // Update local stats
+      setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }));
+    } catch (error: any) {
+      console.error("Error sending invitations:", error);
+      let msg = "Failed to send invitations.";
+      if (error?.message) msg = error.message;
+      if (error?.code === 'resource-exhausted') msg = "File too large for database.";
+      if (error?.code === 'permission-denied') msg = "Permission denied.";
+
+      toast.error(msg, { id: toastId });
+    }
   };
 
   const toggleTheme = () => {
@@ -291,14 +426,15 @@ const Dashboard = () => {
 
   const handleDeleteDoc = async (e: React.MouseEvent, docId: string) => {
     e.stopPropagation();
+    const toastId = toast.loading("Deleting document...");
     if (window.confirm("Are you sure you want to delete this document?")) {
       try {
         await deleteDoc(doc(db, "documents", docId));
         setRecentDocs((prev) => prev.filter((d) => d.id !== docId));
-        toast.success("Document deleted successfully");
+        toast.success("Document deleted successfully", { id: toastId });
       } catch (error) {
+        toast.error("Failed to delete document", { id: toastId });
         console.error("Error deleting document:", error);
-        toast.error("Failed to delete document");
       }
     }
   };
@@ -462,18 +598,35 @@ const Dashboard = () => {
                   Dashboard
                 </Link>
               </Button>
+              <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                <Link to="/conversion">
+                  <FileType className="mr-2 h-4 w-4" />
+                  File Converter
+                </Link>
+              </Button>
             </div>
             <div className="mt-auto pt-8">
               <Card>
                 <CardHeader className="p-4 pb-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <Shield className="h-4 w-4 text-primary" />
-                    {userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                    {isAdmin ? 'Business' : userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-2">
+                  {(userProfile?.plan === 'free' || !userProfile?.plan) && (
+                    <div className="mb-3">
+                      <div className="flex justify-between text-xs font-medium mb-1">
+                        <span>Free Usage</span>
+                        <span>{usageCount || userProfile?.documentsSigned || 0}/3 used</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((usageCount || userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
+                      </div>
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground mb-3">
-                    {userProfile?.plan === 'free' || !userProfile?.plan
+                    {!isAdmin && (userProfile?.plan === 'free' || !userProfile?.plan)
                       ? 'Upgrade to unlock unlimited documents.'
                       : 'Your plan is active.'}
                   </p>
@@ -496,18 +649,35 @@ const Dashboard = () => {
                   Dashboard
                 </Link>
               </Button>
+              <Button variant="ghost" className="w-full justify-start" asChild>
+                <Link to="/conversion">
+                  <FileType className="mr-2 h-4 w-4" />
+                  File Converter
+                </Link>
+              </Button>
             </div>
 
             <Card className="bg-white shadow-sm border-gray-200">
               <CardHeader className="p-4 pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Shield className="h-4 w-4 text-primary" />
-                  {userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                  {isAdmin ? 'Business' : userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-2">
+                {(userProfile?.plan === 'free' || !userProfile?.plan) && (
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs font-medium mb-1">
+                      <span>Free Usage</span>
+                      <span>{usageCount || userProfile?.documentsSigned || 0}/3 used</span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((usageCount || userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
+                    </div>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground mb-3">
-                  {userProfile?.plan === 'free' || !userProfile?.plan
+                  {!isAdmin && (userProfile?.plan === 'free' || !userProfile?.plan)
                     ? 'Upgrade to unlock unlimited documents.'
                     : 'Your plan is active.'}
                 </p>
