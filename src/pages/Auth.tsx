@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, User, ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
+import { httpsCallable } from "firebase/functions";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -15,9 +16,9 @@ import {
   TotpMultiFactorGenerator,
   MultiFactorError,
   sendEmailVerification,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
 } from "firebase/auth";
-import { auth } from "@/components/client";
+import { auth, functions } from "@/components/client";
 import { useAuth } from "@/components/AuthContext";
 
 const Auth = () => {
@@ -35,16 +36,31 @@ const Auth = () => {
   const [resetSent, setResetSent] = useState(false);
   const [forgotPassword, setForgotPassword] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
+  const inviteToken = searchParams.get('inviteToken');
 
   const location = useLocation();
   const from = location.state?.from?.pathname || "/dashboard";
 
   useEffect(() => {
     if (user && user.emailVerified) {
-      navigate(from, { replace: true });
+      if (inviteToken && !userProfile?.teamId) {
+        const acceptInvite = httpsCallable(functions, 'acceptTeamInvite');
+        toast.promise(acceptInvite({ token: inviteToken }), {
+          loading: 'Joining team...',
+          success: (res: any) => {
+            return res.data.message || 'Successfully joined team! Redirecting...';
+          },
+          error: (err) => `Failed to join team: ${err.message}`,
+        }).finally(() => {
+          // Use a short delay to allow user to see the toast before reload
+          setTimeout(() => window.location.href = from, 1500);
+        });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
-  }, [user, navigate, from]);
+  }, [user, userProfile, navigate, from, inviteToken]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();

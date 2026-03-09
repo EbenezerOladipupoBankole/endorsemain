@@ -27,7 +27,7 @@ const tiers = [
   },
   {
     name: 'Pro',
-    price: '$15',
+    price: '$8',
     frequency: '/month',
     features: ['Unlimited documents', 'Invite signers', 'Audit trails'],
     color: 'text-purple-600',
@@ -36,7 +36,7 @@ const tiers = [
   },
   {
     name: 'Business',
-    price: '$49',
+    price: '$15',
     frequency: '/month',
     features: ['Everything in Pro', 'Team management', 'Custom branding'],
     color: 'text-orange-600',
