@@ -61,6 +61,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (userProfile?.branding) {
+      const { primaryColor } = userProfile.branding;
+      if (primaryColor) {
+        // Convert hex to HSL for Tailwind variables if possible, 
+        // or just set a --primary-custom variable.
+        // For simplicity, we'll just set it directly as a hex if we use it in inline styles,
+        // but it's better to update the CSS variable.
+        document.documentElement.style.setProperty('--primary', primaryColor);
+        // Also update ring and others if needed
+        document.documentElement.style.setProperty('--ring', primaryColor);
+      }
+    } else {
+      // Reset to default if no branding
+      document.documentElement.style.removeProperty('--primary');
+      document.documentElement.style.removeProperty('--ring');
+    }
+  }, [userProfile?.branding]);
+
   const signOutUser = async () => {
     await signOut(auth);
   };

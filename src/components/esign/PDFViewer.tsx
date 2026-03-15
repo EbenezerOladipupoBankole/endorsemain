@@ -9,7 +9,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 export interface PlacedItem {
   id: string;
-  type: "signature" | "initials" | "name" | "date" | "text" | "stamp";
+  type: "signature" | "initials" | "name" | "date" | "text" | "stamp" | "checkbox" | "dropdown";
   x: number;
   y: number;
   page: number;
@@ -19,7 +19,7 @@ export interface PlacedItem {
 
 interface PDFViewerProps {
   file: File;
-  activeStamp: { type: "signature" | "initials" | "name" | "date" | "text" | "stamp", data: string } | null;
+  activeStamp: { type: "signature" | "initials" | "name" | "date" | "text" | "stamp" | "checkbox" | "dropdown", data: string } | null;
   placedItems: PlacedItem[];
   onItemPlace: (item: Omit<PlacedItem, "id">) => void;
   onItemUpdate: (id: string, updates: Partial<PlacedItem>) => void;
@@ -182,6 +182,31 @@ export const PDFViewer = ({
                 className="pointer-events-none"
                 draggable={false}
               />
+            ) : item.type === "checkbox" ? (
+              <div 
+                className={`w-6 h-6 border-2 flex items-center justify-center rounded transition-colors ${item.data === 'true' ? 'bg-primary border-primary' : 'bg-white border-muted-foreground/50'}`}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  onItemUpdate(item.id, { data: item.data === 'true' ? 'false' : 'true' });
+                }}
+              >
+                {item.data === 'true' && <div className="w-3 h-3 bg-white rounded-sm" />}
+              </div>
+            ) : item.type === "dropdown" ? (
+              <div className="bg-white border border-border rounded px-2 py-1 shadow-sm min-w-[120px] flex items-center justify-between gap-2">
+                <select 
+                  className="bg-transparent text-sm outline-none cursor-pointer w-full"
+                  value={item.data}
+                  onChange={(e) => onItemUpdate(item.id, { data: e.target.value })}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <option value="">Select Option</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
             ) : (
               <div
                 className={`min-w-[80px] border border-transparent rounded flex items-center p-1 cursor-text ${isSelected ? 'bg-white/50' : 'bg-transparent hover:border-primary/30'}`}

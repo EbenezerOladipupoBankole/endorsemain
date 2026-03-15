@@ -1,0 +1,13 @@
+
+[1m[37m===[39m Deploying to 'endorse-app'...[22m
+
+[36m[1mi [22m[39m deploying [1mfunctions[22m
+Running command: npm --prefix "$RESOURCE_DIR" run build
+
+> build
+> tsc
+
+src/index.ts(298,48): error TS6133: 'documentId' is declared but its value is never read.
+src/index.ts(298,60): error TS2339: Property 'pdfBase64' does not exist on type 'SendSignerInvitesPayload'.
+
+[1m[31mError:[39m[22m functions predeploy error: Command terminated with non-zero exit code 2

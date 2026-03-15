@@ -1,0 +1,6 @@
+
+> build
+> tsc
+
+src/index.ts(2,1): error TS6192: All imports in import declaration are unused.
+src/index.ts(76,16): error TS6133: 'logAuditTrail' is declared but its value is never read.

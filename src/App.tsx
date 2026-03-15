@@ -17,6 +17,7 @@ import Terms from "./pages/Terms";
 import CookiePolicy from "./pages/CookiePolicy";
 import Team from "./pages/Team";
 import FileConversion from "./pages/FileConversion";
+import Settings from "./pages/Settings";
 import { useAuth } from "./components/AuthContext";
 
 const queryClient = new QueryClient();
@@ -37,10 +38,11 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/conversion" element={<FileConversion />} />
+          <Route path="/sign/:id" element={<SignDocument />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/sign/:id" element={<SignDocument />} />
             <Route path="/team" element={<Team />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

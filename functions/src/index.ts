@@ -8,6 +8,9 @@ import { Stripe } from "stripe";
 const mammoth = require("mammoth");
 const { Document, Packer, Paragraph, TextRun } = require("docx");
 const pdfParse = require("pdf-parse");
+import prisma from "./db";
+
+const postgresUrl = defineSecret("POSTGRES_URL");
 
 // Initialize Admin SDK
 if (admin.apps.length === 0) {
@@ -27,12 +30,21 @@ const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 let transporter: nodemailer.Transporter | null = null;
 
 function getTransporter() {
+  const email = gmailEmail.value();
+  const password = gmailPassword.value();
+
+  if (!email || !password) {
+    console.error("GMAIL_EMAIL or GMAIL_PASSWORD secret is missing or empty.");
+    throw new HttpsError("failed-precondition", "Email configuration is missing on the server.");
+  }
+
   if (!transporter) {
+    console.log("Creating nodemailer transporter for:", email);
     transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: gmailEmail.value(),
-        pass: gmailPassword.value(),
+        user: email,
+        pass: password,
       },
       connectionTimeout: 10000, // 10 seconds
       greetingTimeout: 10000,   // 10 seconds
@@ -56,20 +68,113 @@ interface SendDocumentPayload {
   documentName: string;
 }
 
+// Function to fetch documents for the logged-in user (PostgreSQL)
+export const getUserDocuments = onCall({ secrets: [postgresUrl] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  try {
+    const userEmail = request.auth.token.email;
+    if (!userEmail) throw new HttpsError("invalid-argument", "Email required.");
+
+    // 1. Get Owned Documents
+    const ownedDocs = await prisma.document.findMany({
+      where: { owner: { email: userEmail } },
+      include: { recipients: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 2. Get Documents where user is a recipient (not owned)
+    const receivedRecipients = await prisma.recipient.findMany({
+      where: { 
+        email: userEmail,
+        document: { owner: { email: { not: userEmail } } } // Exclude self-owned
+      },
+      include: { 
+        document: { 
+          include: { owner: true, recipients: true } 
+        } 
+      }
+    });
+
+    const receivedDocs = receivedRecipients.map(r => ({ ...r.document, role: 'recipient' }));
+    const ownedDocsWithRole = ownedDocs.map(d => ({ ...d, role: 'owner' }));
+
+    const allDocs = [...ownedDocsWithRole, ...receivedDocs].sort((a: any, b: any) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    return { success: true, documents: allDocs };
+  } catch (error: any) {
+    console.error("List Documents Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to list documents.");
+  }
+});
+
+// Function to get summary stats (PostgreSQL)
+export const getUserStats = onCall({ secrets: [postgresUrl] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  try {
+    const userEmail = request.auth.token.email;
+    if (!userEmail) throw new HttpsError("invalid-argument", "Email required.");
+
+    const totalOwned = await prisma.document.count({
+      where: { owner: { email: userEmail } }
+    });
+
+    const completed = await prisma.document.count({
+      where: { owner: { email: userEmail }, status: 'COMPLETED' }
+    });
+
+    const pending = totalOwned - completed;
+
+    return { total: totalOwned, signed: completed, pending };
+  } catch (error: any) {
+    console.error("Stats Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to fetch stats.");
+  }
+});
+
 interface SendSignerInvitesPayload {
   signers: { email: string; role: string }[];
   documentName: string;
   uploaderName: string;
-  uploaderEmail: string;
-  documentId: string;
+  pdfBase64: string;
 }
 
 interface AcceptInvitePayload {
   token: string;
 }
 
+// --- AUDIT LOGGING HELPER ---
+async function logAuditTrail(documentId: string, action: string, performedBy: string, details: any = {}) {
+  try {
+    // Attempt to find a user if it looks like a Firebase UID or email
+    let userId: string | null = null;
+    if (performedBy && performedBy.includes('@')) {
+       const user = await prisma.user.findUnique({ where: { email: performedBy } });
+       if (user) userId = user.id;
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        documentId,
+        action,
+        userId,
+        metadata: { ...details, performedBy },
+      },
+    });
+  } catch (error) {
+    console.error("Audit Log Error (Postgres):", error);
+  }
+}
+
 // Function to invite a user to sign
-export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
+export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword, postgresUrl] }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -98,50 +203,66 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
   console.log("inviteToSign called with data:", data);
 
   try {
-    // 1. Get Original Document
+    // 1. Get Original Document from Firestore (for now)
     console.log("Fetching original document:", documentId);
     const docRef = db.collection("documents").doc(documentId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
-      console.error("Document not found:", documentId);
+      console.error("Document not found in Firestore:", documentId);
       throw new HttpsError("not-found", "Document not found.");
     }
 
     const originalData = docSnap.data();
     console.log("Original document data:", originalData);
 
-    // 2. Create New Document (Clone)
-    const newDocumentData = {
-      ...originalData,
-      status: "pending",
-      signature_data: null,
-      signature_type: null,
-      ownerEmail: recipientEmail,
-      invitedBy: request.auth.token.email || request.auth.uid,
-      originalDocumentId: documentId,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    // 2. Sync / Upsert User in PostgreSQL
+    const senderEmail = request.auth.token.email;
+    if (!senderEmail) {
+      console.error("Missing email in auth token");
+      throw new HttpsError("invalid-argument", "User email is required for this operation.");
+    }
 
-    delete (newDocumentData as any).id;
+    console.log("Upserting user in Postgres:", senderEmail);
+    const postgresUser = await prisma.user.upsert({
+      where: { email: senderEmail },
+      update: { firebaseUid: request.auth.uid },
+      create: { 
+        email: senderEmail,
+        firebaseUid: request.auth.uid,
+        name: request.auth.token.name as string || senderEmail.split('@')[0],
+      }
+    });
+    console.log("Postgres user synced:", postgresUser.id);
 
-    // 3. Save to Firestore
-    console.log("Creating new document clone...");
-    const newDocRef = await db.collection("documents").add(newDocumentData);
-    console.log("New document created with ID:", newDocRef.id);
+    // 3. Save Document and Recipient to PostgreSQL
+    const newPgDoc = await prisma.document.create({
+      data: {
+        name: originalData?.name || "Untitled Document",
+        fileUrl: originalData?.pdfBase64 || "", // Or storage URL
+        ownerId: postgresUser.id,
+        status: "pending",
+        recipients: {
+          create: {
+            email: recipientEmail,
+            status: "pending",
+          }
+        }
+      },
+      include: {
+        recipients: true
+      }
+    });
 
-    // Increment document count for user
-    console.log("Incrementing document count for user:", request.auth.uid);
-    await userRef.set({ documentsSigned: admin.firestore.FieldValue.increment(1) }, { merge: true });
+    await logAuditTrail(newPgDoc.id, "DOCUMENT_INVITE_SENT", senderEmail, { recipientEmail });
 
-    const documentLink = `${APP_URL}/sign/${newDocRef.id}`;
+    const pgRecipient = newPgDoc.recipients[0];
+    const documentLink = `${APP_URL}/sign/${newPgDoc.id}?token=${pgRecipient.token}`;
 
     // 4. Send Invitation Email
     console.log("Sending invitation email to:", recipientEmail);
     const transporter = getTransporter();
 
-    // Set a timeout for the mail sending to avoid hanging forever
     const mailOptions = {
       from: `"Endorse App" <${gmailEmail.value()}>`,
       to: recipientEmail,
@@ -153,56 +274,198 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
     await transporter.sendMail(mailOptions);
     console.log("Invitation email sent successfully.");
 
-    return { success: true, newDocumentId: newDocRef.id };
+    return { 
+      success: true, 
+      newDocumentId: newPgDoc.id,
+      recipientId: pgRecipient.id 
+    };
 
   } catch (error: any) {
     console.error("Invite Error Exception:", error);
-    // Ensure we return the specific error message
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     throw new HttpsError("internal", errorMessage);
   }
 });
 
 // Function to handle bulk invites from Dashboard
-export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
+export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword, postgresUrl] }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
   const data = request.data as SendSignerInvitesPayload;
-  const { signers, documentName, uploaderName, documentId } = data;
+  const { signers, documentName, uploaderName, pdfBase64 } = data;
 
   if (!signers || !Array.isArray(signers) || signers.length === 0) {
     throw new HttpsError("invalid-argument", "No signers provided.");
   }
 
-  /* eslint-disable  @typescript-eslint/no-explicit-any */
-  const customLink = (data as any).signingLink;
-  const documentLink = customLink || (documentId ? `${APP_URL}/sign/${documentId}` : APP_URL);
-  console.log(`Sending invite email with link: ${documentLink}`);
+  const senderEmail = request.auth.token.email;
+  if (!senderEmail) throw new HttpsError("invalid-argument", "Sender email required.");
 
-  console.log(`Starting bulk invite for document: ${documentName}, ID: ${documentId}`);
-  const results = [];
+  console.log("Starting sendSignerInvites for:", senderEmail);
 
-  for (const signer of signers) {
-    try {
-      console.log(`Sending invite email to: ${signer.email}`);
-      await getTransporter().sendMail({
-        from: `"Endorse App" <${gmailEmail.value()}>`,
-        to: signer.email,
-        subject: `${uploaderName} invited you to sign ${documentName}`,
-        text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-        html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
-      });
-      console.log(`Invite sent successfully to: ${signer.email}`);
-      results.push({ email: signer.email, status: 'sent' });
-    } catch (error: any) {
-      console.error(`Failed to send email to ${signer.email}:`, error);
-      results.push({ email: signer.email, status: 'failed', error: error.message });
+  try {
+    // 1. Sync User in Postgres
+    console.log("Upserting user...");
+    const postgresUser = await prisma.user.upsert({
+      where: { email: senderEmail },
+      update: { firebaseUid: request.auth.uid },
+      create: { 
+        email: senderEmail,
+        firebaseUid: request.auth.uid,
+        name: uploaderName || senderEmail.split('@')[0],
+      }
+    });
+    console.log("User upserted:", postgresUser.id);
+
+    // 2. Save Document to Postgres
+    console.log("Creating document in Postgres...");
+    const newPgDoc = await prisma.document.create({
+      data: {
+        name: documentName || "Untitled Document",
+        fileUrl: pdfBase64 || "", // In prod, upload to storage first
+        ownerId: postgresUser.id,
+        status: "pending",
+        recipients: {
+          create: signers.map(s => ({
+            email: s.email,
+            name: s.email.split('@')[0],
+            status: "pending",
+          }))
+        }
+      },
+      include: {
+        recipients: true
+      }
+    });
+    console.log("Document created:", newPgDoc.id);
+
+    await logAuditTrail(newPgDoc.id, "DOCUMENT_CREATED", senderEmail, { totalSigners: signers.length });
+
+    console.log(`Starting bulk invite for document: ${documentName}, ID: ${newPgDoc.id}`);
+    const results = [];
+
+    for (const pgRecipient of newPgDoc.recipients) {
+      try {
+        const documentLink = `${APP_URL}/sign/${newPgDoc.id}?token=${pgRecipient.token}`;
+        console.log(`Sending invite email to: ${pgRecipient.email} with link: ${documentLink}`);
+        
+        await getTransporter().sendMail({
+          from: `"Endorse App" <${gmailEmail.value()}>`,
+          to: pgRecipient.email,
+          subject: `${uploaderName} invited you to sign ${documentName}`,
+          text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
+          html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+        });
+        
+        results.push({ email: pgRecipient.email, status: 'sent' });
+      } catch (error: any) {
+        console.error(`Failed to send email to ${pgRecipient.email}:`, error);
+        results.push({ email: pgRecipient.email, status: 'failed', error: error.message });
+      }
     }
+
+    return { success: true, results, documentId: newPgDoc.id };
+  } catch (error: any) {
+    console.error("Bulk Invite Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to process invitations.");
+  }
+});
+
+export const inviteTeamMember = onCall({ secrets: [gmailEmail, gmailPassword, postgresUrl] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
-  return { success: true, results };
+  const { inviteEmail: toEmail, role } = request.data as { inviteEmail: string; role: string };
+  const senderEmail = request.auth.token.email;
+  if (!senderEmail) throw new HttpsError("invalid-argument", "Sender email required.");
+
+  try {
+    // 1. Get/Sync inviter info in Postgres
+    const inviter = await prisma.user.upsert({
+      where: { email: senderEmail },
+      update: { firebaseUid: request.auth.uid },
+      create: { 
+        email: senderEmail, 
+        firebaseUid: request.auth.uid,
+        name: request.auth.token.name as string || senderEmail.split('@')[0]
+      }
+    });
+
+    const isAdmin = ADMIN_EMAILS.includes(senderEmail);
+    if (inviter.planType !== "business" && !isAdmin) {
+      throw new HttpsError("permission-denied", "Only Business plan users can invite team members.");
+    }
+
+    // 2. Find or create the inviter's team
+    let team = await prisma.team.findFirst({
+      where: { ownerId: inviter.id }
+    });
+
+    if (!team) {
+      team = await prisma.team.create({
+        data: {
+          name: inviter.companyName || `${inviter.name}'s Team`,
+          ownerId: inviter.id,
+          members: {
+            create: {
+              userId: inviter.id,
+              role: 'admin'
+            }
+          }
+        }
+      });
+    }
+
+    // 3. Create or find the invitee User record
+    const invitee = await prisma.user.upsert({
+      where: { email: toEmail },
+      update: {},
+      create: { 
+        email: toEmail,
+        name: toEmail.split('@')[0],
+      }
+    });
+
+    // 4. Add invitee to Team (Pending status usually handled by membership check or a separate invite table)
+    // For simplicity, we'll add them as a 'member' but you might want a 'status' field in TeamMember
+    const existingMember = await prisma.teamMember.findFirst({
+      where: { teamId: team.id, userId: invitee.id }
+    });
+
+    if (!existingMember) {
+      await prisma.teamMember.create({
+        data: {
+          teamId: team.id,
+          userId: invitee.id,
+          role: role || 'member'
+        }
+      });
+    }
+
+    // 5. Send email
+    const inviteLink = `${APP_URL}/dashboard`; // Simplified link for now
+    await getTransporter().sendMail({
+      from: `"Endorse Team" <${gmailEmail.value()}>`,
+      to: toEmail,
+      subject: `You've been invited to join ${team.name} on Endorse`,
+      html: `
+        <div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" /></div>
+        <p>Hello,</p>
+        <p><strong>${senderEmail}</strong> has invited you to join their team **${team.name}** on Endorse.</p>
+        <p><a href="${inviteLink}">Access Dashboard</a></p>
+        <p>If you don't have an account, please sign up using this email address.</p>
+        <p>Best,<br>Endorse Team</p>
+      `,
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Invite Team Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to send team invite.");
+  }
 });
 
 export const acceptTeamInvite = onCall(async (request) => {
@@ -692,4 +955,174 @@ export const removeTeamMember = onCall(async (request) => {
   await batch.commit();
 
   return { success: true, message: 'Member removed.' };
+});
+
+// --- FIRESTORE TRIGGERS FOR AUDIT TRAIL ---
+
+/*
+export const auditDocumentCreated = onDocumentCreated("documents/{docId}", async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) return;
+  const data = snapshot.data();
+  const docId = event.params.docId;
+  const createdBy = data.ownerEmail || "unknown";
+
+  await logAuditTrail(docId, "Document Created", createdBy, {
+    name: data.name,
+    status: data.status,
+  });
+});
+
+export const auditDocumentUpdated = onDocumentUpdated("documents/{docId}", async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) return;
+  const beforeData = snapshot.before.data();
+  const afterData = snapshot.after.data();
+  const docId = event.params.docId;
+
+  // Track status changes
+  if (beforeData.status !== afterData.status) {
+    await logAuditTrail(docId, `Status Updated: ${afterData.status}`, "system/user", {
+      from: beforeData.status,
+      to: afterData.status,
+    });
+  }
+
+  // Track signing
+  if (!beforeData.signedAt && afterData.signedAt) {
+    await logAuditTrail(docId, "Document Signed", afterData.ownerEmail || "unknown", {
+      signedAt: afterData.signedAt,
+    });
+  }
+});
+
+export const auditDocumentDeleted = onDocumentDeleted("documents/{docId}", async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) return;
+  const data = snapshot.data();
+  const docId = event.params.docId;
+
+  await logAuditTrail(docId, "Document Deleted", "system/user", {
+    name: data.name,
+  });
+});
+*/
+// Function to fetch document details for signing (PostgreSQL)
+export const getDocumentForSigning = onCall({ secrets: [postgresUrl] }, async (request) => {
+  const { documentId, token } = request.data as { documentId: string; token?: string };
+
+  if (!documentId) {
+    throw new HttpsError("invalid-argument", "Missing documentId.");
+  }
+
+  try {
+    const pgDoc = await prisma.document.findUnique({
+      where: { id: documentId },
+      include: {
+        recipients: true,
+        fields: true,
+      }
+    });
+
+    if (!pgDoc) {
+      throw new HttpsError("not-found", "Document not found.");
+    }
+
+    // Security check: if a token is provided, verify it belongs to a recipient
+    if (token) {
+      const recipient = pgDoc.recipients.find((r: any) => r.token === token);
+      if (!recipient) {
+        throw new HttpsError("permission-denied", "Invalid access token.");
+      }
+      
+      // Mark as viewed if not already
+      if (!recipient.viewedAt) {
+        await prisma.recipient.update({
+          where: { id: recipient.id },
+          data: { viewedAt: new Date(), status: 'VIEWED' }
+        });
+
+        await prisma.auditLog.create({
+          data: {
+            documentId: pgDoc.id,
+            action: 'DOCUMENT_VIEWED',
+            metadata: { recipientEmail: recipient.email }
+          }
+        });
+      }
+    }
+
+    return { success: true, document: pgDoc };
+  } catch (error: any) {
+    console.error("Get Document Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to fetch document.");
+  }
+});
+
+// Function to submit a signature (PostgreSQL)
+export const submitSignature = onCall({ secrets: [postgresUrl] }, async (request) => {
+  const { documentId, recipientId, signatureImageUrl, ipAddress, userAgent } = request.data as {
+    documentId: string;
+    recipientId: string;
+    signatureImageUrl: string;
+    ipAddress?: string;
+    userAgent?: string;
+  };
+
+  if (!documentId || !recipientId || !signatureImageUrl) {
+    throw new HttpsError("invalid-argument", "Missing required fields.");
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 1. Create signature record
+      await tx.signature.create({
+        data: {
+          documentId,
+          recipientId,
+          signatureImageUrl,
+          ipAddress,
+          userAgent,
+        }
+      });
+
+      // 2. Update recipient status
+      await tx.recipient.update({
+        where: { id: recipientId },
+        data: { 
+          status: 'SIGNED',
+          signedAt: new Date()
+        }
+      });
+
+    // 3. Log Audit Trail
+    await logAuditTrail(documentId, 'DOCUMENT_SIGNED', recipientId);
+
+      // 4. Check if all recipients have signed
+      const allRecipients = await tx.recipient.findMany({
+        where: { documentId }
+      });
+
+      const allSigned = allRecipients.every((r: any) => r.status === 'SIGNED');
+
+      if (allSigned) {
+        await tx.document.update({
+          where: { id: documentId },
+          data: { 
+            status: 'COMPLETED',
+            completedAt: new Date()
+          }
+        });
+
+        await logAuditTrail(documentId, 'DOCUMENT_COMPLETED', 'system');
+      }
+
+      return { success: true, allSigned };
+    });
+
+    return result;
+  } catch (error: any) {
+    console.error("Submit Signature Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to submit signature.");
+  }
 });

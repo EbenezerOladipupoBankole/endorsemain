@@ -1,0 +1,123 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  firebaseUid  String?  @unique
+  name         String?
+  email        String   @unique
+  planType     String   @default("free")
+  companyName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ownedDocuments Document[] @relation("DocumentOwner")
+  teamMemberships TeamMember[]
+  ownedTeams      Team[]
+}
+
+model Document {
+  id           String    @id @default(uuid())
+  ownerId      String
+  owner        User      @relation("DocumentOwner", fields: [ownerId], references: [id])
+  name         String
+  fileUrl      String
+  status       String    @default("draft") // draft, pending, sent, completed, cancelled
+  checksum     String?   // SHA256 Hash
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  recipients   Recipient[]
+  fields       SignatureField[]
+  signatures   Signature[]
+  auditLogs    AuditLog[]
+  hash         DocumentHash?
+}
+
+model Recipient {
+  id            String    @id @default(uuid())
+  documentId    String
+  document      Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  name          String?
+  email         String
+  signingOrder  Int       @default(1)
+  status        String    @default("pending") // pending, viewed, signed, declined
+  token         String    @unique @default(uuid()) // For signing URL
+  viewedAt      DateTime?
+  signedAt      DateTime?
+
+  fields        SignatureField[]
+  signatures    Signature[]
+}
+
+model SignatureField {
+  id           String    @id @default(uuid())
+  documentId   String
+  document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  recipientId  String
+  recipient    Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  fieldType    String    // signature, initials, date, text
+  page         Int
+  positionX    Decimal
+  positionY    Decimal
+  width        Decimal?
+  height       Decimal?
+}
+
+model Signature {
+  id                String    @id @default(uuid())
+  documentId        String
+  document          Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  recipientId       String
+  recipient         Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  signatureImageUrl String
+  signedAt          DateTime  @default(now())
+  ipAddress         String?
+  userAgent         String?
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      String?   // Link to our User model
+  action      String    // DOCUMENT_CREATED, DOCUMENT_SENT, etc.
+  metadata    Json?     // Extra details
+  createdAt   DateTime  @default(now())
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+
+  members   TeamMember[]
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member") // admin, member
+  createdAt DateTime @default(now())
+}
+
+model DocumentHash {
+  documentId String   @id
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  sha256Hash String
+  createdAt  DateTime @default(now())
+}
