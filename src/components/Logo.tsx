@@ -1,8 +1,10 @@
 import { PenTool } from "lucide-react";
 import logo from "../assets/images/logo.png";
+import { useAuth } from "@/components/AuthContext";
 
-export const Logo = ({ className }: { className?: string }) => {
-  const logoSrc = logo;
+export const Logo = ({ className, customLogoUrl }: { className?: string, customLogoUrl?: string }) => {
+  const { userProfile } = useAuth();
+  const logoSrc = customLogoUrl || userProfile?.branding?.logoUrl || logo;
 
   return logoSrc ? (
     <img src={logoSrc} alt="Logo" className={`shrink-0 object-contain rounded-xl ${className}`} />

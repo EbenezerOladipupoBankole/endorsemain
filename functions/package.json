@@ -8,13 +8,15 @@
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "postinstall": "prisma generate"
   },
   "engines": {
     "node": "20"
   },
   "main": "lib/index.js",
   "dependencies": {
+    "@prisma/client": "^6.4.1",
     "@types/nodemailer": "^7.0.4",
     "axios": "^1.13.5",
     "docx": "^9.6.0",
@@ -35,6 +37,7 @@
     "eslint-plugin-import": "^2.25.4",
     "firebase-functions-test": "^3.4.1",
     "graphql": "^16.12.0",
+    "prisma": "^6.4.1",
     "typescript": "^5.7.3"
   },
   "private": true

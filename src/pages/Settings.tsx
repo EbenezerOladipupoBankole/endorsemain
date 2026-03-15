@@ -11,7 +11,9 @@ import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, multiFactor, TotpMultiFactorGenerator, TotpSecret } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
-import { functions, auth } from "@/components/client";
+import { functions, auth, db, storage } from "@/components/client";
+import { setDoc, doc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
                        
@@ -41,8 +43,8 @@ const Settings = () => {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "billing" || tab === "profile" || tab === "security") {
-      setActiveTab(tab);
+    if (["billing", "profile", "security", "team", "branding"].includes(tab as string)) {
+      setActiveTab(tab as string);
     }
 
     const success = searchParams.get("success");
@@ -51,18 +53,10 @@ const Settings = () => {
 
     if (success || reference) {
       toast.success("Subscription updated successfully! Refreshing page...");
-      // We replace the URL to prevent a refresh loop and then reload the page
-      // to ensure the new us r profile (with the upRatedefreshing page...");
-      // We replace the URL to prevent a refresh loop and then reload the page
-      // to ensure the new us r profile (with the upRatedefreshing page...");
-      // We replace the URL to prevent a refresh loop and then reload the page
-      // to ensure the new us r profile (with the upRatedefreshing page...");
-      // We replace the URL to prevent a refresh loop and then reload the page
-      // to ensure the new user profile (with the updated plan) is fetched.
       navigate('/settings?tab=billing', { replace: true });
       setTimeout(() => {
         window.location.reload();
-      }, 1500); // Delay for user to see the toast
+      }, 1500);
     } else if (canceled) {
       toast.info("Payment cancelled.");
       navigate('/settings?tab=billing', { replace: true });
@@ -74,7 +68,7 @@ const Settings = () => {
       setDisplayName(user.displayName);
     }
     // Check if 2FA is already enabled
-    setIs2FAEnabled(user?.multiFactor?.enrolledFactors.length > 0);
+    setIs2FAEnabled(user ? multiFactor(user).enrolledFactors.length > 0 : false);
 
     // Set branding from profile
     if (userProfile?.branding) {
@@ -144,21 +138,29 @@ const Settings = () => {
       e.preventDefault();
       if (!user) return;
       setIsSavingBranding(true);
-      toast.info("Saving branding settings... Note: Logo upload is a demo feature.");
-      // In a real app, you would upload the logoFile to Firebase Storage
-      // and get a download URL. For this demo, we'll just save the color.
+      
       try {
-        // const logoUrl = logoFile ? await uploadLogo(logoFile) : userProfile?.branding?.logoUrl;
+        let logoUrl = userProfile?.branding?.logoUrl;
+        
+        if (logoFile) {
+          toast.loading("Uploading logo...", { id: "uploading-logo" });
+          const storageRef = ref(storage, `logos/${user.uid}/${logoFile.name}`);
+          await uploadBytes(storageRef, logoFile);
+          logoUrl = await getDownloadURL(storageRef);
+          toast.success("Logo uploaded!", { id: "uploading-logo" });
+        }
+
         await setDoc(doc(db, "users", user.uid), {
           branding: {
             primaryColor: primaryColor,
-            // logoUrl: logoUrl
+            logoUrl: logoUrl || null
           }
         }, { merge: true });
+        
         toast.success("Branding settings saved!");
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error saving branding:", error);
-        toast.error("Failed to save branding settings.");
+        toast.error(`Failed to save branding settings: ${error.message}`);
       } finally {
         setIsSavingBranding(false);
       }
@@ -318,13 +320,22 @@ const Settings = () => {
                 <CreditCard className="w-4 h-4 mr-2" />
                 Billing
               </Button>
-              {isAdmin && (
+              {(isAdmin || userProfile?.plan === 'business') && (
                 <Button
-                  variant={"ghost"}
-                  onClick={() => navigate('/team')}
+                  variant={activeTab === "team" ? "default" : "ghost"}
+                  onClick={() => handleTabChange("team")}
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Team
+                </Button>
+              )}
+              {(isAdmin || userProfile?.plan === 'business') && (
+                <Button
+                  variant={activeTab === "branding" ? "default" : "ghost"}
+                  onClick={() => handleTabChange("branding")}
+                >
+                  <Palette className="w-4 h-4 mr-2" />
+                  Branding
                 </Button>
               )}
             </div>
@@ -468,6 +479,88 @@ const Settings = () => {
                   </div>
                 )}
               </div>
+            ) : activeTab === "team" ? (
+              <div className="grid gap-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Team Management</CardTitle>
+                    <CardDescription>Manage your team members and their roles.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <Users className="w-12 h-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold">Ready to manage your team?</h3>
+                      <p className="text-muted-foreground mb-6 max-w-sm">
+                        You can invite signers and manage team members on the dedicated team page.
+                      </p>
+                      <Button onClick={() => navigate('/team')}>
+                        Go to Team Page
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : activeTab === "branding" ? (
+              <div className="grid gap-6 max-w-2xl animate-in fade-in slide-in-from-left-4 duration-300">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Custom Branding</CardTitle>
+                    <CardDescription>Customize the look and feel of your documents and emails.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSaveBranding} className="space-y-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="logo-upload">Company Logo</Label>
+                        <div className="flex items-center gap-4">
+                          <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center overflow-hidden border">
+                            {userProfile?.branding?.logoUrl ? (
+                              <img src={userProfile.branding.logoUrl} alt="logo" className="object-contain h-full w-full" />
+                            ) : (
+                              <Upload className="w-6 h-6 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <Input 
+                              id="logo-upload" 
+                              type="file" 
+                              onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)} 
+                              accept="image/png, image/jpeg" 
+                              className="cursor-pointer"
+                            />
+                            <p className="text-[10px] text-muted-foreground">Recommended: PNG or JPEG, max 2MB. Transparent background works best.</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="primary-color">Primary Theme Color</Label>
+                        <div className="flex items-center gap-3">
+                          <Input
+                            id="primary-color"
+                            type="color"
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            className="w-12 h-12 p-1 rounded-md cursor-pointer"
+                          />
+                          <div className="flex-1">
+                            <Input 
+                              type="text" 
+                              value={primaryColor} 
+                              onChange={(e) => setPrimaryColor(e.target.value)} 
+                              placeholder="#1a1f2c"
+                              className="font-mono"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">This color will be used for buttons, links, and accents across your workspace.</p>
+                      </div>
+                      <Button type="submit" disabled={isSavingBranding} className="w-full md:w-auto">
+                        {isSavingBranding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                        Save Branding Changes
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
             ) : activeTab === "billing" ? (
               <div className="grid gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 {/* Current Subscription */}
@@ -522,45 +615,7 @@ const Settings = () => {
                   </CardContent>
                 </Card>
 
-                {/* Custom Branding - Only for Business Plan or Admin */}
-                {isAdmin && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Custom Branding</CardTitle>
-                      <CardDescription>Customize the look and feel of your documents and emails.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <form onSubmit={handleSaveBranding} className="space-y-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="logo-upload">Company Logo</Label>
-                          <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-muted rounded-md flex items-center justify-center">
-                              {userProfile?.branding?.logoUrl ? <img src={userProfile.branding.logoUrl} alt="logo" className="object-contain h-full w-full" /> : <Upload className="w-6 h-6 text-muted-foreground" />}
-                            </div>
-                            <Input id="logo-upload" type="file" onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)} accept="image/png, image/jpeg" />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="primary-color">Primary Color</Label>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              id="primary-color"
-                              type="color"
-                              value={primaryColor}
-                              onChange={(e) => setPrimaryColor(e.target.value)}
-                              className="w-12 h-10 p-1"
-                            />
-                            <Input type="text" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="#1a1f2c" />
-                          </div>
-                        </div>
-                        <Button type="submit" disabled={isSavingBranding}>
-                          {isSavingBranding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                          Save Branding
-                        </Button>
-                      </form>
-                    </CardContent>
-                  </Card>
-                )}
+                {/* Custom Branding section removed from here as it now has its own tab */}
 
                 {/* Upgrade Options */}
                 <div>

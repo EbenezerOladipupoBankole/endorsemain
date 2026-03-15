@@ -53,8 +53,8 @@ const Auth = () => {
           },
           error: (err) => `Failed to join team: ${err.message}`,
         }).finally(() => {
-          // Use a short delay to allow user to see the toast before reload
-          setTimeout(() => window.location.href = from, 1500);
+          // Use a short delay to allow user to see the toast before redirect
+          setTimeout(() => navigate(from, { replace: true }), 1500);
         });
       } else {
         navigate(from, { replace: true });
