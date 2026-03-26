@@ -21,10 +21,10 @@ const About = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="min-h-screen bg-background font-sans overflow-x-hidden">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/40">
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5" aria-label="Endorse">
             <Logo className="h-14 w-auto drop-shadow-sm" />
           </Link>
@@ -68,6 +68,19 @@ const About = () => {
                 Resources <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-[340px] p-3">
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="/templates" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">Templates</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Free agreement templates for pros.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
                   <Link to="/blog" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
@@ -152,6 +165,7 @@ const About = () => {
               </button>
               {mobileResourcesOpen && (
                 <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
+                  <Link to="/templates" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileText className="w-4 h-4" /> Templates</Link>
                   <Link to="/blog" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileText className="w-4 h-4" /> Blog</Link>
                   <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
                   <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
@@ -402,9 +416,11 @@ const About = () => {
                   Get Started for Free
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" className="h-14 px-8 text-lg">
-                Contact Sales
-              </Button>
+              <Link to="/contact">
+                <Button variant="outline" size="lg" className="h-14 px-8 text-lg w-full sm:w-auto">
+                  Contact Sales
+                </Button>
+              </Link>
             </div>
           </div>
         </section>

@@ -1,0 +1,215 @@
+2026-03-17T06:45:34.238428Z ? requestteaminvite: Syncing inviter to Postgres...
+
+2026-03-17T06:45:34.275137Z ? requestteaminvite: Inviter synced: 0a985a19-2e41-4b8a-9dd3-ab8650e67181. Plan: free
+
+2026-03-17T06:45:34.434533Z ? requestteaminvite: Invite Team Error: Error: 5 NOT_FOUND: 
+    at callErrorFromStatus (/workspace/node_modules/@grpc/grpc-js/build/src/call.js:32:19)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:193:76)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:367:141)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:327:181)
+    at /workspace/node_modules/@grpc/grpc-js/build/src/resolving-call.js:135:78
+    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)
+for call at
+    at ServiceClientImpl.makeUnaryRequest (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:161:32)
+    at ServiceClientImpl.<anonymous> (/workspace/node_modules/@grpc/grpc-js/build/src/make-client.js:105:19)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/v1/firestore_client.js:242:33
+    at /workspace/node_modules/google-gax/build/src/normalCalls/timeout.js:44:16
+    at repeat (/workspace/node_modules/google-gax/build/src/normalCalls/retries.js:82:25)
+    at /workspace/node_modules/google-gax/build/src/normalCalls/retries.js:125:13
+    at OngoingCallPromise.call (/workspace/node_modules/google-gax/build/src/call.js:67:27)
+    at NormalApiCaller.call (/workspace/node_modules/google-gax/build/src/normalCalls/normalApiCaller.js:34:19)
+    at /workspace/node_modules/google-gax/build/src/createApiCall.js:112:30
+Caused by: Error
+    at _firestore._traceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:438:27)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)
+    at WriteBatch.commit (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:436:43)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:273:18
+    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)
+    at DocumentReference.create (/workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:269:43) {
+  code: 5,
+  details: '',
+  metadata: Metadata {
+    internalRepr: Map(1) { 'x-debug-tracking-id' => [Array] },
+    opaqueData: Map(0) {},
+    options: {}
+  },
+  note: 'Exception occurred in retry method that was not classified as transient'
+}
+
+2026-03-17T06:46:20.304167Z I requestteaminvite: 
+2026-03-17T06:46:21.231963Z I requestteaminvite: 
+2026-03-17T06:46:21.238208Z D requestteaminvite: {"verifications":{"app":"MISSING","auth":"VALID"},"message":"Callable request verification passed"}
+2026-03-17T06:46:21.238460Z ? requestteaminvite: InviteTeamMember triggered by: bankoleebenezer111@gmail.com for: ebenezerbankole7@gmail.com
+
+2026-03-17T06:46:21.238563Z ? requestteaminvite: Syncing inviter to Postgres...
+
+2026-03-17T06:46:21.307340Z ? requestteaminvite: Inviter synced: 0a985a19-2e41-4b8a-9dd3-ab8650e67181. Plan: free
+
+2026-03-17T06:46:21.389537Z ? requestteaminvite: Invite Team Error: Error: 5 NOT_FOUND: 
+    at callErrorFromStatus (/workspace/node_modules/@grpc/grpc-js/build/src/call.js:32:19)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:193:76)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:367:141)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:327:181)
+    at /workspace/node_modules/@grpc/grpc-js/build/src/resolving-call.js:135:78
+    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)
+for call at
+    at ServiceClientImpl.makeUnaryRequest (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:161:32)
+    at ServiceClientImpl.<anonymous> (/workspace/node_modules/@grpc/grpc-js/build/src/make-client.js:105:19)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/v1/firestore_client.js:242:33
+    at /workspace/node_modules/google-gax/build/src/normalCalls/timeout.js:44:16
+    at repeat (/workspace/node_modules/google-gax/build/src/normalCalls/retries.js:82:25)
+    at /workspace/node_modules/google-gax/build/src/normalCalls/retries.js:125:13
+    at OngoingCallPromise.call (/workspace/node_modules/google-gax/build/src/call.js:67:27)
+    at NormalApiCaller.call (/workspace/node_modules/google-gax/build/src/normalCalls/normalApiCaller.js:34:19)
+    at /workspace/node_modules/google-gax/build/src/createApiCall.js:112:30
+Caused by: Error
+    at _firestore._traceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:438:27)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)
+    at WriteBatch.commit (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:436:43)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:273:18
+    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)
+    at DocumentReference.create (/workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:269:43) {
+  code: 5,
+  details: '',
+  metadata: Metadata {
+    internalRepr: Map(1) { 'x-debug-tracking-id' => [Array] },
+    opaqueData: Map(0) {},
+    options: {}
+  },
+  note: 'Exception occurred in retry method that was not classified as transient'
+}
+
+2026-03-17T07:32:36.741640507Z N requestTeamInvite: {"@type":"type.googleapis.com/google.cloud.audit.AuditLog","status":{},"authenticationInfo":{"principalEmail":"ebenezerbankole7@gmail.com","principalSubject":"user:ebenezerbankole7@gmail.com","oauthInfo":{"oauthClientId":"563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com"}},"requestMetadata":{"callerIp":"102.88.114.26","callerSuppliedUserAgent":"FirebaseCLI/15.4.0 agent-name/antigravity,gzip(gfe),gzip(gfe)","requestAttributes":{"time":"2026-03-17T07:32:35.890100001Z","auth":{}},"destinationAttributes":{}},"serviceName":"cloudfunctions.googleapis.com","methodName":"google.cloud.functions.v2.FunctionService.UpdateFunction","authorizationInfo":[{"resource":"projects/endorse-app/locations/us-central1/functions/requestTeamInvite","permission":"cloudfunctions.functions.update","granted":true,"resourceAttributes":{"service":"cloudfunctions.googleapis.com","name":"projects/endorse-app/locations/us-central1/functions/requestTeamInvite","type":"cloudfunctions.googleapis.com/Function"},"permissionType":"ADMIN_WRITE"}],"resourceName":"projects/endorse-app/locations/us-central1/functions/requestTeamInvite","request":{"update_mask":{"paths":["name","build_config.runtime","build_config.entry_point","build_config.source.storage_source.bucket","build_config.source.storage_source.object","build_config.environment_variables","build_config.source_token","service_config.environment_variables","service_config.secret_environment_variables","service_config.ingress_settings","service_config.timeout_seconds","service_config.service_account_email","service_config.available_memory","service_config.min_instance_count","service_config.max_instance_count","service_config.max_instance_request_concurrency","service_config.available_cpu","service_config.vpc_connector","service_config.vpc_connector_egress_settings","labels"]},"@type":"type.googleapis.com/google.cloud.functions.v2.UpdateFunctionRequest","function":{"labels":{"firebase-functions-hash":"1173eaa29bcf10dc38be055514c94ad0e70fdb53","deployment-callable":"true","deployment-tool":"cli-firebase"},"service_config":{"available_cpu":"1","available_memory":"256Mi","secret_environment_variables":[{"secret":"GMAIL_EMAIL","version":"7","project_id":"endorse-app","key":"GMAIL_EMAIL"},{"version":"6","secret":"GMAIL_PASSWORD","project_id":"endorse-app","key":"GMAIL_PASSWORD"},{"key":"POSTGRES_URL","project_id":"endorse-app","version":"1","secret":"POSTGRES_URL"}],"max_instance_request_concurrency":80},"build_config":{"runtime":"nodejs20","source":{},"entry_point":"requestTeamInvite"},"name":"projects/endorse-app/locations/us-central1/functions/requestTeamInvite"}},"response":{"@type":"type.googleapis.com/google.longrunning.Operation"},"resourceLocation":{"currentLocations":["us-central1"]}}
+2026-03-17T07:33:59.320497Z I requestteaminvite: Starting new instance. Reason: DEPLOYMENT_ROLLOUT - Instance started due to traffic shifting between revisions due to deployment, traffic split adjustment, or deployment health check.
+2026-03-17T07:34:02.390964Z I requestteaminvite: Default STARTUP TCP probe succeeded after 1 attempt for container "worker" on port 8080.
+2026-03-17T07:34:04.184516766Z N requestTeamInvite: {"@type":"type.googleapis.com/google.cloud.audit.AuditLog","status":{},"authenticationInfo":{"principalEmail":"ebenezerbankole7@gmail.com","principalSubject":"user:ebenezerbankole7@gmail.com","oauthInfo":{"oauthClientId":"563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com"}},"requestMetadata":{"requestAttributes":{},"destinationAttributes":{}},"serviceName":"cloudfunctions.googleapis.com","methodName":"google.cloud.functions.v2.FunctionService.UpdateFunction","resourceName":"projects/endorse-app/locations/us-central1/functions/requestTeamInvite","response":{"serviceConfig":{"maxInstanceRequestConcurrency":80,"availableMemory":"256Mi","ingressSettings":"ALLOW_ALL","serviceAccountEmail":"661681554342-compute@developer.gserviceaccount.com","secretEnvironmentVariables":[{"secret":"GMAIL_EMAIL","version":"7","key":"GMAIL_EMAIL","projectId":"endorse-app"},{"key":"GMAIL_PASSWORD","projectId":"endorse-app","secret":"GMAIL_PASSWORD","version":"6"},{"key":"POSTGRES_URL","projectId":"endorse-app","secret":"POSTGRES_URL","version":"1"}],"timeoutSeconds":60,"maxInstanceCount":20,"allTrafficOnLatestRevision":true,"uri":"https://requestteaminvite-bv5ex2s3ua-uc.a.run.app","availableCpu":"1","revision":"requestteaminvite-00005-gus"},"state":"ACTIVE","environment":"GEN_2","satisfiesPzi":true,"buildConfig":{"runtime":"nodejs20","entryPoint":"requestTeamInvite","source":{},"dockerRegistry":"ARTIFACT_REGISTRY","dockerRepository":"projects/endorse-app/locations/us-central1/repositories/gcf-artifacts","serviceAccount":"projects/endorse-app/serviceAccounts/661681554342-compute@developer.gserviceaccount.com","automaticUpdatePolicy":{}},"updateTime":"2026-03-17T07:32:36.727936406Z","createTime":"2026-03-17T05:46:04.570264116Z","name":"projects/endorse-app/locations/us-central1/functions/requestTeamInvite","labels":{"deployment-callable":"true","deployment-tool":"cli-firebase","firebase-functions-hash":"1173eaa29bcf10dc38be055514c94ad0e70fdb53"},"url":"https://us-central1-endorse-app.cloudfunctions.net/requestTeamInvite","@type":"type.googleapis.com/google.cloud.functions.v2.Function"},"resourceLocation":{"currentLocations":["us-central1"]}}
+2026-03-17T07:38:52.894931Z I requestteaminvite: 
+2026-03-17T07:38:53.279500Z E requestteaminvite: 
+2026-03-17T07:38:53.418659Z D requestteaminvite: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-03-17T07:38:53.420180Z ? requestteaminvite: requestTeamInvite called. Auth present: true
+
+2026-03-17T07:38:53.420326Z ? requestteaminvite: InviteTeamMember triggered by: bankoleebenezer111@gmail.com for: ebenezerbankole7@gmail.com
+
+2026-03-17T07:38:53.420424Z ? requestteaminvite: Syncing inviter to Postgres...
+
+2026-03-17T07:38:54.410925Z ? requestteaminvite: Inviter synced: 0a985a19-2e41-4b8a-9dd3-ab8650e67181. Plan: free
+
+2026-03-17T07:38:55.417236Z ? requestteaminvite: Invite Team Error: Error: 5 NOT_FOUND: 
+    at callErrorFromStatus (/workspace/node_modules/@grpc/grpc-js/build/src/call.js:32:19)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:193:76)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:367:141)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:327:181)
+    at /workspace/node_modules/@grpc/grpc-js/build/src/resolving-call.js:135:78
+    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)
+for call at
+    at ServiceClientImpl.makeUnaryRequest (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:161:32)
+    at ServiceClientImpl.<anonymous> (/workspace/node_modules/@grpc/grpc-js/build/src/make-client.js:105:19)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/v1/firestore_client.js:242:33
+    at /workspace/node_modules/google-gax/build/src/normalCalls/timeout.js:44:16
+    at repeat (/workspace/node_modules/google-gax/build/src/normalCalls/retries.js:82:25)
+    at /workspace/node_modules/google-gax/build/src/normalCalls/retries.js:125:13
+    at OngoingCallPromise.call (/workspace/node_modules/google-gax/build/src/call.js:67:27)
+    at NormalApiCaller.call (/workspace/node_modules/google-gax/build/src/normalCalls/normalApiCaller.js:34:19)
+    at /workspace/node_modules/google-gax/build/src/createApiCall.js:112:30
+Caused by: Error
+    at _firestore._traceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:438:27)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)
+    at WriteBatch.commit (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:436:43)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:350:31
+    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)
+    at DocumentReference.set (/workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:342:43) {
+  code: 5,
+  details: '',
+  metadata: Metadata {
+    internalRepr: Map(1) { 'x-debug-tracking-id' => [Array] },
+    opaqueData: Map(0) {},
+    options: {}
+  },
+  note: 'Exception occurred in retry method that was not classified as transient'
+}
+
+2026-03-17T07:39:02.917665Z I requestteaminvite: 
+2026-03-17T07:39:03.599919Z E requestteaminvite: 
+2026-03-17T07:39:03.606413Z D requestteaminvite: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-03-17T07:39:03.606882Z ? requestteaminvite: requestTeamInvite called. Auth present: true
+
+2026-03-17T07:39:03.606989Z ? requestteaminvite: InviteTeamMember triggered by: bankoleebenezer111@gmail.com for: ebenezerbankole7@gmail.com
+
+2026-03-17T07:39:03.607094Z ? requestteaminvite: Syncing inviter to Postgres...
+
+2026-03-17T07:39:03.646567Z ? requestteaminvite: Inviter synced: 0a985a19-2e41-4b8a-9dd3-ab8650e67181. Plan: free
+
+2026-03-17T07:39:03.722192Z ? requestteaminvite: Invite Team Error: Error: 5 NOT_FOUND: 
+    at callErrorFromStatus (/workspace/node_modules/@grpc/grpc-js/build/src/call.js:32:19)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:193:76)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:367:141)
+    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:327:181)
+    at /workspace/node_modules/@grpc/grpc-js/build/src/resolving-call.js:135:78
+    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)
+for call at
+    at ServiceClientImpl.makeUnaryRequest (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:161:32)
+    at ServiceClientImpl.<anonymous> (/workspace/node_modules/@grpc/grpc-js/build/src/make-client.js:105:19)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/v1/firestore_client.js:242:33
+    at /workspace/node_modules/google-gax/build/src/normalCalls/timeout.js:44:16
+    at repeat (/workspace/node_modules/google-gax/build/src/normalCalls/retries.js:82:25)
+    at /workspace/node_modules/google-gax/build/src/normalCalls/retries.js:125:13
+    at OngoingCallPromise.call (/workspace/node_modules/google-gax/build/src/call.js:67:27)
+    at NormalApiCaller.call (/workspace/node_modules/google-gax/build/src/normalCalls/normalApiCaller.js:34:19)
+    at /workspace/node_modules/google-gax/build/src/createApiCall.js:112:30
+Caused by: Error
+    at _firestore._traceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:438:27)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)
+    at WriteBatch.commit (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:436:43)
+    at /workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:350:31
+    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)
+    at DocumentReference.set (/workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:342:43) {
+  code: 5,
+  details: '',
+  metadata: Metadata {
+    internalRepr: Map(1) { 'x-debug-tracking-id' => [Array] },
+    opaqueData: Map(0) {},
+    options: {}
+  },
+  note: 'Exception occurred in retry method that was not classified as transient'
+}
+

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
-import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock, ChevronRight, Globe, Lock, Mail, Smartphone, Calendar, Image, Type, Cookie, PlayCircle, MessageSquare, ChevronDown, FileType, HelpCircle, Code } from "lucide-react";
+import { PenTool, Shield, Zap, FileText, Users, Send, Check, ArrowRight, Star, X, Menu, Twitter, Linkedin, Facebook, Instagram, LayoutDashboard, Settings, CreditCard, CheckCircle2, AlertCircle, Upload, Clock, ChevronRight, Globe, Lock, Mail, Smartphone, Calendar, Image, Type, Cookie, PlayCircle, MessageSquare, ChevronDown, FileType, HelpCircle, Code, Layout } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -171,6 +171,19 @@ const Landing = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-[340px] p-3">
                 <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
+                  <Link to="/templates" className="flex items-start gap-3 p-3 w-full">
+                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
+                      <Layout className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-sm text-foreground">Templates</span>
+                      <span className="text-xs text-muted-foreground leading-snug">
+                        Ready-to-use agreement templates for all professionals.
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
                   <Link to="/blog" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
                       <FileText className="w-5 h-5 text-primary" />
@@ -227,7 +240,7 @@ const Landing = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5 h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="md:hidden absolute top-20 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5 h-[calc(100vh-5rem)] overflow-y-auto">
             {/* Product Mobile Dropdown */}
             <div className="flex flex-col">
               <button
@@ -262,6 +275,9 @@ const Landing = () => {
               </button>
               {mobileResourcesOpen && (
                 <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
+                  <Link to="/templates" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}>
+                    <Layout className="w-4 h-4" /> Templates
+                  </Link>
                   <Link to="/blog" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileText className="w-4 h-4" /> Blog</Link>
                   <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
                   <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
@@ -866,6 +882,7 @@ const Landing = () => {
               <ul className="space-y-4 text-base text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
+                <li><Link to="/templates" className="hover:text-foreground transition-colors">Templates</Link></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">API Documentation</a></li>
               </ul>
             </div>
@@ -876,7 +893,7 @@ const Landing = () => {
                 <li><Link to="/about" className="hover:text-foreground transition-colors">About Us</Link></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Careers</a></li>
                 <li><Link to="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
+                <li><Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
               </ul>
             </div>
 
@@ -895,7 +912,7 @@ const Landing = () => {
           <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
               <p className="text-muted-foreground text-base">
-                © {new Date().getFullYear()} Endorse. All rights reserved.
+                © {new Date().getFullYear()} Endorse. All rights reserved. <span className="text-xs opacity-50 ml-2">v1.2</span>
               </p>
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-muted-foreground" />

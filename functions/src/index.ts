@@ -54,8 +54,8 @@ function getTransporter() {
 }
 
 const APP_URL = "https://e-ndorse.online"; // Updated to new custom domain
-
-const ADMIN_EMAILS = ["bankoleebenezer111@gmail.com", "omakaoe@gmail.com"];
+const ADMIN_EMAIL = "admin@e-ndorse.online";
+const ADMIN_EMAILS = ["bankoleebenezer111@gmail.com", "omakaoe@gmail.com", ADMIN_EMAIL];
 
 interface InvitePayload {
   documentId: string;
@@ -259,16 +259,43 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword, postgr
     const pgRecipient = newPgDoc.recipients[0];
     const documentLink = `${APP_URL}/sign/${newPgDoc.id}?token=${pgRecipient.token}`;
 
+    // Get user branding settings
+    const userData = (await db.collection("users").doc(request.auth.uid).get()).data();
+    const logoUrl = userData?.branding?.logoUrl || "https://e-ndorse.online/favicon.svg";
+    const primaryColor = userData?.branding?.primaryColor || "#FFC83D";
+    // Use black text for the default yellow, white for custom brand colors (assuming they are darker)
+    const buttonTextColor = userData?.branding?.primaryColor && userData.branding.primaryColor !== "#FFC83D" ? "#ffffff" : "#000000";
+
     // 4. Send Invitation Email
     console.log("Sending invitation email to:", recipientEmail);
     const transporter = getTransporter();
 
     const mailOptions = {
-      from: `"Endorse App" <${gmailEmail.value()}>`,
+      from: `"Endorse" <${ADMIN_EMAIL}>`,
+      replyTo: ADMIN_EMAIL,
       to: recipientEmail,
       subject: "You have been invited to sign a document",
       text: `You have been invited to sign "${originalData?.name}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-      html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #ffffff;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <img src="${logoUrl}" alt="Company Logo" style="height: 50px; width: auto; object-fit: contain;" />
+          </div>
+          <div style="padding: 0 20px;">
+            <h2 style="color: #333; margin-bottom: 20px; text-align: center;">Signature Request</h2>
+            <p style="color: #555; font-size: 16px; line-height: 1.6;">Hello,</p>
+            <p style="color: #555; font-size: 16px; line-height: 1.6;">You have been invited to sign <strong>"${originalData?.name}"</strong>.</p>
+            
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="${documentLink}" style="background-color: ${primaryColor}; color: ${buttonTextColor}; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Review and Sign</a>
+            </div>
+            
+            <p style="color: #999; font-size: 14px; margin-top: 40px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
+              Powered by <a href="${APP_URL}" style="color: #555; text-decoration: none;">Endorse</a>
+            </p>
+          </div>
+        </div>
+      `,
     };
 
     await transporter.sendMail(mailOptions);
@@ -302,6 +329,20 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword, p
 
   const senderEmail = request.auth.token.email;
   if (!senderEmail) throw new HttpsError("invalid-argument", "Sender email required.");
+
+  // Fetch custom branding gracefully (fallback on error)
+  let userData: any = null;
+  try {
+    const db = admin.firestore();
+    const userDoc = await db.collection("users").doc(request.auth.uid).get();
+    userData = userDoc.data();
+  } catch (error) {
+    console.warn("Firestore access failed (could be missing db or permissions). Falling back to default branding.", error);
+  }
+
+  const logoUrl = userData?.branding?.logoUrl || "https://e-ndorse.online/favicon.svg";
+  const primaryColor = userData?.branding?.primaryColor || "#FFC83D";
+  const buttonTextColor = userData?.branding?.primaryColor && userData.branding.primaryColor !== "#FFC83D" ? "#ffffff" : "#000000";
 
   console.log("Starting sendSignerInvites for:", senderEmail);
 
@@ -352,11 +393,31 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword, p
         console.log(`Sending invite email to: ${pgRecipient.email} with link: ${documentLink}`);
         
         await getTransporter().sendMail({
-          from: `"Endorse App" <${gmailEmail.value()}>`,
+          from: `"Endorse" <${ADMIN_EMAIL}>`,
+          replyTo: ADMIN_EMAIL,
           to: pgRecipient.email,
           subject: `${uploaderName} invited you to sign ${documentName}`,
           text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-          html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #ffffff;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <img src="${logoUrl}" alt="Logo" style="height: 50px; width: auto; object-fit: contain;" />
+              </div>
+              <div style="padding: 0 20px;">
+                <h2 style="color: #333; margin-bottom: 20px; text-align: center;">Signature Request</h2>
+                <p style="color: #555; font-size: 16px; line-height: 1.6;">Hello,</p>
+                <p style="color: #555; font-size: 16px; line-height: 1.6;"><strong>${uploaderName}</strong> has invited you to review and sign the document <strong>"${documentName}"</strong>.</p>
+                
+                <div style="text-align: center; margin: 35px 0;">
+                  <a href="${documentLink}" style="background-color: ${primaryColor}; color: ${buttonTextColor}; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Review and Sign</a>
+                </div>
+                
+                <p style="color: #999; font-size: 14px; margin-top: 40px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
+                  Powered by <a href="${APP_URL}" style="color: #555; text-decoration: none;">Endorse</a>
+                </p>
+              </div>
+            </div>
+          `,
         });
         
         results.push({ email: pgRecipient.email, status: 'sent' });
@@ -373,30 +434,50 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword, p
   }
 });
 
-export const inviteTeamMember = onCall({ secrets: [gmailEmail, gmailPassword, postgresUrl] }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "User must be logged in.");
+export const requestTeamInvite = onCall({ 
+  secrets: [gmailEmail, gmailPassword, postgresUrl],
+}, async (request) => {
+  console.log("requestTeamInvite called. Auth present:", !!request.auth);
+  
+  // Ensure email transport is configured before doing any DB work
+  try {
+    getTransporter();
+  } catch (error) {
+    console.error("Email transport check failed:", error);
+    throw new HttpsError("failed-precondition", "Email configuration is invalid or missing on the server.");
   }
 
-  const { inviteEmail: toEmail, role } = request.data as { inviteEmail: string; role: string };
-  const senderEmail = request.auth.token.email;
-  if (!senderEmail) throw new HttpsError("invalid-argument", "Sender email required.");
-
   try {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be logged in.");
+    }
+
+    const { inviteEmail: toEmail, role } = request.data as { inviteEmail: string; role?: string };
+    const senderEmail = request.auth.token.email;
+    
+    // Validate input
+    if (!senderEmail) throw new HttpsError("invalid-argument", "Sender email required.");
+    if (!toEmail || typeof toEmail !== 'string') throw new HttpsError("invalid-argument", "Invite email is required.");
+    if (toEmail.length === 0) throw new HttpsError("invalid-argument", "Invite email cannot be empty.");
+
+    console.log(`requestTeamInvite triggered by: ${senderEmail} for: ${toEmail}`);
+
     // 1. Get/Sync inviter info in Postgres
+    console.log("Syncing inviter to Postgres...");
     const inviter = await prisma.user.upsert({
       where: { email: senderEmail },
       update: { firebaseUid: request.auth.uid },
       create: { 
         email: senderEmail, 
         firebaseUid: request.auth.uid,
-        name: request.auth.token.name as string || senderEmail.split('@')[0]
+        name: (request.auth.token.name as string) || senderEmail.split('@')[0]
       }
     });
+    console.log(`Inviter synced: ${inviter.id}. Plan: ${inviter.planType}`);
 
     const isAdmin = ADMIN_EMAILS.includes(senderEmail);
     if (inviter.planType !== "business" && !isAdmin) {
-      throw new HttpsError("permission-denied", "Only Business plan users can invite team members.");
+      throw new HttpsError("permission-denied", "Only Business plan users can invite team members. Please upgrade your plan.");
     }
 
     // 2. Find or create the inviter's team
@@ -405,6 +486,7 @@ export const inviteTeamMember = onCall({ secrets: [gmailEmail, gmailPassword, po
     });
 
     if (!team) {
+      console.log("Creating new team for inviter...");
       team = await prisma.team.create({
         data: {
           name: inviter.companyName || `${inviter.name}'s Team`,
@@ -417,58 +499,126 @@ export const inviteTeamMember = onCall({ secrets: [gmailEmail, gmailPassword, po
           }
         }
       });
+      console.log("Team created:", team.id);
     }
 
-    // 3. Create or find the invitee User record
-    const invitee = await prisma.user.upsert({
-      where: { email: toEmail },
-      update: {},
-      create: { 
-        email: toEmail,
-        name: toEmail.split('@')[0],
-      }
-    });
+    // Also sync teamId to Firestore so the Team page UI can read it
+    try {
+      const db = admin.firestore();
+      const userDocRef = db.collection('users').doc(request.auth.uid);
+      console.log(`Syncing teamId ${team.id} to Firestore for user: ${request.auth.uid}`);
+      
+      await userDocRef.set({
+        teamId: team.id,
+        plan: 'business',
+        email: senderEmail,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      
+      console.log("Successfully synced teamId to Firestore for user:", request.auth.uid);
+    } catch (fsError: any) {
+      console.error("Firestore Update Error (users collection):", fsError?.message || fsError);
+      console.error("Firestore error code:", fsError?.code);
+      console.warn("Firestore sync failed but continuing with invite - email will still be sent");
+      // Don't throw - email is the priority
+    }
 
-    // 4. Add invitee to Team (Pending status usually handled by membership check or a separate invite table)
-    // For simplicity, we'll add them as a 'member' but you might want a 'status' field in TeamMember
-    const existingMember = await prisma.teamMember.findFirst({
-      where: { teamId: team.id, userId: invitee.id }
-    });
+    // 3. Create a unique invitation token
+    const token = crypto.randomBytes(32).toString('hex');
 
-    if (!existingMember) {
-      await prisma.teamMember.create({
-        data: {
-          teamId: team.id,
-          userId: invitee.id,
-          role: role || 'member'
-        }
+    // 4. Create an invite record in Firestore (so Team page can show 'Pending')
+    try {
+      const db = admin.firestore();
+      await db.collection('invites').add({
+        token,
+        toEmail,
+        teamId: team.id,
+        fromEmail: senderEmail,
+        role: role || 'member',
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
+      console.log("Successfully created invite record in Firestore.");
+    } catch (fsError: any) {
+      console.error("Firestore Create Error (invites collection):", fsError?.message || fsError);
+      console.error("Firestore error code:", fsError?.code);
+      console.warn("Firestore invite record failed but continuing - email will still be sent");
+      // Don't throw - email is the priority
     }
 
-    // 5. Send email
-    const inviteLink = `${APP_URL}/dashboard`; // Simplified link for now
+    // 5. Build the Accept Invite Link & send email
+    const inviteLink = `${APP_URL}/accept-invite?token=${token}`;
+    console.log(`Sending invite email to ${toEmail} for team ${team.name}`);
+    
     await getTransporter().sendMail({
-      from: `"Endorse Team" <${gmailEmail.value()}>`,
+      from: `"Endorse Team" <${ADMIN_EMAIL}>`,
+      replyTo: ADMIN_EMAIL,
       to: toEmail,
       subject: `You've been invited to join ${team.name} on Endorse`,
       html: `
-        <div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" /></div>
-        <p>Hello,</p>
-        <p><strong>${senderEmail}</strong> has invited you to join their team **${team.name}** on Endorse.</p>
-        <p><a href="${inviteLink}">Access Dashboard</a></p>
-        <p>If you don't have an account, please sign up using this email address.</p>
-        <p>Best,<br>Endorse Team</p>
+        <div style="margin: 0; padding: 0; font-family: Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #1e293b;">
+          <div style="max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 24px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+            <div style="background-color: #1a1f2c; padding: 48px 40px; text-align: center;">
+              <img src="https://e-ndorse.online/favicon.svg" alt="Endorse" width="60" style="margin-bottom: 12px;" />
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -1px;">Endorse.</h1>
+              <p style="color: #94a3b8; font-size: 12px; margin-top: 8px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase;">Team Workspace</p>
+            </div>
+            <div style="padding: 48px 40px; text-align: center;">
+              <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 24px; font-weight: 700;">You've been invited!</h2>
+              <p style="font-size: 16px; line-height: 1.6; color: #475569; margin: 0 auto 32px auto;">
+                <strong style="color: #1e293b;">${senderEmail}</strong> has invited you to join their official team:
+                <span style="display: block; margin-top: 16px; font-weight: 700; color: #2563eb; background-color: #eff6ff; padding: 12px 20px; border-radius: 12px; border: 1px solid #dbeafe; display: inline-block;">${team.name}</span>
+              </p>
+              <div style="margin-bottom: 32px;">
+                <a href="${inviteLink}" style="display: inline-block; background-color: #FFC83D; color: #000000; font-size: 16px; font-weight: 700; text-decoration: none; padding: 18px 48px; border-radius: 16px;">Accept Invitation</a>
+              </div>
+              <p style="font-size: 13px; color: #94a3b8;">New to Endorse? Sign up with this email to join your team.</p>
+            </div>
+            <div style="background-color: #f8fafc; padding: 32px; text-align: center; border-top: 1px solid #f1f5f9;">
+              <p style="font-size: 11px; color: #cbd5e1; margin: 0; letter-spacing: 0.5px;">© ${new Date().getFullYear()} ENDORSE TECHNOLOGIES. ALL RIGHTS RESERVED.</p>
+            </div>
+          </div>
+        </div>
       `,
     });
+    console.log("Invite email sent to:", toEmail);
 
-    return { success: true };
+    return { success: true, teamId: team.id };
   } catch (error: any) {
-    console.error("Invite Team Error:", error);
-    throw new HttpsError("internal", error.message || "Failed to send team invite.");
+    console.error("Invite Team Error - Full stack:", error);
+    console.error("Error message:", error?.message);
+    console.error("Error code:", error?.code);
+    console.error("Error stack:", error?.stack);
+    
+    // Re-throw HttpsError as-is so the client gets proper error codes
+    if (error instanceof HttpsError) {
+      console.log("Re-throwing HttpsError:", error.code, error.message);
+      throw error;
+    }
+    
+    // Handle Firestore-specific errors
+    if (error?.code === 5 || error?.code === 'NOT_FOUND') {
+      console.error("Firestore NOT_FOUND error - likely security rules issue or database unavailable");
+      throw new HttpsError("internal", "Database configuration error. Please try again.");
+    }
+    
+    if (error?.code === 7 || error?.code === 'PERMISSION_DENIED') {
+      console.error("Firestore PERMISSION_DENIED error");
+      throw new HttpsError("permission-denied", "Permission denied accessing database.");
+    }
+    
+    // For Postgres/other errors
+    if (error?.message?.includes('Unique constraint failed')) {
+      throw new HttpsError("already-exists", "This invitation already exists.");
+    }
+    
+    // For unexpected errors, throw a proper HttpsError with the message
+    console.error("Unexpected error - throwing as internal error");
+    throw new HttpsError("internal", error?.message || "An unexpected error occurred while sending the invite.");
   }
 });
 
-export const acceptTeamInvite = onCall(async (request) => {
+export const acceptTeamInvite = onCall({ secrets: [postgresUrl] }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in to accept an invite.");
   }
@@ -500,9 +650,53 @@ export const acceptTeamInvite = onCall(async (request) => {
   const userRef = db.collection('users').doc(uid);
   batch.set(userRef, { teamId, plan: 'business' }, { merge: true });
 
-  batch.update(inviteDoc.ref, { status: 'accepted', acceptedAt: admin.firestore.FieldValue.serverTimestamp(), acceptedByUid: uid });
+   batch.update(inviteDoc.ref, { status: 'accepted', acceptedAt: admin.firestore.FieldValue.serverTimestamp(), acceptedByUid: uid });
 
   await batch.commit();
+
+  // --- Sync to Postgres ---
+  try {
+    // 1. Sync User
+    const postgresUser = await prisma.user.upsert({
+      where: { email: email as string },
+      update: { firebaseUid: uid },
+      create: { 
+        email: email as string,
+        firebaseUid: uid,
+        name: (request.auth.token.name as string) || (email as string).split('@')[0],
+      }
+    });
+
+    // 2. Add to TeamMember table in Postgres
+    const existingMember = await prisma.teamMember.findFirst({
+      where: { teamId, userId: postgresUser.id }
+    });
+
+    if (existingMember) {
+      await prisma.teamMember.update({
+        where: { id: existingMember.id },
+        data: { role: role || 'member' }
+      });
+    } else {
+      await prisma.teamMember.create({
+        data: {
+          teamId: teamId,
+          userId: postgresUser.id,
+          role: role || 'member'
+        }
+      });
+    }
+
+    // 3. Update User's plan if needed
+    await prisma.user.update({
+      where: { id: postgresUser.id },
+      data: { planType: 'business' }
+    });
+    
+  } catch (pgError) {
+    console.error("Postgres Sync Error in acceptTeamInvite:", pgError);
+    // We don't throw here because Firestore part succeeded
+  }
 
   return { success: true, message: 'Team joined successfully.' };
 });
@@ -519,7 +713,8 @@ export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
 
   try {
     await getTransporter().sendMail({
-      from: `"Endorse App" <${gmailEmail.value()}>`,
+      from: `"Endorse" <${ADMIN_EMAIL}>`,
+      replyTo: ADMIN_EMAIL,
       to: recipientEmail,
       subject: `Signed Document: ${documentName}`,
       text: `Please find attached the signed copy of ${documentName}.`,
@@ -1124,5 +1319,60 @@ export const submitSignature = onCall({ secrets: [postgresUrl] }, async (request
   } catch (error: any) {
     console.error("Submit Signature Error:", error);
     throw new HttpsError("internal", error.message || "Failed to submit signature.");
+  }
+});
+
+// Function to send a welcome email to a new user
+export const sendWelcomeEmail = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
+  const { email, name } = request.data as { email: string; name: string };
+
+  if (!email || !name) {
+    throw new HttpsError("invalid-argument", "Email and name are required.");
+  }
+
+  try {
+    const transporter = getTransporter();
+    const mailOptions = {
+      from: `"Endorse Team" <${ADMIN_EMAIL}>`,
+      replyTo: ADMIN_EMAIL,
+      to: email,
+      subject: "Welcome to Endorse! 🚀",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #ffffff;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" style="height: 50px; width: auto; object-fit: contain;" />
+          </div>
+          <div style="padding: 0 20px;">
+            <h1 style="color: #333; margin-bottom: 20px; text-align: center;">Welcome to Endorse, ${name}!</h1>
+            <p style="color: #555; font-size: 16px; line-height: 1.6;">We're thrilled to have you join our community of professionals who trust Endorse for secure, legally binding electronic signatures.</p>
+            
+            <p style="color: #555; font-size: 16px; line-height: 1.6;">With your new account, you can now:</p>
+            <ul style="color: #555; font-size: 16px; line-height: 1.6;">
+              <li>Upload and sign documents in seconds</li>
+              <li>Track document status in real-time</li>
+              <li>Collaborate with teams on agreements</li>
+            </ul>
+
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="https://e-ndorse.online/dashboard" style="background-color: #FFC83D; color: #000000; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Go to Dashboard</a>
+            </div>
+            
+            <p style="color: #555; font-size: 16px; line-height: 1.6;">If you have any questions, feel free to reply to this email or visit our help center.</p>
+            
+            <p style="color: #999; font-size: 14px; margin-top: 40px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
+              Best,<br />The Endorse Team<br />
+              <a href="https://e-ndorse.online" style="color: #555; text-decoration: none;">e-ndorse.online</a>
+            </p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("Welcome email sent to:", email);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Welcome Email Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to send welcome email.");
   }
 });

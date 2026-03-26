@@ -1,0 +1,326 @@
+﻿[
+  {
+    "errorGroups": [
+      {
+        "id": "CKbez--woNbABQ"
+      }
+    ],
+    "insertId": "69b90517000b0510767f91e5",
+    "labels": {
+      "deployment-callable": "true",
+      "execution_id": "uax0s5viyh5t",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35",
+      "run.googleapis.com/base_image_versions": "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs20:nodejs20_20260308_20_20_0_RC00"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-03-17T07:39:03.748807531Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "spanId": "9232342140351801901",
+    "textPayload": "Invite Team Error: Error: 5 NOT_FOUND: \n    at callErrorFromStatus (/workspace/node_modules/@grpc/grpc-js/build/src/call.js:32:19)\n    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:193:76)\n    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:367:141)\n    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:327:181)\n    at /workspace/node_modules/@grpc/grpc-js/build/src/resolving-call.js:135:78\n    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)\nfor call at\n    at ServiceClientImpl.makeUnaryRequest (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:161:32)\n    at ServiceClientImpl.<anonymous> (/workspace/node_modules/@grpc/grpc-js/build/src/make-client.js:105:19)\n    at /workspace/node_modules/@google-cloud/firestore/build/src/v1/firestore_client.js:242:33\n    at /workspace/node_modules/google-gax/build/src/normalCalls/timeout.js:44:16\n    at repeat (/workspace/node_modules/google-gax/build/src/normalCalls/retries.js:82:25)\n    at /workspace/node_modules/google-gax/build/src/normalCalls/retries.js:125:13\n    at OngoingCallPromise.call (/workspace/node_modules/google-gax/build/src/call.js:67:27)\n    at NormalApiCaller.call (/workspace/node_modules/google-gax/build/src/normalCalls/normalApiCaller.js:34:19)\n    at /workspace/node_modules/google-gax/build/src/createApiCall.js:112:30\nCaused by: Error\n    at _firestore._traceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:438:27)\n    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30\n    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)\n    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)\n    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)\n    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)\n    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)\n    at WriteBatch.commit (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:436:43)\n    at /workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:350:31\n    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30\n    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)\n    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)\n    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)\n    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)\n    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)\n    at DocumentReference.set (/workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:342:43) {\n  code: 5,\n  details: '',\n  metadata: Metadata {\n    internalRepr: Map(1) { 'x-debug-tracking-id' => [Array] },\n    opaqueData: Map(0) {},\n    options: {}\n  },\n  note: 'Exception occurred in retry method that was not classified as transient'\n}\n",
+    "timestamp": "2026-03-17T07:39:03.722192Z"
+  },
+  {
+    "insertId": "69b905170009dda736f5f445",
+    "labels": {
+      "deployment-callable": "true",
+      "execution_id": "uax0s5viyh5t",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35",
+      "run.googleapis.com/base_image_versions": "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs20:nodejs20_20260308_20_20_0_RC00"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-03-17T07:39:03.749530860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "spanId": "9232342140351801901",
+    "textPayload": "Inviter synced: 0a985a19-2e41-4b8a-9dd3-ab8650e67181. Plan: free\n",
+    "timestamp": "2026-03-17T07:39:03.646567Z"
+  },
+  {
+    "insertId": "69b905170009437652b41729",
+    "labels": {
+      "deployment-callable": "true",
+      "execution_id": "uax0s5viyh5t",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35",
+      "run.googleapis.com/base_image_versions": "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs20:nodejs20_20260308_20_20_0_RC00"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-03-17T07:39:03.749530860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "spanId": "9232342140351801901",
+    "textPayload": "Syncing inviter to Postgres...\n",
+    "timestamp": "2026-03-17T07:39:03.607094Z"
+  },
+  {
+    "insertId": "69b905170009430d9b3b3bc8",
+    "labels": {
+      "deployment-callable": "true",
+      "execution_id": "uax0s5viyh5t",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35",
+      "run.googleapis.com/base_image_versions": "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs20:nodejs20_20260308_20_20_0_RC00"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-03-17T07:39:03.749530860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "spanId": "9232342140351801901",
+    "textPayload": "InviteTeamMember triggered by: bankoleebenezer111@gmail.com for: ebenezerbankole7@gmail.com\n",
+    "timestamp": "2026-03-17T07:39:03.606989Z"
+  },
+  {
+    "insertId": "69b90517000942a2fde77b2f",
+    "labels": {
+      "deployment-callable": "true",
+      "execution_id": "uax0s5viyh5t",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35",
+      "run.googleapis.com/base_image_versions": "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs20:nodejs20_20260308_20_20_0_RC00"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-03-17T07:39:03.749530860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "spanId": "9232342140351801901",
+    "textPayload": "requestTeamInvite called. Auth present: true\n",
+    "timestamp": "2026-03-17T07:39:03.606882Z"
+  },
+  {
+    "insertId": "69b90517000940cdfdcb076d",
+    "jsonPayload": {
+      "message": "Callable request verification passed",
+      "verifications": {
+        "app": "MISSING",
+        "auth": "VALID"
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "execution_id": "uax0s5viyh5t",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "firebase-log-type": "callable-request-verification",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35",
+      "run.googleapis.com/base_image_versions": "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs20:nodejs20_20260308_20_20_0_RC00"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-03-17T07:39:03.749530860Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "DEBUG",
+    "spanId": "9232342140351801901",
+    "timestamp": "2026-03-17T07:39:03.606413Z",
+    "trace": "projects/endorse-app/traces/6c0e44250c6d80939fdd8058958094cd"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.121564819s",
+      "protocol": "HTTP/1.1",
+      "referer": "http://localhost:8080/",
+      "remoteIp": "102.88.114.26",
+      "requestMethod": "POST",
+      "requestSize": "2047",
+      "requestUrl": "https://us-central1-endorse-app.cloudfunctions.net/requestTeamInvite",
+      "responseSize": "256",
+      "serverIp": "216.239.36.54",
+      "status": 500,
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0"
+    },
+    "insertId": "69b90517000b097ab1ca0246",
+    "labels": {
+      "deployment-callable": "true",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-03-17T07:39:03.930996639Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "801fde42f889ea2d",
+    "timestamp": "2026-03-17T07:39:03.599919Z",
+    "trace": "projects/endorse-app/traces/6c0e44250c6d80939fdd8058958094cd"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.003157868s",
+      "protocol": "HTTP/1.1",
+      "referer": "http://localhost:8080/",
+      "remoteIp": "102.88.114.26",
+      "requestMethod": "OPTIONS",
+      "requestSize": "715",
+      "requestUrl": "https://us-central1-endorse-app.cloudfunctions.net/requestTeamInvite",
+      "responseSize": "258",
+      "serverIp": "216.239.36.54",
+      "status": 204,
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0"
+    },
+    "insertId": "69b90516000e12e59791f113",
+    "labels": {
+      "deployment-callable": "true",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-03-17T07:39:02.931148458Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "def6d1b8189dcd58",
+    "timestamp": "2026-03-17T07:39:02.917665Z",
+    "trace": "projects/endorse-app/traces/9d3125503eef74839fdd805895809a8e",
+    "traceSampled": true
+  },
+  {
+    "errorGroups": [
+      {
+        "id": "CKbez--woNbABQ"
+      }
+    ],
+    "insertId": "69b9050f00065dd4d6e754ad",
+    "labels": {
+      "deployment-callable": "true",
+      "execution_id": "uawsu3fzqdhj",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35",
+      "run.googleapis.com/base_image_versions": "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs20:nodejs20_20260308_20_20_0_RC00"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-03-17T07:38:55.422852642Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "spanId": "8076022146110756543",
+    "textPayload": "Invite Team Error: Error: 5 NOT_FOUND: \n    at callErrorFromStatus (/workspace/node_modules/@grpc/grpc-js/build/src/call.js:32:19)\n    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:193:76)\n    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:367:141)\n    at Object.onReceiveStatus (/workspace/node_modules/@grpc/grpc-js/build/src/client-interceptors.js:327:181)\n    at /workspace/node_modules/@grpc/grpc-js/build/src/resolving-call.js:135:78\n    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)\nfor call at\n    at ServiceClientImpl.makeUnaryRequest (/workspace/node_modules/@grpc/grpc-js/build/src/client.js:161:32)\n    at ServiceClientImpl.<anonymous> (/workspace/node_modules/@grpc/grpc-js/build/src/make-client.js:105:19)\n    at /workspace/node_modules/@google-cloud/firestore/build/src/v1/firestore_client.js:242:33\n    at /workspace/node_modules/google-gax/build/src/normalCalls/timeout.js:44:16\n    at repeat (/workspace/node_modules/google-gax/build/src/normalCalls/retries.js:82:25)\n    at /workspace/node_modules/google-gax/build/src/normalCalls/retries.js:125:13\n    at OngoingCallPromise.call (/workspace/node_modules/google-gax/build/src/call.js:67:27)\n    at NormalApiCaller.call (/workspace/node_modules/google-gax/build/src/normalCalls/normalApiCaller.js:34:19)\n    at /workspace/node_modules/google-gax/build/src/createApiCall.js:112:30\nCaused by: Error\n    at _firestore._traceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:438:27)\n    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30\n    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)\n    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)\n    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)\n    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)\n    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)\n    at WriteBatch.commit (/workspace/node_modules/@google-cloud/firestore/build/src/write-batch.js:436:43)\n    at /workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:350:31\n    at /workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30\n    at NoopContextManager.with (/workspace/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)\n    at ContextAPI.with (/workspace/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)\n    at NoopTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)\n    at ProxyTracer.startActiveSpan (/workspace/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)\n    at EnabledTraceUtil.startActiveSpan (/workspace/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)\n    at DocumentReference.set (/workspace/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:342:43) {\n  code: 5,\n  details: '',\n  metadata: Metadata {\n    internalRepr: Map(1) { 'x-debug-tracking-id' => [Array] },\n    opaqueData: Map(0) {},\n    options: {}\n  },\n  note: 'Exception occurred in retry method that was not classified as transient'\n}\n",
+    "timestamp": "2026-03-17T07:38:55.417236Z"
+  },
+  {
+    "insertId": "69b9050e0006452deecb2f77",
+    "labels": {
+      "deployment-callable": "true",
+      "execution_id": "uawsu3fzqdhj",
+      "firebase-functions-hash": "1173eaa29bcf10dc38be055514c94ad0e70fdb53",
+      "goog-drz-cloudfunctions-id": "requestteaminvite",
+      "goog-drz-cloudfunctions-location": "us-central1",
+      "goog-managed-by": "cloudfunctions",
+      "instanceId": "00da6cd2c44456e653c97c5ddd7acbbebf7c69185d936ca474e8f88274379a95d16db5acb88077264e1ba2a45a5ba12e22b460fa1936732fe870da8aaa852d666ae281f2d634a16637ab8945e8993a35",
+      "run.googleapis.com/base_image_versions": "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs20:nodejs20_20260308_20_20_0_RC00"
+    },
+    "logName": "projects/endorse-app/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-03-17T07:38:54.425030657Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "requestteaminvite",
+        "location": "us-central1",
+        "project_id": "endorse-app",
+        "revision_name": "requestteaminvite-00005-gus",
+        "service_name": "requestteaminvite"
+      },
+      "type": "cloud_run_revision"
+    },
+    "spanId": "8076022146110756543",
+    "textPayload": "Inviter synced: 0a985a19-2e41-4b8a-9dd3-ab8650e67181. Plan: free\n",
+    "timestamp": "2026-03-17T07:38:54.410925Z"
+  }
+]

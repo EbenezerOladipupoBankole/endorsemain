@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Shield, Zap, ArrowLeft, Loader2, Lock, Globe, CreditCard } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Logo } from "./components/Logo";
+import { Label } from "./components/ui/label";
 
 const PLANS = [
   {
@@ -37,7 +38,7 @@ const Payment = () => {
   const [searchParams] = useSearchParams();
   const [selectedPlan, setSelectedPlan] = useState(PLANS[0]);
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentMethod] = useState<'stripe' | 'paystack'>('paystack');
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paystack'>('paystack');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const forceTestMode = searchParams.get("test") === "true";
@@ -229,15 +230,26 @@ const Payment = () => {
           <div className="max-w-md mx-auto w-full">
             <h3 className="text-xl font-bold text-slate-900 mb-6">Payment Details</h3>
 
-            {/* Payment Method Switcher Hidden */}
+            {/* Payment Method Switcher */}
             <div className="mb-6">
-              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 text-sm">
-                <CreditCard className="w-4 h-4" />
-                <span className="font-medium">Secure local payment via Paystack</span>
+              <Label className="text-sm font-semibold text-slate-700 mb-3 block">Select Payment Method</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div 
+                  onClick={() => setPaymentMethod('paystack')}
+                  className={`cursor-pointer p-3 border rounded-xl flex items-center justify-center gap-2 transition-all ${paymentMethod === 'paystack' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-slate-200 hover:border-slate-300'}`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span className="text-sm font-medium">Local (Paystack)</span>
+                </div>
+                <div 
+                  onClick={() => setPaymentMethod('stripe')}
+                  className={`cursor-pointer p-3 border rounded-xl flex items-center justify-center gap-2 transition-all ${paymentMethod === 'stripe' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500' : 'border-slate-200 hover:border-slate-300'}`}
+                >
+                  <Globe className="w-4 h-4" />
+                  <span className="text-sm font-medium">Global (Stripe)</span>
+                </div>
               </div>
             </div>
-
-            {/* Stripe Section Hidden */}
 
             {/* Paystack Section */}
             {paymentMethod === 'paystack' && (
@@ -254,6 +266,25 @@ const Payment = () => {
                 </div>
                 <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
                   <Lock className="w-3 h-3" /> Secured by Paystack
+                </div>
+              </div>
+            )}
+
+            {/* Stripe Section */}
+            {paymentMethod === 'stripe' && (
+              <div className="mb-6 animate-in fade-in slide-in-from-bottom-2">
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6 text-center mb-4">
+                  <p className="text-sm text-slate-600 mb-4">Pay securely with any international credit or debit card.</p>
+                  <Button
+                    onClick={handleStripePayment}
+                    className="w-full bg-[#635BFF] hover:bg-[#635BFF]/90 text-white h-12 text-base font-semibold shadow-md shadow-indigo-500/10"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Pay with Stripe"}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                  <Lock className="w-3 h-3" /> Secured by Stripe
                 </div>
               </div>
             )}
