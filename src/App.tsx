@@ -11,6 +11,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SignDocument from "./pages/SignDocument";
 import Blog from "./pages/Blog";
 import About from "./pages/About";
+import Contact from "./pages/Contact";
 import Payment from "./Payment";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -18,6 +19,8 @@ import CookiePolicy from "./pages/CookiePolicy";
 import Team from "./pages/Team";
 import FileConversion from "./pages/FileConversion";
 import Settings from "./pages/Settings";
+import Templates from "./pages/Templates";
+import AcceptInvite from "./pages/AcceptInvite";
 import { useAuth } from "./components/AuthContext";
 
 const queryClient = new QueryClient();
@@ -33,12 +36,15 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/conversion" element={<FileConversion />} />
+          <Route path="/templates" element={<Templates />} />
           <Route path="/sign/:id" element={<SignDocument />} />
+          <Route path="/accept-invite" element={<AcceptInvite />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/team" element={<Team />} />

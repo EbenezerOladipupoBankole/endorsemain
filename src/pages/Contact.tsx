@@ -43,13 +43,13 @@ const Contact = () => {
   const sendEmail = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.current) return;
-    
+
     setIsSubmitting(true);
 
     // Note: Replace these with your actual EmailJS credentials
     emailjs
       .sendForm('service_6jotgng', 'template_98l8hhh', form.current, {
-        publicKey: '-=gElZBL18i5EFwVMx3',
+        publicKey: 'gElZBL18i5EFwVMx3',
       })
       .then(
         () => {

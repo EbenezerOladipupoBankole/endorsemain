@@ -34,12 +34,10 @@ console.log("Firebase initialized:", app);
 export const analytics = getAnalytics(app);
 export const functions = getFunctions(app, "us-central1");
 // Connect to emulator in development
-/*
 if (window.location.hostname === "localhost") {
   connectFunctionsEmulator(functions, "localhost", 5001);
   console.log("Connected to Functions emulator");
 }
-*/
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

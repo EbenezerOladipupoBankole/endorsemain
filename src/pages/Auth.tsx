@@ -40,7 +40,9 @@ const Auth = () => {
   const inviteToken = searchParams.get('inviteToken');
 
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/dashboard";
+  const from = location.state?.from?.pathname 
+    ? `${location.state.from.pathname}${location.state.from.search || ''}` 
+    : "/dashboard";
 
   useEffect(() => {
     if (user && user.emailVerified) {
@@ -49,13 +51,13 @@ const Auth = () => {
         toast.promise(acceptInvite({ token: inviteToken }), {
           loading: 'Joining team...',
           success: (res: any) => {
-            return res.data.message || 'Successfully joined team! Redirecting...';
+            return (res.data as any).message || 'Successfully joined team! Redirecting...';
           },
-          error: (err) => `Failed to join team: ${err.message}`,
-        }).finally(() => {
-          // Use a short delay to allow user to see the toast before redirect
-          setTimeout(() => navigate(from, { replace: true }), 1500);
+          error: (err: any) => `Failed to join team: ${err.message}`,
         });
+        
+        // Use a short delay to allow user to see the toast before redirect
+        setTimeout(() => navigate(from, { replace: true }), 1500);
       } else {
         navigate(from, { replace: true });
       }
@@ -69,6 +71,15 @@ const Auth = () => {
     try {
       if (isSignUp) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Send welcome email via Firebase Function
+        try {
+          const sendWelcome = httpsCallable(functions, 'sendWelcomeEmail');
+          await sendWelcome({ email, name: fullName || email.split('@')[0] });
+        } catch (emailError) {
+          console.error("Welcome email failed, but account created:", emailError);
+        }
+
         await sendEmailVerification(userCredential.user);
         setNeedsVerification(true);
         toast.success("Verification email sent! Please check your inbox.");
@@ -443,7 +454,7 @@ const Auth = () => {
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <Label htmlFor="password" name="Password" className="text-sm font-bold text-slate-700">Password</Label>
+                    <Label htmlFor="password" className="text-sm font-bold text-slate-700">Password</Label>
                     {!isSignUp && (
                       <button
                         type="button"
