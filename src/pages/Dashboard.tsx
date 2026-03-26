@@ -54,6 +54,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
 
 // Lazy load heavy components to reduce initial bundle size
 const PDFViewer = lazy(() => import('@/components/esign/PDFViewer').then(module => ({ default: module.PDFViewer })));
@@ -96,8 +97,6 @@ const convertWordToPDF = async (file: File): Promise<Blob> => {
     reader.onerror = (error) => reject(error);
   });
 };
-
-const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -150,23 +149,23 @@ const Dashboard = () => {
       if (!user?.email) return;
 
       try {
-        const getDocsFn = httpsCallable(functions, 'getUserDocuments');
         const getStatsFn = httpsCallable(functions, 'getUserStats');
-
-        const [docsResult, statsResult] = await Promise.all([
-          getDocsFn(),
-          getStatsFn()
+        const getDocsFn = httpsCallable(functions, 'getUserDocuments');
+        
+        const [statsResult, docsResult] = await Promise.all([
+          getStatsFn(),
+          getDocsFn()
         ]);
-
-        const docs = (docsResult.data as any).documents || [];
+        
         const statsData = statsResult.data as any;
+        const docsData = docsResult.data as any;
 
         setStats({
           total: statsData.total || 0,
           signed: statsData.signed || 0,
           pending: statsData.pending || 0
         });
-        setRecentDocs(docs.slice(0, 5));
+        setRecentDocs((docsData.documents || []).slice(0, 5));
       } catch (error) {
         console.error("Error fetching data from Postgres:", error);
         // Fallback to Firestore during transition if needed
@@ -416,6 +415,13 @@ const Dashboard = () => {
         toast.error("Failed to delete document", { id: toastId });
         console.error("Error deleting document:", error);
       }
+    }
+  };
+
+  const handleHiddenFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0]);
+      e.target.value = '';
     }
   };
 
@@ -709,7 +715,7 @@ const Dashboard = () => {
                   <p className="text-gray-500">Manage your documents and signatures.</p>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" className="bg-white">
+                  <Button variant="outline" className="bg-white" onClick={() => navigate('/settings')}>
                     <Settings className="w-4 h-4 mr-2" /> Settings
                   </Button>
                   <label htmlFor="pdf-upload-hidden" className="cursor-pointer">
@@ -718,6 +724,13 @@ const Dashboard = () => {
                       New Document
                     </Button>
                   </label>
+                  <input
+                    type="file"
+                    id="pdf-upload-hidden"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleHiddenFileInputChange}
+                  />
                 </div>
               </div>
 
