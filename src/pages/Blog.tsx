@@ -10,6 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import AdSense from "@/components/AdSense";
+
 
 const Blog = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -281,6 +283,9 @@ const Blog = () => {
               </div>
             </div>
           </div>
+          
+          {/* Ad after featured post */}
+          <AdSense slot="9409963724" className="mb-20 px-4" />
 
           {/* Post Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -334,6 +339,9 @@ const Blog = () => {
               </Link>
             ))}
           </div>
+          
+          {/* Ad before newsletter */}
+          <AdSense slot="9409963724" className="mt-20" />
           
           {/* Newsletter CTA */}
           <div className="mt-16 md:mt-24 rounded-2xl bg-secondary/30 border border-border p-6 md:p-12 text-center">

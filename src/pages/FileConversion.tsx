@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/components/client";
 import { useAuth } from "@/components/AuthContext";
+import AdSense from "@/components/AdSense";
+
 
 const tools = [
   {
@@ -264,6 +266,11 @@ const FileConversion = () => {
               ))}
             </div>
 
+            {/* In-feed Ad after tool grid */}
+            <div className="container max-w-6xl mx-auto px-4 md:px-6 pt-12">
+              <AdSense slot="9409963724" />
+            </div>
+
             {/* Trust Section */}
             <div className="container max-w-6xl mx-auto px-4 md:px-6 mt-24">
               <div className="grid md:grid-cols-2 gap-8 text-center max-w-4xl mx-auto">
@@ -375,6 +382,9 @@ const FileConversion = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Ad below conversion card */}
+            <AdSense slot="9409963724" className="mt-12" />
           </div>
         )}
       </main>
