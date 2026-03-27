@@ -68,8 +68,17 @@ interface SendDocumentPayload {
   documentName: string;
 }
 
+console.log("[DIAGNOSTIC] functions/index.ts loaded - V1.5 (Stats Prefix Added & Region Specified)");
+
+export const testPing = onCall({ region: "us-central1" }, (request) => {
+  return { message: "pong" };
+});
+
 // Function to fetch documents for the logged-in user (PostgreSQL)
-export const getUserDocuments = onCall({ secrets: [postgresUrl] }, async (request) => {
+export const getUserDocuments = onCall({ 
+  region: "us-central1",
+  secrets: [postgresUrl] 
+}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -113,7 +122,10 @@ export const getUserDocuments = onCall({ secrets: [postgresUrl] }, async (reques
 });
 
 // Function to get summary stats (PostgreSQL)
-export const getUserStats = onCall({ secrets: [postgresUrl] }, async (request) => {
+export const getUserStats = onCall({ 
+  region: "us-central1",
+  secrets: [postgresUrl] 
+}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -134,8 +146,9 @@ export const getUserStats = onCall({ secrets: [postgresUrl] }, async (request) =
 
     return { total: totalOwned, signed: completed, pending };
   } catch (error: any) {
-    console.error("Stats Error:", error);
-    throw new HttpsError("internal", error.message || "Failed to fetch stats.");
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("getUserStats Error (detailed):", errorMsg, error);
+    throw new HttpsError("internal", `Stats Exception: ${errorMsg}`);
   }
 });
 
@@ -435,9 +448,10 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword, p
 });
 
 export const requestTeamInvite = onCall({ 
+  region: "us-central1",
   secrets: [gmailEmail, gmailPassword, postgresUrl],
 }, async (request) => {
-  console.log("requestTeamInvite called. Auth present:", !!request.auth);
+  console.log("requestTeamInvite called (V1.5). Auth present:", !!request.auth);
   
   // Ensure email transport is configured before doing any DB work
   try {
