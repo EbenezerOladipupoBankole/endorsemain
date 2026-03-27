@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,113 +8,109 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  firebaseUid  String?  @unique
-  name         String?
-  email        String   @unique
-  planType     String   @default("free")
-  companyName  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  ownedDocuments Document[] @relation("DocumentOwner")
-  teamMemberships TeamMember[]
+  id              String       @id @default(uuid())
+  firebaseUid     String?      @unique
+  name            String?
+  email           String       @unique
+  planType        String       @default("free")
+  companyName     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  ownedDocuments  Document[]   @relation("DocumentOwner")
   ownedTeams      Team[]
+  teamMemberships TeamMember[]
 }
 
 model Document {
-  id           String    @id @default(uuid())
-  ownerId      String
-  owner        User      @relation("DocumentOwner", fields: [ownerId], references: [id])
-  name         String
-  fileUrl      String
-  status       String    @default("draft") // draft, pending, sent, completed, cancelled
-  checksum     String?   // SHA256 Hash
-  createdAt    DateTime  @default(now())
-  completedAt  DateTime?
-
-  recipients   Recipient[]
-  fields       SignatureField[]
-  signatures   Signature[]
-  auditLogs    AuditLog[]
-  hash         DocumentHash?
+  id          String           @id @default(uuid())
+  ownerId     String
+  name        String
+  fileUrl     String
+  status      String           @default("draft")
+  checksum    String?
+  createdAt   DateTime         @default(now())
+  completedAt DateTime?
+  auditLogs   AuditLog[]
+  owner       User             @relation("DocumentOwner", fields: [ownerId], references: [id])
+  hash        DocumentHash?
+  recipients  Recipient[]
+  signatures  Signature[]
+  fields      SignatureField[]
 }
 
 model Recipient {
-  id            String    @id @default(uuid())
-  documentId    String
-  document      Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  name          String?
-  email         String
-  signingOrder  Int       @default(1)
-  status        String    @default("pending") // pending, viewed, signed, declined
-  token         String    @unique @default(uuid()) // For signing URL
-  viewedAt      DateTime?
-  signedAt      DateTime?
-
-  fields        SignatureField[]
-  signatures    Signature[]
+  id           String           @id @default(uuid())
+  documentId   String
+  name         String?
+  email        String
+  signingOrder Int              @default(1)
+  status       String           @default("pending")
+  token        String           @unique @default(uuid())
+  viewedAt     DateTime?
+  signedAt     DateTime?
+  document     Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  signatures   Signature[]
+  fields       SignatureField[]
 }
 
 model SignatureField {
-  id           String    @id @default(uuid())
-  documentId   String
-  document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  recipientId  String
-  recipient    Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-  fieldType    String    // signature, initials, date, text
-  page         Int
-  positionX    Decimal
-  positionY    Decimal
-  width        Decimal?
-  height       Decimal?
+  id          String    @id @default(uuid())
+  documentId  String
+  recipientId String
+  fieldType   String
+  page        Int
+  positionX   Decimal
+  positionY   Decimal
+  width       Decimal?
+  height      Decimal?
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  recipient   Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 }
 
 model Signature {
   id                String    @id @default(uuid())
   documentId        String
-  document          Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
   recipientId       String
-  recipient         Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
   signatureImageUrl String
   signedAt          DateTime  @default(now())
   ipAddress         String?
   userAgent         String?
+  document          Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  recipient         Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
-  id          String    @id @default(uuid())
-  documentId  String
-  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId      String?   // Link to our User model
-  action      String    // DOCUMENT_CREATED, DOCUMENT_SENT, etc.
-  metadata    Json?     // Extra details
-  createdAt   DateTime  @default(now())
+  id         String   @id @default(uuid())
+  documentId String
+  userId     String?
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
 
 model Team {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   name      String
   ownerId   String
-  owner     User     @relation(fields: [ownerId], references: [id])
-  createdAt DateTime @default(now())
-
+  createdAt DateTime     @default(now())
+  owner     User         @relation(fields: [ownerId], references: [id])
   members   TeamMember[]
 }
 
 model TeamMember {
   id        String   @id @default(uuid())
   teamId    String
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      String   @default("member") // admin, member
+  role      String   @default("member")
   createdAt DateTime @default(now())
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DocumentHash {
   documentId String   @id
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   sha256Hash String
   createdAt  DateTime @default(now())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
