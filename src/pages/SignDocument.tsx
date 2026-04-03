@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { db, functions } from '@/components/client';
 import { httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { PDFViewer, PlacedItem } from '@/components/esign/PDFViewer';
 import SignatureModal from '@/components/SignatureModal';
-import { Loader2, CheckCircle2, AlertCircle, PenTool, Plus, X, Type, User, Calendar, FileText, SquareCheck, List } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, PenTool, Plus, X, Type, User, Calendar, FileText, SquareCheck, List, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/components/AuthContext';
 
@@ -25,10 +27,13 @@ const SignDocument = () => {
   const [activeStampType, setActiveStampType] = useState<"signature" | "initials" | "name" | "date" | "text" | "checkbox" | "dropdown" | null>(null);
 
   const [placedItems, setPlacedItems] = useState<PlacedItem[]>([]);
+  const [hasConsented, setHasConsented] = useState(false);
 
   const [showSignatureModal, setShowSignatureModal] = useState<"signature" | "initials" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  // ... rest of header and state stays same
+
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -272,12 +277,37 @@ const SignDocument = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-background border-b border-border sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Logo className="h-8 w-auto" customLogoUrl={documentData?.branding?.logoUrl} />
-          <Button onClick={handleCompleteSigning} disabled={placedItems.length === 0 || isSubmitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin md:mr-2" /> : <PenTool className="w-4 h-4 md:mr-2" />}
-            <span className="hidden md:inline">Finish Signing</span>
-          </Button>
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          <Logo className="h-8 w-auto flex-shrink-0" customLogoUrl={documentData?.branding?.logoUrl} />
+          
+          <div className="flex items-center gap-3 flex-1 justify-end">
+            <div className={`flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-lg border transition-colors ${hasConsented ? 'border-primary/50 bg-primary/5' : 'border-destructive/20 bg-destructive/10'}`}>
+              <Checkbox 
+                id="legal-consent" 
+                checked={hasConsented} 
+                onCheckedChange={(checked) => setHasConsented(checked as boolean)}
+                className="data-[state=checked]:bg-primary h-4 w-4"
+              />
+              <Label htmlFor="legal-consent" className="text-[10px] md:text-[11px] leading-tight cursor-pointer font-semibold select-none">
+                I agree to the <span className="hidden sm:inline">electronic signature</span> terms.
+              </Label>
+            </div>
+
+            <Button 
+               id="finish-signing-btn"
+               onClick={handleCompleteSigning} 
+               disabled={placedItems.length === 0 || isSubmitting || !hasConsented} 
+               className={`transition-all duration-300 font-bold shadow-lg h-10 px-4 ${hasConsented ? 'bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90' : 'bg-muted text-muted-foreground grayscale cursor-not-allowed opacity-70'}`}
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin md:mr-2" />
+              ) : (
+                <ShieldCheck className={`w-4 h-4 transition-transform ${hasConsented ? 'scale-110 md:mr-2' : 'scale-90 md:mr-2'}`} />
+              )}
+              <span className="hidden sm:inline">Finish Signing</span>
+              <span className="sm:hidden text-xs">Finish</span>
+            </Button>
+          </div>
         </div>
       </header>
       <main className="flex-1 flex overflow-hidden">

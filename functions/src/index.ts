@@ -1290,8 +1290,8 @@ export const submitSignature = onCall({ secrets: [postgresUrl] }, async (request
           documentId,
           recipientId,
           signatureImageUrl,
-          ipAddress,
-          userAgent,
+          ipAddress: ipAddress || (request as any).rawRequest?.ip || "unknown",
+          userAgent: userAgent || (request as any).rawRequest?.headers?.['user-agent'] || "unknown",
         }
       });
 
@@ -1315,18 +1315,118 @@ export const submitSignature = onCall({ secrets: [postgresUrl] }, async (request
       const allSigned = allRecipients.every((r: any) => r.status === 'SIGNED');
 
       if (allSigned) {
-        await tx.document.update({
+        // Fetch the document content (base64 or URL) to hash it and add a certificate
+        const docRecord = await tx.document.findUnique({ 
           where: { id: documentId },
-          data: { 
-            status: 'COMPLETED',
-            completedAt: new Date()
-          }
+          include: { recipients: true, signatures: true }
         });
 
-        await logAuditTrail(documentId, 'DOCUMENT_COMPLETED', 'system');
+        if (docRecord && docRecord.fileUrl) {
+           let finalPdfBase64 = docRecord.fileUrl;
+
+           try {
+             const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+             
+             // 1. Check if the PDF has the data: URI prefix
+             const base64Clean = docRecord.fileUrl.includes('base64,') 
+               ? docRecord.fileUrl.split('base64,')[1] 
+               : docRecord.fileUrl;
+             
+             const pdfDoc = await PDFDocument.load(Buffer.from(base64Clean, 'base64'));
+             const pages = pdfDoc.getPages();
+             
+             // 2. Add a new 'Certificate of Completion' page
+             const certPage = pdfDoc.addPage([595.28, 841.89]); // A4 size
+             const { width, height } = certPage.getSize();
+             const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+             const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+             // 3. Draw Header
+             certPage.drawRectangle({ x: 0, y: height - 100, width, height: 100, color: rgb(0.1, 0.1, 0.2)});
+             certPage.drawText("CERTIFICATE OF COMPLETION", {
+               x: 50, y: height - 60, size: 24, font: boldFont, color: rgb(1, 1, 1)
+             });
+             certPage.drawText("Powered by Endorse (www.e-ndorse.online)", {
+               x: 50, y: height - 80, size: 10, font, color: rgb(0.8, 0.8, 0.8)
+             });
+
+             // 4. Document Info
+             let yPos = height - 150;
+             certPage.drawText("DOCUMENT SUMMARY", { x: 50, y: yPos, size: 14, font: boldFont });
+             yPos -= 20;
+             certPage.drawText(`Document Name: ${docRecord.name}`, { x: 50, y: yPos, size: 10, font });
+             yPos -= 15;
+             certPage.drawText(`Document ID: ${docRecord.id}`, { x: 50, y: yPos, size: 10, font });
+             yPos -= 15;
+             certPage.drawText(`Completed On: ${new Date().toUTCString()}`, { x: 50, y: yPos, size: 10, font });
+             
+             // 5. Signer Verification Table
+             yPos -= 40;
+             certPage.drawText("SIGNER VERIFICATION", { x: 50, y: yPos, size: 14, font: boldFont });
+             yPos -= 25;
+             
+             // Draw Table Headers
+             certPage.drawRectangle({ x: 50, y: yPos - 5, width: 500, height: 20, color: rgb(0.95, 0.95, 0.95) });
+             certPage.drawText("Signer", { x: 60, y: yPos, size: 9, font: boldFont });
+             certPage.drawText("Email", { x: 180, y: yPos, size: 9, font: boldFont });
+             certPage.drawText("IP Address", { x: 350, y: yPos, size: 9, font: boldFont });
+             certPage.drawText("Status", { x: 480, y: yPos, size: 9, font: boldFont });
+             yPos -= 25;
+
+             for (const r of docRecord.recipients) {
+               const sig = docRecord.signatures.find((s: any) => s.recipientId === r.id);
+               certPage.drawText(r.name || r.email.split('@')[0], { x: 60, y: yPos, size: 8, font });
+               certPage.drawText(r.email, { x: 180, y: yPos, size: 8, font });
+               certPage.drawText(sig?.ipAddress || "Unknown", { x: 350, y: yPos, size: 8, font });
+               certPage.drawText(r.status, { x: 480, y: yPos, size: 8, font });
+               yPos -= 20;
+
+               if (yPos < 50) break; // Basic page break safety
+             }
+
+             // 6. Security Footer
+             const finalHash = crypto.createHash("sha256").update(docRecord.fileUrl).digest("hex");
+             certPage.drawRectangle({ x: 50, y: 40, width: 500, height: 40, color: rgb(0.98, 0.98, 0.98) });
+             certPage.drawText("AUTHENTIC DIGITAL FINGERPRINT (SHA-256)", { x: 60, y: 65, size: 8, font: boldFont });
+             certPage.drawText(finalHash, { x: 60, y: 50, size: 7, font, color: rgb(0.3, 0.3, 0.3) });
+
+             finalPdfBase64 = await pdfDoc.saveAsBase64({ dataUri: true });
+             
+             // 7. Save the new PDF with Certificate & New Hash
+             const certHash = crypto.createHash("sha256").update(finalPdfBase64).digest("hex");
+
+             await tx.document.update({
+               where: { id: documentId },
+               data: { 
+                 fileUrl: finalPdfBase64,
+                 status: 'COMPLETED',
+                 completedAt: new Date()
+               }
+             });
+
+             await tx.documentHash.upsert({
+               where: { documentId: documentId },
+               update: { sha256Hash: certHash },
+               create: { documentId: documentId, sha256Hash: certHash }
+             });
+
+             await logAuditTrail(documentId, 'DOCUMENT_CERTIFICATE_GENERATED', 'system', { sha256Hash: certHash });
+             await logAuditTrail(documentId, 'DOCUMENT_COMPLETED', 'system');
+
+           } catch (pdfError) {
+             console.error("PDF Certificate Generation Failed:", pdfError);
+             // Fallback: Mark as completed even if certificate fails
+             await tx.document.update({
+               where: { id: documentId },
+               data: { status: 'COMPLETED', completedAt: new Date() }
+             });
+           }
+        }
+
+        return { success: true, allSigned: true };
       }
 
-      return { success: true, allSigned };
+      return { success: true, allSigned: false };
     });
 
     return result;
