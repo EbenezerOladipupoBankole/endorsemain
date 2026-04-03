@@ -1,22 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db, functions } from '@/components/client';
-import { httpsCallable } from 'firebase/functions';
+import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { db } from '@/components/client';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { PDFViewer, PlacedItem } from '@/components/esign/PDFViewer';
 import SignatureModal from '@/components/SignatureModal';
-import { Loader2, CheckCircle2, AlertCircle, PenTool, Plus, X, Type, User, Calendar, FileText, SquareCheck, List, ShieldCheck } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, PenTool, Plus, X, Type, User, Calendar, FileText } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/components/AuthContext';
 
 const SignDocument = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { userProfile, user } = useAuth();
-  const token = new URLSearchParams(window.location.search).get('token');
+  const { userProfile } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [documentData, setDocumentData] = useState<any>(null);
@@ -24,96 +21,59 @@ const SignDocument = () => {
 
   const [signature, setSignature] = useState<string | null>(null);
   const [initials, setInitials] = useState<string | null>(null);
-  const [activeStampType, setActiveStampType] = useState<"signature" | "initials" | "name" | "date" | "text" | "checkbox" | "dropdown" | null>(null);
+  const [activeStampType, setActiveStampType] = useState<"signature" | "initials" | "name" | "date" | "text" | null>(null);
 
   const [placedItems, setPlacedItems] = useState<PlacedItem[]>([]);
-  const [hasConsented, setHasConsented] = useState(false);
 
   const [showSignatureModal, setShowSignatureModal] = useState<"signature" | "initials" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  // ... rest of header and state stays same
-
 
   useEffect(() => {
     const fetchDocument = async () => {
       if (!id) return;
-  
+
       try {
-        const getDocFn = httpsCallable(functions, 'getDocumentForSigning');
-        const result = await getDocFn({ documentId: id, token });
-        const data = (result.data as any).document;
-  
-        if (data) {
+        const docRef = doc(db, "documents", id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
           setDocumentData(data);
-  
-          if (data.status === 'COMPLETED') {
+
+          if (data.status === 'completed' || data.status === 'signed') {
             setIsSuccess(true);
             setLoading(false);
             return;
           }
-  
-          // Check if current user is the owner or a recipient
-          const isOwner = user?.uid && data.owner?.firebaseUid === user.uid;
-          const recipient = data.recipients.find((r: any) => 
-            (token && r.token === token) || (user?.email && r.email === user.email)
-          );
-  
-          if (!isOwner && !recipient && !token) {
-            toast.error("You don't have permission to view this document.");
-            navigate('/dashboard');
-            return;
-          }
-  
+
           if (data.fileUrl) {
-            // Check if it's base64 or URL
-            const isBase64 = data.fileUrl.startsWith('data:application/pdf;base64,') || !data.fileUrl.includes('://');
-            const fetchUrl = isBase64 && !data.fileUrl.startsWith('data:') ? `data:application/pdf;base64,${data.fileUrl}` : data.fileUrl;
-            
-            const response = await fetch(fetchUrl);
+            const response = await fetch(data.fileUrl);
             const blob = await response.blob();
+            const file = new File([blob], data.name || "document.pdf", { type: "application/pdf" });
+            setPdfFile(file);
+          } else if (data.pdfBase64) {
+            const res = await fetch(data.pdfBase64);
+            const blob = await res.blob();
             const file = new File([blob], data.name || "document.pdf", { type: "application/pdf" });
             setPdfFile(file);
           } else {
             toast.error("Document file not found.");
           }
-  
-          // Map PostgreSQL fields to placedItems if they exist
-          if (data.fields && data.fields.length > 0) {
-            const mapped = data.fields.map((f: any) => ({
-              id: f.id,
-              type: f.fieldType,
-              data: '', // Placeholder
-              page: f.page,
-              x: Number(f.positionX),
-              y: Number(f.positionY),
-              width: Number(f.width),
-              height: Number(f.height)
-            }));
-            setPlacedItems(mapped);
-          }
         } else {
           toast.error("Document not found.");
           navigate('/');
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error("Error fetching document:", error);
-        toast.error(error.message || "Failed to load document.");
+        toast.error("Failed to load document.");
       } finally {
         setLoading(false);
       }
     };
-  
-    fetchDocument();
-  }, [id, navigate, token, user]);
 
-  useEffect(() => {
-    if (documentData?.branding?.primaryColor) {
-      const color = documentData.branding.primaryColor;
-      document.documentElement.style.setProperty('--primary', color);
-      document.documentElement.style.setProperty('--ring', color);
-    }
-  }, [documentData?.branding?.primaryColor]);
+    fetchDocument();
+  }, [id, navigate]);
 
   const handleModalSave = (signatureData: string) => {
     if (showSignatureModal === "signature") {
@@ -154,29 +114,18 @@ const SignDocument = () => {
 
     setIsSubmitting(true);
     try {
-      const recipient = documentData.recipients.find((r: any) => 
-        (token && r.token === token) || (user?.email && r.email === user.email)
-      );
-
-      if (!recipient) {
-        toast.error("Recipient not found or unauthorized.");
-        return;
-      }
-
-      const submitSigFn = httpsCallable(functions, 'submitSignature');
-      await submitSigFn({
-        documentId: id,
-        recipientId: recipient.id,
-        signatureImageUrl: signature || initials || placedItems[0].data,
-        ipAddress: 'dynamic', // Handled by server usually or can fetch here
-        userAgent: navigator.userAgent
+      await updateDoc(doc(db, "documents", id), {
+        status: 'signed',
+        signature_data: signature || initials || placedItems[0].data,
+        signature_positions: placedItems,
+        signedAt: serverTimestamp(),
       });
 
       setIsSuccess(true);
       toast.success("Document signed successfully!");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error signing document:", error);
-      toast.error(error.message || "Failed to submit signature.");
+      toast.error("Failed to submit signature.");
     } finally {
       setIsSubmitting(false);
     }
@@ -192,22 +141,7 @@ const SignDocument = () => {
         </div>
         <h1 className="text-2xl font-bold mb-2">Document Signed Successfully!</h1>
         <p className="text-muted-foreground mb-6 max-w-md">Thank you for signing <strong>{documentData?.name}</strong>.</p>
-        
-        {user ? (
-          <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
-        ) : (
-          <div className="flex flex-col items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-border">
-            <p className="text-sm text-muted-foreground">Want to send your own documents for secure e-signing?</p>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <Button onClick={() => navigate('/auth')} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 px-8">
-                Create Free Account
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/')}>
-                Return Home
-              </Button>
-            </div>
-          </div>
-        )}
+        <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
       </div>
     );
   }
@@ -219,8 +153,6 @@ const SignDocument = () => {
       case "name": return userProfile?.displayName || userProfile?.email?.split('@')[0] || "Signer Name";
       case "date": return new Date().toLocaleDateString();
       case "text": return "";
-      case "checkbox": return "false";
-      case "dropdown": return "";
       default: return null;
     }
   })();
@@ -277,37 +209,12 @@ const SignDocument = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-background border-b border-border sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <Logo className="h-8 w-auto flex-shrink-0" customLogoUrl={documentData?.branding?.logoUrl} />
-          
-          <div className="flex items-center gap-3 flex-1 justify-end">
-            <div className={`flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-lg border transition-colors ${hasConsented ? 'border-primary/50 bg-primary/5' : 'border-destructive/20 bg-destructive/10'}`}>
-              <Checkbox 
-                id="legal-consent" 
-                checked={hasConsented} 
-                onCheckedChange={(checked) => setHasConsented(checked as boolean)}
-                className="data-[state=checked]:bg-primary h-4 w-4"
-              />
-              <Label htmlFor="legal-consent" className="text-[10px] md:text-[11px] leading-tight cursor-pointer font-semibold select-none">
-                I agree to the <span className="hidden sm:inline">electronic signature</span> terms.
-              </Label>
-            </div>
-
-            <Button 
-               id="finish-signing-btn"
-               onClick={handleCompleteSigning} 
-               disabled={placedItems.length === 0 || isSubmitting || !hasConsented} 
-               className={`transition-all duration-300 font-bold shadow-lg h-10 px-4 ${hasConsented ? 'bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90' : 'bg-muted text-muted-foreground grayscale cursor-not-allowed opacity-70'}`}
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin md:mr-2" />
-              ) : (
-                <ShieldCheck className={`w-4 h-4 transition-transform ${hasConsented ? 'scale-110 md:mr-2' : 'scale-90 md:mr-2'}`} />
-              )}
-              <span className="hidden sm:inline">Finish Signing</span>
-              <span className="sm:hidden text-xs">Finish</span>
-            </Button>
-          </div>
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Logo className="h-8 w-auto" />
+          <Button onClick={handleCompleteSigning} disabled={placedItems.length === 0 || isSubmitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
+            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin md:mr-2" /> : <PenTool className="w-4 h-4 md:mr-2" />}
+            <span className="hidden md:inline">Finish Signing</span>
+          </Button>
         </div>
       </header>
       <main className="flex-1 flex overflow-hidden">
@@ -359,27 +266,6 @@ const SignDocument = () => {
                 isActive={activeStampType === 'text'}
                 onClick={() => handleToolClick('text')}
               />
-              <div className="pt-4 border-t border-border">
-                <h3 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Advanced</h3>
-                <div className="space-y-2">
-                  <ToolButton
-                    id="checkbox"
-                    icon={SquareCheck}
-                    label="Checkbox"
-                    hasData={true}
-                    isActive={activeStampType === 'checkbox'}
-                    onClick={() => handleToolClick('checkbox')}
-                  />
-                  <ToolButton
-                    id="dropdown"
-                    icon={List}
-                    label="Dropdown"
-                    hasData={true}
-                    isActive={activeStampType === 'dropdown'}
-                    onClick={() => handleToolClick('dropdown')}
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </div>

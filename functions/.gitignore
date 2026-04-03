@@ -13,4 +13,3 @@ node_modules/
 .env
 .env.*
 .secret.local
-/src/generated/prisma
