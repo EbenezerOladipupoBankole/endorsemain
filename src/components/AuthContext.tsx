@@ -49,6 +49,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         } catch (error: any) {
           if (error.code !== 'unavailable') {
             console.error("Error fetching user profile:", error);
+            // Show error so we know if it's a permission issue
+            import('sonner').then(({ toast }) => toast.error("Error fetching profile: " + error.message));
           }
           setUserProfile({ plan: 'free' });
         }

@@ -1,8 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -33,12 +33,21 @@ console.log("Firebase initialized:", app);
 export const analytics = getAnalytics(app);
 export const functions = getFunctions(app, "us-central1");
 // Connect to emulator in development
-if (window.location.hostname === "localhost") {
-  connectFunctionsEmulator(functions, "localhost", 5001);
-  console.log("Connected to Functions emulator");
-}
+// Disabled: using production Firebase instead
+// if (window.location.hostname === "localhost") {
+//   connectFunctionsEmulator(functions, "localhost", 5001);
+//   console.log("Connected to Functions emulator");
+// }
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Connect to Auth and Firestore emulators in development
+// Disabled: using production Firebase instead
+// if (window.location.hostname === "localhost") {
+//   connectAuthEmulator(auth, "http://localhost:9099");
+//   connectFirestoreEmulator(db, "localhost", 8082);
+//   console.log("Connected to Auth and Firestore emulators");
+// }
 
 export { app };

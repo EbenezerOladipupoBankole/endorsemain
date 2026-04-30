@@ -26,6 +26,8 @@ const Team = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(true);
+  const [teamName, setTeamName] = useState("");
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
 
   useEffect(() => {
     const teamId = userProfile?.teamId;
@@ -90,6 +92,29 @@ const Team = () => {
     }
   };
 
+  const handleCreateTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teamName) {
+      toast.error("Please enter a team name.");
+      return;
+    }
+    setIsCreatingTeam(true);
+    try {
+      const createTeamFn = httpsCallable(functions, 'createTeam');
+      await createTeamFn({ teamName });
+      toast.success(`Team "${teamName}" created successfully! Reloading...`);
+      // Reload after a short delay to allow backend to propagate and user to read toast
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(`Failed to create team: ${error.message}`);
+    } finally {
+      setIsCreatingTeam(false);
+    }
+  };
+
   const handleRemoveMember = async (member: TeamMember) => {
     if (window.confirm(`Are you sure you want to remove ${member.email}?`)) {
       const toastId = toast.loading("Removing member...");
@@ -138,75 +163,105 @@ const Team = () => {
 
           <Separator />
 
-          {/* Invite Members */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Invite New Member</CardTitle>
-              <CardDescription>Enter the email of the person you want to add to your team.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleInviteMember} className="flex items-center gap-4">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="invite-email" className="sr-only">Email</Label>
-                  <Input
-                    id="invite-email"
-                    type="email"
-                    placeholder="teammate@example.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" disabled={isInviting}>
-                  {isInviting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                  Send Invite
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Team Members List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Team Members</CardTitle>
-              <CardDescription>A list of people in your organization.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingMembers ? (
-                <div className="flex justify-center items-center h-24">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {teamMembers.map(member => (
-                    <div key={member.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-semibold text-muted-foreground">
-                          {member.name?.split(' ').map(n => n[0]).join('').toUpperCase() || member.email[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-medium">{member.name}</p>
-                          <p className="text-sm text-muted-foreground">{member.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          member.role === 'admin' ? 'bg-primary/10 text-primary' :
-                          member.role === 'member' ? 'bg-slate-100 text-slate-600' :
-                          'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {member.role}
-                        </span>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => handleRemoveMember(member)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+          {!userProfile?.teamId ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Create a Team</CardTitle>
+                <CardDescription>You are not part of any team. Create one to invite members.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateTeam} className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex-1 w-full space-y-2">
+                    <Label htmlFor="team-name" className="sr-only">Team Name</Label>
+                    <Input
+                      id="team-name"
+                      type="text"
+                      placeholder="Enter team name (e.g. Acme Corp)"
+                      value={teamName}
+                      onChange={(e) => setTeamName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" disabled={isCreatingTeam} className="w-full sm:w-auto">
+                    {isCreatingTeam ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Create Team
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Invite Members */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Invite New Member</CardTitle>
+                  <CardDescription>Enter the email of the person you want to add to your team.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleInviteMember} className="flex items-center gap-4">
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="invite-email" className="sr-only">Email</Label>
+                      <Input
+                        id="invite-email"
+                        type="email"
+                        placeholder="teammate@example.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        required
+                      />
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <Button type="submit" disabled={isInviting}>
+                      {isInviting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+                      Send Invite
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Team Members List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Team Members</CardTitle>
+                  <CardDescription>A list of people in your organization.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingMembers ? (
+                    <div className="flex justify-center items-center h-24">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {teamMembers.map(member => (
+                        <div key={member.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-semibold text-muted-foreground">
+                              {member.name?.split(' ').map(n => n[0]).join('').toUpperCase() || member.email[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium">{member.name}</p>
+                              <p className="text-sm text-muted-foreground">{member.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              member.role === 'admin' ? 'bg-primary/10 text-primary' :
+                              member.role === 'member' ? 'bg-slate-100 text-slate-600' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {member.role}
+                            </span>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => handleRemoveMember(member)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       </main>
     </div>

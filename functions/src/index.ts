@@ -5,6 +5,9 @@ import * as crypto from "crypto";
 import { defineSecret } from "firebase-functions/params";
 import axios from "axios";
 import { Stripe } from "stripe";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 const mammoth = require("mammoth");
 const { Document, Packer, Paragraph, TextRun } = require("docx");
 const pdfParse = require("pdf-parse");
@@ -28,14 +31,27 @@ let transporter: nodemailer.Transporter | null = null;
 
 function getTransporter() {
   if (!transporter) {
+    // Try to get from Secret Manager, fallback to process.env for local emulator
+    let user = "";
+    let pass = "";
+    
+    try {
+      user = gmailEmail.value();
+      pass = gmailPassword.value();
+    } catch (e) {
+      user = process.env.GMAIL_EMAIL || "";
+      pass = process.env.GMAIL_PASSWORD || "";
+    }
+
+    if (!user || !pass) {
+      console.warn("Warning: GMAIL_EMAIL or GMAIL_PASSWORD is not set. Email features will fail.");
+    }
+
     transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user: gmailEmail.value(),
-        pass: gmailPassword.value(),
-      },
-      connectionTimeout: 10000, // 10 seconds
-      greetingTimeout: 10000,   // 10 seconds
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
     });
   }
   return transporter;
@@ -69,7 +85,7 @@ interface AcceptInvitePayload {
 }
 
 // Function to invite a user to sign
-export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
+export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -159,12 +175,12 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
     console.error("Invite Error Exception:", error);
     // Ensure we return the specific error message
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-    throw new HttpsError("internal", errorMessage);
+    throw new HttpsError("unknown", errorMessage);
   }
 });
 
 // Function to handle bulk invites from Dashboard
-export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
+export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -205,7 +221,7 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword] }
   return { success: true, results };
 });
 
-export const acceptTeamInvite = onCall(async (request) => {
+export const acceptTeamInvite = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in to accept an invite.");
   }
@@ -245,7 +261,7 @@ export const acceptTeamInvite = onCall(async (request) => {
 });
 
 // Function to send the signed document via email
-export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword] }, async (request) => {
+export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -280,6 +296,7 @@ export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword] }, asy
 export const convertDocument = onCall({
   memory: "1GiB",
   timeoutSeconds: 300,
+  cors: true
 }, async (request) => {
   const { file, filename, mimeType, targetFormat } = request.data as {
     file: string;
@@ -442,7 +459,7 @@ export const convertDocument = onCall({
 // --- PAYMENT INTEGRATIONS ---
 
 // 1. Paystack Integration
-export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTest, paystackSecretKeyLive] }, async (request) => {
+export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTest, paystackSecretKeyLive], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -496,7 +513,7 @@ export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTes
 });
 
 // 2. Stripe Integration
-export const initializeStripeSession = onCall({ secrets: [stripeSecretKey] }, async (request) => {
+export const initializeStripeSession = onCall({ secrets: [stripeSecretKey], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -603,7 +620,7 @@ export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, strip
 });
 
 // 4. Billing Management
-export const manageStripeSubscription = onCall({ secrets: [stripeSecretKey] }, async (request) => {
+export const manageStripeSubscription = onCall({ secrets: [stripeSecretKey], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -641,7 +658,7 @@ export const manageStripeSubscription = onCall({ secrets: [stripeSecretKey] }, a
   }
 });
 
-export const managePaystackSubscription = onCall(async (request) => {
+export const managePaystackSubscription = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -659,7 +676,7 @@ interface RemoveMemberPayload {
   memberId: string;
 }
 
-export const removeTeamMember = onCall(async (request) => {
+export const removeTeamMember = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -692,4 +709,194 @@ export const removeTeamMember = onCall(async (request) => {
   await batch.commit();
 
   return { success: true, message: 'Member removed.' };
+});
+
+// --- POSTGRES / PRISMA FUNCTIONS ---
+
+export const getUserStats = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const email = request.auth.token.email;
+  if (!email) {
+    throw new HttpsError("invalid-argument", "User email not found.");
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        _count: {
+          select: { ownedDocuments: true }
+        }
+      }
+    });
+
+    if (!user) {
+      return { total: 0, signed: 0, pending: 0 };
+    }
+
+    const total = user._count.ownedDocuments;
+    const signedCount = await prisma.document.count({
+      where: { ownerId: user.id, status: "completed" }
+    });
+    const pendingCount = await prisma.document.count({
+      where: { ownerId: user.id, status: "pending" }
+    });
+
+    return {
+      total,
+      signed: signedCount,
+      pending: pendingCount
+    };
+  } catch (error: any) {
+    console.error("Prisma Stats Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to fetch stats from Postgres.");
+  }
+});
+
+export const getUserDocuments = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const email = request.auth.token.email;
+  if (!email) {
+    throw new HttpsError("invalid-argument", "User email not found.");
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!user) {
+      return { documents: [] };
+    }
+
+    const documents = await prisma.document.findMany({
+      where: { ownerId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+
+    return { documents };
+  } catch (error: any) {
+    console.error("Prisma Documents Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to fetch documents from Postgres.");
+  }
+});
+
+// --- TEAM MANAGEMENT (FIRESTORE) ---
+
+export const createTeam = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+  const { teamName } = request.data as { teamName: string };
+  if (!teamName) {
+    throw new HttpsError("invalid-argument", "Missing team name.");
+  }
+
+  const db = admin.firestore();
+  const uid = request.auth.uid;
+  const email = request.auth.token.email;
+
+  const userRef = db.collection('users').doc(uid);
+  const userDoc = await userRef.get();
+  
+  if (userDoc.exists && userDoc.data()?.teamId) {
+    throw new HttpsError("already-exists", "You are already part of a team.");
+  }
+
+  const batch = db.batch();
+
+  // Create team document
+  const teamRef = db.collection('teams').doc();
+  const teamId = teamRef.id;
+
+  batch.set(teamRef, {
+    name: teamName,
+    ownerId: uid,
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  // Add owner to team members
+  const memberRef = teamRef.collection('members').doc(uid);
+  batch.set(memberRef, {
+    email,
+    role: 'admin',
+    status: 'active',
+    addedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  // Update user profile with teamId
+  batch.set(userRef, { teamId }, { merge: true });
+
+  await batch.commit();
+
+  return { success: true, teamId };
+});
+
+export const inviteTeamMember = onCall({ 
+  secrets: [gmailEmail, gmailPassword],
+  cors: true
+}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const { inviteEmail, role = 'member' } = request.data as { inviteEmail: string; role: string };
+  if (!inviteEmail) {
+    throw new HttpsError("invalid-argument", "Missing invite email.");
+  }
+
+  const db = admin.firestore();
+  
+  // Get current user's teamId
+  const userProfileSnap = await db.collection('users').doc(request.auth.uid).get();
+  const teamId = userProfileSnap.data()?.teamId;
+
+  if (!teamId) {
+    throw new HttpsError("failed-precondition", "You are not part of a team. Please create one first.");
+  }
+
+  try {
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    await db.collection('invites').add({
+      teamId,
+      toEmail: inviteEmail,
+      role,
+      token,
+      status: 'pending',
+      invitedBy: request.auth.token.email || request.auth.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const inviteLink = `${APP_URL}/auth?mode=signup&inviteToken=${token}`;
+    
+    const transporter = getTransporter();
+    let fromAddress = "noreply@e-ndorse.online";
+    try {
+      fromAddress = process.env.GMAIL_EMAIL || gmailEmail.value();
+    } catch (e) {
+      console.warn("Using fallback from address");
+    }
+
+    await transporter.sendMail({
+      from: `"Endorse Team" <${fromAddress}>`,
+      to: inviteEmail,
+      subject: "You've been invited to join a team on Endorse",
+      html: `<p>You have been invited to join a team on Endorse.</p><p>Click the link below to accept the invitation:</p><a href="${inviteLink}">Join Team</a>`
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Invite Team Member Error:", error);
+    // Return a structured error to the client
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("unknown", error.message || "Failed to send team invitation.");
+  }
 });

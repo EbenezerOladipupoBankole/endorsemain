@@ -15,6 +15,7 @@ import {
   getMultiFactorResolver,
   TotpMultiFactorGenerator,
   MultiFactorError,
+  confirmPasswordReset,
   sendEmailVerification,
   sendPasswordResetEmail,
 } from "firebase/auth";
@@ -34,15 +35,30 @@ const Auth = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [forgotPassword, setForgotPassword] = useState(false);
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
   const inviteToken = searchParams.get('inviteToken');
 
+  // Check for Firebase Auth Action parameters (Reset Password)
+  const mode = searchParams.get("mode");
+  const oobCode = searchParams.get("oobCode");
+
   const location = useLocation();
   const from = location.state?.from?.pathname || "/dashboard";
 
   useEffect(() => {
+    // If we have an oobCode, we are performing an action (like resetting password)
+    // Do NOT redirect to dashboard even if user is logged in
+    if (oobCode && mode === "resetPassword") {
+      // If someone is already logged in, sign them out so they can reset properly
+      if (user) {
+        auth.signOut();
+      }
+      return;
+    }
+
     if (user && user.emailVerified) {
       if (inviteToken && !userProfile?.teamId) {
         const acceptInvite = httpsCallable(functions, 'acceptTeamInvite');
@@ -54,13 +70,13 @@ const Auth = () => {
           error: (err) => `Failed to join team: ${err.message}`,
         }).finally(() => {
           // Use a short delay to allow user to see the toast before reload
-          setTimeout(() => window.location.href = from, 1500);
+          setTimeout(() => window.location.href = "/team", 1500);
         });
       } else {
         navigate(from, { replace: true });
       }
     }
-  }, [user, userProfile, navigate, from, inviteToken]);
+  }, [user, userProfile, navigate, from, inviteToken, oobCode, mode]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +122,26 @@ const Auth = () => {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!oobCode) return;
+
+    setLoading(true);
+    try {
+      await confirmPasswordReset(auth, oobCode, password);
+      toast.success("Password has been reset! You can now sign in.");
+      await auth.signOut(); // Clear old session to prevent auto-redirect
+      setIsResetting(false);
+      setForgotPassword(false);
+      setIsSignUp(false); // Switch to sign in mode
+      navigate("/auth");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reset password. The link may have expired.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -218,22 +254,45 @@ const Auth = () => {
           {/* Form Header */}
           <div className="mb-8 text-center lg:text-left">
             <h2 className="font-display text-2xl font-bold text-foreground mb-2">
-              {mfaRequired ? "Two-Factor Authentication" : needsVerification ? "Verify Email" : isSignUp ? "Create your account" : "Welcome back"}
+              {mode === "resetPassword" && oobCode ? "Set New Password" : mfaRequired ? "Two-Factor Authentication" : needsVerification ? "Verify Email" : isSignUp ? "Create your account" : "Welcome back"}
             </h2>
             <p className="text-muted-foreground">
-              {mfaRequired
-                ? "Enter the 6-digit code from your authenticator app"
-                : needsVerification
-                  ? "Check your inbox to activate your account"
-                  : isSignUp
-                    ? "Start your free 14-day trial today"
-                    : "Sign in to continue to your dashboard"
+              {mode === "resetPassword" && oobCode
+                ? "Enter your new password below to regain access to your account."
+                : mfaRequired ? "Enter the 6-digit code from your authenticator app"
+                  : needsVerification
+                    ? "Check your inbox to activate your account"
+                    : isSignUp
+                      ? "Start your free 14-day trial today"
+                      : "Sign in to continue to your dashboard"
               }
             </p>
           </div>
 
-          {/* MFA Form */}
-          {mfaRequired ? (
+          {/* New Password Form (Action Handler) */}
+          {mode === "resetPassword" && oobCode ? (
+            <form onSubmit={handleConfirmReset} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 h-11"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full h-11 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black border-none" disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Save New Password"}
+              </Button>
+            </form>
+          ) : mfaRequired ? (
             <form onSubmit={handleMfaVerify} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="code" className="text-sm font-medium">Verification Code</Label>
@@ -307,43 +366,75 @@ const Auth = () => {
               </p>
             </div>
           ) : forgotPassword ? (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-4">
-                {resetSent ? (
-                  <div className="bg-green-50 border border-green-100 p-4 rounded-xl text-green-700 text-sm mb-4">
-                    Check your inbox for the reset link we just sent.
+            <div className="space-y-6">
+              {resetSent ? (
+                <div className="bg-green-50 border border-green-100 p-8 rounded-2xl text-center shadow-sm animate-in fade-in zoom-in duration-300">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Mail className="w-8 h-8 text-green-600" />
                   </div>
-                ) : (
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">Reset link sent!</h3>
+                  <p className="text-slate-600 mb-6 text-sm leading-relaxed">
+                    We've sent a secure recovery link to <span className="font-semibold text-green-700">{email}</span>.
+                  </p>
+
+                  <div className="bg-white border border-slate-100 rounded-xl p-4 mb-6 shadow-inner text-center">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-3">What to look for</p>
+                    <div className="py-2.5 px-6 bg-[#FFC83D] text-black font-bold rounded-lg inline-block text-xs shadow-sm">
+                      Reset Password
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white/50 rounded-lg text-[11px] text-slate-500 mb-6 flex items-start gap-2 text-left">
+                    <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <p>For your security, if an account isn't associated with this email, you won't receive a message. This prevents unauthorized users from verifying account existence.</p>
+                  </div>
+
+                  <Button
+                    onClick={() => window.open('https://mail.google.com', '_blank')}
+                    className="w-full h-11 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-bold mb-3 shadow-md border-none"
+                  >
+                    Check Your Inbox
+                  </Button>
+                  <Button
+                    onClick={() => { setForgotPassword(false); setResetSent(false); }}
+                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white"
+                  >
+                    Return to Sign In
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleResetPassword} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="reset-email">Email Address</Label>
+                    <Label htmlFor="reset-email" className="text-sm font-bold text-slate-700">Password Recovery</Label>
+                    <p className="text-xs text-muted-foreground mb-4">Enter your work email and we'll send you a secure link to reset your credentials.</p>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
                         id="reset-email"
                         type="email"
-                        placeholder="you@example.com"
+                        placeholder="you@company.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 h-11"
+                        className="pl-10 h-12 bg-slate-50/50 border-slate-200"
                         required
                       />
                     </div>
                   </div>
-                )}
 
-                <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90" disabled={loading || resetSent}>
-                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Send Reset Link"}
-                </Button>
+                  <Button type="submit" className="w-full h-12 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-bold border-none" disabled={loading}>
+                    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Send Recovery Link"}
+                  </Button>
 
-                <button
-                  type="button"
-                  onClick={() => setForgotPassword(false)}
-                  className="w-full text-center text-sm text-slate-500 hover:text-slate-900 font-medium"
-                >
-                  Return to Sign In
-                </button>
-              </div>
-            </form>
+                  <button
+                    type="button"
+                    onClick={() => setForgotPassword(false)}
+                    className="w-full text-center text-sm text-slate-500 hover:text-slate-900 font-bold"
+                  >
+                    Cancel and Return
+                  </button>
+                </form>
+              )}
+            </div>
           ) : (
             <>
               {/* Security Check */}

@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment } from 'firebase/firestore';
-import { db } from '@/components/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, functions } from '@/components/client';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
 import { PDFUploader } from '@/components/esign/PDFUploader';
+import { AuditTrail } from '@/components/AuditTrail';
 import { SignerManager } from '@/components/esign/SignerManager';
 import type { Signer } from '@/components/esign/SignerManager';
 import SignatureModal from '@/components/SignatureModal';
@@ -40,7 +41,11 @@ import {
   Bell,
   HelpCircle,
   MessageCircle,
-  Code
+  Code,
+  FileType,
+  Activity,
+  Palette,
+  ChevronRight
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,6 +54,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
 
 // Lazy load heavy components to reduce initial bundle size
 const PDFViewer = lazy(() => import('@/components/esign/PDFViewer').then(module => ({ default: module.PDFViewer })));
@@ -110,6 +116,7 @@ const Dashboard = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedDocForAudit, setSelectedDocForAudit] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
@@ -142,26 +149,26 @@ const Dashboard = () => {
       if (!user?.email) return;
 
       try {
-        const q = query(
-          collection(db, "documents"),
-          where("ownerEmail", "==", user.email),
-          orderBy("createdAt", "desc")
-        );
+        const getStatsFn = httpsCallable(functions, 'getUserStats');
+        const getDocsFn = httpsCallable(functions, 'getUserDocuments');
 
-        const querySnapshot = await getDocs(q);
-        const docs = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const [statsResult, docsResult] = await Promise.all([
+          getStatsFn(),
+          getDocsFn()
+        ]);
 
-        const total = docs.length;
-        const signed = docs.filter((d: any) => ['signed', 'completed', 'Signed'].includes(d.status)).length;
-        const pending = total - signed;
+        const statsData = statsResult.data as any;
+        const docsData = docsResult.data as any;
 
-        setStats({ total, signed, pending });
-        setRecentDocs(docs.slice(0, 5));
+        setStats({
+          total: statsData.total || 0,
+          signed: statsData.signed || 0,
+          pending: statsData.pending || 0
+        });
+        setRecentDocs((docsData.documents || []).slice(0, 5));
       } catch (error) {
-        console.error("Error fetching recent docs:", error);
+        console.error("Error fetching data from Postgres:", error);
+        // Fallback to Firestore during transition if needed
       } finally {
         setLoadingDocs(false);
       }
@@ -211,7 +218,7 @@ const Dashboard = () => {
   const handleFileSelect = async (file: File) => {
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
+    const documentsSigned = userProfile?.documentsSigned || 0;
 
     if (!isPro && documentsSigned >= 3) {
       toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
@@ -227,7 +234,7 @@ const Dashboard = () => {
     if (isPDF) {
       setPdfFile(file);
       setSignature(null);
-      setSignaturePositions([]);
+      setPlacedItems([]);
       setSigners([]);
     } else if (isWord) {
       const toastId = toast.loading("Converting Word document to PDF...");
@@ -237,7 +244,7 @@ const Dashboard = () => {
 
         setPdfFile(convertedFile);
         setSignature(null);
-        setSignaturePositions([]);
+        setPlacedItems([]);
         setSigners([]);
         toast.success("Document converted successfully", { id: toastId });
       } catch (error) {
@@ -280,7 +287,7 @@ const Dashboard = () => {
 
     // Check limits for free plan
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const documentsSigned = usageCount || userProfile?.documentsSigned || 0;
+    const documentsSigned = userProfile?.documentsSigned || 0;
 
     if (!isPro && documentsSigned >= 3) {
       toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
@@ -351,7 +358,7 @@ const Dashboard = () => {
     const toastId = toast.loading("Processing document and sending invitations...");
 
     try {
-      // 1. Convert PDF to Base64 (simple solution for now, ideally upload to Storage)
+      // 1. Convert PDF to Base64
       const pdfBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
@@ -359,63 +366,35 @@ const Dashboard = () => {
         reader.readAsDataURL(pdfFile);
       });
 
-      // 2. Create the document in Firestore immediately
-      // Wrap in a timeout to prevent hanging
-      const createDocPromise = addDoc(collection(db, "documents"), {
-        name: pdfFile.name,
-        status: 'pending',
-        ownerEmail: user?.email,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        pdfBase64: pdfBase64, // Storing base64 for simplicity in this demo. For prod, use Storage.
-        signers: signers.map(s => ({
-          email: s.email,
-          role: s.role || 'signer',
-          status: 'pending'
-        })),
-        invitedBy: user?.uid,
-      });
+      // 2. Call the refactored cloud function that saves to Postgres AND sends emails
+      const sendInvitesFn = httpsCallable(functions, 'sendSignerInvites');
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Database operation timed out. The file might be too large or connection is slow.")), 60000)
-      );
-
-      const docRef = await Promise.race([createDocPromise, timeoutPromise]) as any;
-
-
-      // 3. Send invites with the new document ID
-      const sendInvites = httpsCallable(functions, 'sendSignerInvites');
-
-      const invitePromise = sendInvites({
+      const result = await sendInvitesFn({
         signers: signers,
         documentName: pdfFile.name,
         uploaderName: user?.email?.split('@')[0] || 'A user',
-        uploaderEmail: user?.email,
-        documentId: docRef.id, // Pass the ID effectively
-        signingLink: `${window.location.origin}/sign/${docRef.id}`, // Explicit link
+        pdfBase64: pdfBase64,
       });
 
-      const inviteTimeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Email service timed out. Document saved, but invites might not have sent.")), 40000)
-      );
+      const data = result.data as any;
+      if (data.success) {
+        toast.success('Invitations sent successfully!', { id: toastId });
+        setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }));
 
-      await Promise.race([invitePromise, inviteTimeoutPromise]);
+        // Refresh the documents list to show the new one immediately
+        const getDocsFn = httpsCallable(functions, 'getUserDocuments');
+        const docsResult = await getDocsFn();
+        setRecentDocs(((docsResult.data as any).documents || []).slice(0, 5));
 
-      // Small delay to let user see 100%
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      toast.success('Invitations sent successfully!', { id: toastId });
-
-      // Update local stats
-      setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }));
+        // Reset state
+        setPdfFile(null);
+        setSigners([]);
+      } else {
+        throw new Error("Failed to process some invitations.");
+      }
     } catch (error: any) {
       console.error("Error sending invitations:", error);
-      let msg = "Failed to send invitations.";
-      if (error?.message) msg = error.message;
-      if (error?.code === 'resource-exhausted') msg = "File too large for database.";
-      if (error?.code === 'permission-denied') msg = "Permission denied.";
-
-      toast.error(msg, { id: toastId });
+      toast.error(error.message || "Failed to send invitations.", { id: toastId });
     }
   };
 
@@ -433,9 +412,16 @@ const Dashboard = () => {
         setRecentDocs((prev) => prev.filter((d) => d.id !== docId));
         toast.success("Document deleted successfully", { id: toastId });
       } catch (error) {
-        toast.error("Failed to delete document", { id: toastId });
+        toast.error(`Failed to delete document: ${(error as Error).message}`, { id: toastId });
         console.error("Error deleting document:", error);
       }
+    }
+  };
+
+  const handleHiddenFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0]);
+      e.target.value = '';
     }
   };
 
@@ -457,6 +443,7 @@ const Dashboard = () => {
               <Menu className="h-5 w-5" />
             </Button>
             <Logo className="h-12 md:h-16 w-auto" />
+            {loadingDocs && <Loader2 className="w-4 h-4 animate-spin text-primary ml-2 hidden md:block" />}
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
@@ -604,6 +591,22 @@ const Dashboard = () => {
                   File Converter
                 </Link>
               </Button>
+              {(isAdmin || userProfile?.plan === 'business') && (
+                <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                  <Link to="/team">
+                    <Users className="mr-2 h-4 w-4" />
+                    Team Management
+                  </Link>
+                </Button>
+              )}
+              {(isAdmin || userProfile?.plan === 'business') && (
+                <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
+                  <Link to="/settings?tab=branding">
+                    <Palette className="mr-2 h-4 w-4" />
+                    Branding
+                  </Link>
+                </Button>
+              )}
             </div>
             <div className="mt-auto pt-8">
               <Card>
@@ -618,10 +621,10 @@ const Dashboard = () => {
                     <div className="mb-3">
                       <div className="flex justify-between text-xs font-medium mb-1">
                         <span>Free Usage</span>
-                        <span>{usageCount || userProfile?.documentsSigned || 0}/3 used</span>
+                        <span>{userProfile?.documentsSigned || 0}/3 used</span>
                       </div>
                       <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((usageCount || userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
+                        <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
                       </div>
                     </div>
                   )}
@@ -655,6 +658,22 @@ const Dashboard = () => {
                   File Converter
                 </Link>
               </Button>
+              {(isAdmin || userProfile?.plan === 'business') && (
+                <Button variant="ghost" className="w-full justify-start" asChild>
+                  <Link to="/team">
+                    <Users className="mr-2 h-4 w-4" />
+                    Team Management
+                  </Link>
+                </Button>
+              )}
+              {(isAdmin || userProfile?.plan === 'business') && (
+                <Button variant="ghost" className="w-full justify-start" asChild>
+                  <Link to="/settings?tab=branding">
+                    <Palette className="mr-2 h-4 w-4" />
+                    Branding
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <Card className="bg-white shadow-sm border-gray-200">
@@ -669,10 +688,10 @@ const Dashboard = () => {
                   <div className="mb-3">
                     <div className="flex justify-between text-xs font-medium mb-1">
                       <span>Free Usage</span>
-                      <span>{usageCount || userProfile?.documentsSigned || 0}/3 used</span>
+                      <span>{userProfile?.documentsSigned || 0}/3 used</span>
                     </div>
                     <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((usageCount || userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
+                      <div className="h-full bg-[#FFC83D] transition-all duration-500 ease-out" style={{ width: `${Math.min(((userProfile?.documentsSigned || 0) / 3) * 100, 100)}%` }} />
                     </div>
                   </div>
                 )}
@@ -696,7 +715,7 @@ const Dashboard = () => {
                   <p className="text-gray-500">Manage your documents and signatures.</p>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" className="bg-white">
+                  <Button variant="outline" className="bg-white" onClick={() => navigate('/settings')}>
                     <Settings className="w-4 h-4 mr-2" /> Settings
                   </Button>
                   <label htmlFor="pdf-upload-hidden" className="cursor-pointer">
@@ -705,6 +724,13 @@ const Dashboard = () => {
                       New Document
                     </Button>
                   </label>
+                  <input
+                    type="file"
+                    id="pdf-upload-hidden"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleHiddenFileInputChange}
+                  />
                 </div>
               </div>
 
@@ -741,6 +767,42 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Business Features Section */}
+              {(isAdmin || userProfile?.plan === 'business') && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900">Business Center</h2>
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">Business Plan</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="hover:border-primary/50 transition-colors cursor-pointer group" onClick={() => navigate('/team')}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <Users className="w-5 h-5" />
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                        </div>
+                        <CardTitle className="text-base mt-4">Team Management</CardTitle>
+                        <CardDescription>Invite members, manage roles, and collaborate.</CardDescription>
+                      </CardHeader>
+                    </Card>
+                    <Card className="hover:border-primary/50 transition-colors cursor-pointer group" onClick={() => navigate('/settings?tab=branding')}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                            <Palette className="w-5 h-5" />
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                        </div>
+                        <CardTitle className="text-base mt-4">Custom Branding</CardTitle>
+                        <CardDescription>Upload your logo and set theme colors.</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </div>
+                </div>
+              )}
 
               {/* Upload Area */}
               <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors shadow-none">
@@ -792,6 +854,15 @@ const Dashboard = () => {
                             }`}>
                             {doc.status || 'Draft'}
                           </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                            onClick={(e) => { e.stopPropagation(); setSelectedDocForAudit(doc.id); }}
+                            title="View Audit Trail"
+                          >
+                            <Activity className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -892,6 +963,21 @@ const Dashboard = () => {
           onClose={() => setShowSignatureModal(false)}
           onSave={handleModalSave}
         />
+      )}
+      {selectedDocForAudit && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedDocForAudit(null)}>
+          <div className="w-full max-w-lg bg-background rounded-xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold">Document Audit Trail</h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedDocForAudit(null)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <AuditTrail documentId={selectedDocForAudit} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -13,6 +13,9 @@
       }
     ]
   },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "functions": [
     {
       "codebase": "default",
@@ -31,8 +34,14 @@
     }
   ],
   "emulators": {
+    "auth": {
+      "port": 9099
+    },
     "functions": {
       "port": 5001
+    },
+    "firestore": {
+      "port": 8082
     },
     "ui": {
       "enabled": true
