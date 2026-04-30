@@ -26,7 +26,7 @@ const About = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/40">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5" aria-label="Endorse">
-            <Logo className="h-14 w-auto drop-shadow-sm" />
+            <Logo className="h-12 md:h-20 w-auto drop-shadow-sm" />
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <DropdownMenu>

@@ -45,7 +45,8 @@ import {
   FileType,
   Activity,
   Palette,
-  ChevronRight
+  ChevronRight,
+  LifeBuoy
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -405,16 +406,38 @@ const Dashboard = () => {
 
   const handleDeleteDoc = async (e: React.MouseEvent, docId: string) => {
     e.stopPropagation();
+    
+    if (!window.confirm("Are you sure you want to delete this document?")) {
+      return;
+    }
+
     const toastId = toast.loading("Deleting document...");
-    if (window.confirm("Are you sure you want to delete this document?")) {
+    try {
+      // 1. Delete from Postgres via Cloud Function
+      const deleteDocFn = httpsCallable(functions, 'deleteDocument');
+      await deleteDocFn({ documentId: docId });
+
+      // 2. Also try to delete from Firestore if it exists there (legacy support)
       try {
         await deleteDoc(doc(db, "documents", docId));
-        setRecentDocs((prev) => prev.filter((d) => d.id !== docId));
-        toast.success("Document deleted successfully", { id: toastId });
-      } catch (error) {
-        toast.error(`Failed to delete document: ${(error as Error).message}`, { id: toastId });
-        console.error("Error deleting document:", error);
+      } catch (fErr) {
+        // Silently fail if not in Firestore, as Postgres is the primary source now
+        console.log("Document not found in Firestore, skipping Firestore delete.");
       }
+
+      // 3. Update local state
+      setRecentDocs((prev) => prev.filter((d) => d.id !== docId));
+      
+      // 4. Update stats
+      setStats(prev => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1)
+      }));
+
+      toast.success("Document deleted successfully", { id: toastId });
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      toast.error(`Failed to delete document: ${error.message || "Unknown error"}`, { id: toastId });
     }
   };
 
@@ -436,13 +459,13 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50/50 font-sans text-gray-900">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 h-16">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 h-20 md:h-28">
         <div className="container mx-auto px-4 md:px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={() => setIsMobileMenuOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <Logo className="h-12 md:h-16 w-auto" />
+            <Logo className="h-12 md:h-20 w-auto" />
             {loadingDocs && <Loader2 className="w-4 h-4 animate-spin text-primary ml-2 hidden md:block" />}
           </div>
 
@@ -517,21 +540,22 @@ const Dashboard = () => {
               <Button
                 onClick={handleDownload}
                 disabled={isDownloading}
+                size="sm"
                 className="gradient-primary text-primary-foreground shadow-soft hover:shadow-medium transition-shadow"
               >
                 {isDownloading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 md:mr-2 animate-spin" />
                 ) : (
-                  <Download className="w-4 h-4 mr-2" />
+                  <Download className="w-4 h-4 md:mr-2" />
                 )}
-                Download Signed PDF
+                <span className="hidden md:inline">Download Signed PDF</span>
               </Button>
             )}
 
             {pdfFile && (
-              <Button variant="outline" onClick={handleReset}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Start Over
+              <Button variant="outline" size="sm" onClick={handleReset}>
+                <RefreshCw className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">Start Over</span>
               </Button>
             )}
 
@@ -573,7 +597,7 @@ const Dashboard = () => {
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm lg:hidden" onClick={() => setIsMobileMenuOpen(false)}>
           <div className="fixed inset-y-0 left-0 z-50 w-64 border-r bg-white p-6 shadow-lg animate-in slide-in-from-left" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-8">
-              <Logo className="h-8 w-auto" />
+              <Logo className="h-10 w-auto" />
               <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
                 <X className="h-5 w-5" />
               </Button>
@@ -641,10 +665,10 @@ const Dashboard = () => {
       )}
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 md:px-6 py-8 flex items-start gap-8">
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 flex items-start gap-6 lg:gap-8">
         {/* Sidebar - Only show when not editing a PDF */}
         {!pdfFile && (
-          <aside className="hidden lg:block w-64 shrink-0 space-y-6 sticky top-24 text-sm">
+          <aside className="hidden lg:block w-64 shrink-0 space-y-6 sticky top-32 text-sm">
             <div className="space-y-1">
               <Button variant="secondary" className="w-full justify-start" asChild>
                 <Link to="/dashboard">
@@ -709,19 +733,20 @@ const Dashboard = () => {
           {!pdfFile ? (
             <div className="max-w-5xl mx-auto space-y-8">
               {/* Welcome & Actions */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-                  <p className="text-gray-500">Manage your documents and signatures.</p>
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+                  <p className="text-sm text-gray-500">Manage your documents and signatures.</p>
                 </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" className="bg-white" onClick={() => navigate('/settings')}>
-                    <Settings className="w-4 h-4 mr-2" /> Settings
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="bg-white" onClick={() => navigate('/settings')}>
+                    <Settings className="w-4 h-4 md:mr-2" />
+                    <span className="hidden md:inline">Settings</span>
                   </Button>
                   <label htmlFor="pdf-upload-hidden" className="cursor-pointer">
-                    <Button className="bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-medium pointer-events-none">
-                      <PenTool className="w-4 h-4 mr-2" />
-                      New Document
+                    <Button size="sm" className="bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-medium pointer-events-none">
+                      <PenTool className="w-4 h-4 md:mr-2" />
+                      <span className="hidden sm:inline">New Document</span>
                     </Button>
                   </label>
                   <input
@@ -735,35 +760,35 @@ const Dashboard = () => {
               </div>
 
               {/* Stats Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-3 md:gap-4">
                 <Card className="bg-white shadow-sm border-gray-200">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Total Documents</CardTitle>
-                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
+                    <CardTitle className="text-xs md:text-sm font-medium text-gray-600">Total</CardTitle>
+                    <FileText className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                    <p className="text-xs text-gray-500 mt-1">All documents</p>
+                  <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                    <div className="text-xl md:text-2xl font-bold text-gray-900">{stats.total}</div>
+                    <p className="text-xs text-gray-500 mt-1 hidden md:block">All documents</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-white shadow-sm border-gray-200">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Signed</CardTitle>
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
+                    <CardTitle className="text-xs md:text-sm font-medium text-gray-600">Signed</CardTitle>
+                    <CheckCircle2 className="h-3 w-3 md:h-4 md:w-4 text-green-500" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-gray-900">{stats.signed}</div>
-                    <p className="text-xs text-gray-500 mt-1">Completed documents</p>
+                  <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                    <div className="text-xl md:text-2xl font-bold text-gray-900">{stats.signed}</div>
+                    <p className="text-xs text-gray-500 mt-1 hidden md:block">Completed</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-white shadow-sm border-gray-200">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
-                    <AlertCircle className="h-4 w-4 text-orange-500" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
+                    <CardTitle className="text-xs md:text-sm font-medium text-gray-600">Pending</CardTitle>
+                    <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-orange-500" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-gray-900">{stats.pending}</div>
-                    <p className="text-xs text-orange-600 font-medium mt-1">Action required</p>
+                  <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                    <div className="text-xl md:text-2xl font-bold text-gray-900">{stats.pending}</div>
+                    <p className="text-xs text-orange-600 font-medium mt-1 hidden md:block">Action required</p>
                   </CardContent>
                 </Card>
               </div>
@@ -833,31 +858,31 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     recentDocs.map((doc) => (
-                      <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
-                        <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                            <FileText className="w-5 h-5 text-blue-600" />
+                      <div key={doc.id} className="flex items-center justify-between p-3 md:p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                           </div>
-                          <div className="min-w-0">
-                            <h3 className="font-medium text-gray-900 truncate">{doc.name}</h3>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              <span>{doc.createdAt?.seconds ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown date'}</span>
-                              <span>•</span>
-                              <span>{doc.ownerEmail}</span>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-medium text-gray-900 truncate text-sm">{doc.name}</h3>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
+                              <span>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : 'Unknown date'}</span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                                doc.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                doc.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {doc.status || 'draft'}
+                              </span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 md:gap-4 pl-2">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${doc.status === 'Signed' || doc.status === 'completed' ? 'bg-green-500/10 text-green-500' :
-                            doc.status === 'Pending' || doc.status === 'pending' ? 'bg-orange-500/10 text-orange-600' :
-                              'bg-gray-100 text-gray-600'
-                            }`}>
-                            {doc.status || 'Draft'}
-                          </span>
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                            className="w-8 h-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
                             onClick={(e) => { e.stopPropagation(); setSelectedDocForAudit(doc.id); }}
                             title="View Audit Trail"
                           >
@@ -866,8 +891,9 @@ const Dashboard = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 hover:bg-red-50"
+                            className="w-8 h-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
                             onClick={(e) => handleDeleteDoc(e, doc.id)}
+                            title="Delete document"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

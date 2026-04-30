@@ -298,27 +298,50 @@ export const convertDocument = onCall({
   timeoutSeconds: 300,
   cors: true
 }, async (request) => {
-  const { file, filename, mimeType, targetFormat } = request.data as {
-    file: string;
-    filename: string;
-    mimeType: string;
+  const { files, targetFormat, toolId, password } = request.data as {
+    files: { base64: string, name: string, type: string }[];
     targetFormat: string;
+    toolId: string;
+    password?: string;
   };
 
-  if (!file || !filename) {
-    throw new HttpsError("invalid-argument", "Missing file or filename.");
+  if (!files || files.length === 0) {
+    throw new HttpsError("invalid-argument", "Missing files.");
   }
 
-  console.log(`Starting conversion for file: ${filename}, from: ${mimeType}, to: ${targetFormat}`);
+  console.log(`Starting conversion tool: ${toolId}, Target: ${targetFormat}, Files: ${files.length}`);
 
   try {
-    const buffer = Buffer.from(file, "base64");
-    console.log(`Buffer size: ${buffer.length} bytes`);
+    const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+
+    // --- MODE: MERGE PDF ---
+    if (toolId === "merge-pdf") {
+      console.log("Mode: Merge PDF");
+      const mergedPdf = await PDFDocument.create();
+      for (const fileObj of files) {
+        const pdfBytes = Buffer.from(fileObj.base64, "base64");
+        const pdf = await PDFDocument.load(pdfBytes);
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
+      }
+      const pdfBase64 = await mergedPdf.saveAsBase64();
+      return { pdfBase64 };
+    }
+
+    // --- MODE: LOCK PDF (PASSWORD) ---
+    if (toolId === "lock-pdf") {
+      console.log("Mode: Protect PDF with password:", password ? "Yes" : "No");
+      throw new HttpsError("unimplemented", "Password protection is coming soon in the Pro version.");
+    }
+
+    const firstFile = files[0];
+    const buffer = Buffer.from(firstFile.base64, "base64");
+    const filename = firstFile.name;
+    const mimeType = firstFile.type;
 
     // --- MODE 1: IMAGE TO PDF ---
     if (mimeType.startsWith("image/") || (filename.match(/\.(jpg|jpeg|png)$/i) && targetFormat === "pdf")) {
       console.log("Mode: Image to PDF");
-      const { PDFDocument } = await import("pdf-lib");
       const pdfDoc = await PDFDocument.create();
       const page = pdfDoc.addPage();
       const { width, height } = page.getSize();
@@ -345,7 +368,6 @@ export const convertDocument = onCall({
     // --- MODE 2: WORD TO PDF ---
     if (filename.match(/\.(doc|docx)$/i) || mimeType.includes("word")) {
       console.log("Mode: Word to PDF");
-      const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
       const mammothLib = (mammoth as any).default || mammoth;
       const result = await mammothLib.extractRawText({ buffer });
       const text = result.value;
@@ -355,7 +377,7 @@ export const convertDocument = onCall({
       const lines = text.split("\n");
       let page = pdfDoc.addPage();
       const { width, height } = page.getSize();
-      const fontSize = 12;
+      const fontSize = 11;
       const margin = 50;
       let y = height - margin;
 
@@ -373,25 +395,28 @@ export const convertDocument = onCall({
 
         for (const word of words) {
           const testLine = currentLine + word + " ";
-          const textWidth = font.widthOfTextAtSize(testLine, fontSize);
-
-          if (textWidth > width - (margin * 2)) {
-            if (currentLine) {
-              page.drawText(currentLine.trim(), { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-              y -= fontSize * 1.5;
+          try {
+            const textWidth = font.widthOfTextAtSize(testLine, fontSize);
+            if (textWidth > width - (margin * 2)) {
+              if (currentLine) {
+                page.drawText(currentLine.trim(), { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+                y -= fontSize * 1.4;
+              }
+              currentLine = word + " ";
+              if (y < margin + fontSize) {
+                page = pdfDoc.addPage();
+                y = height - margin;
+              }
+            } else {
+              currentLine = testLine;
             }
-            currentLine = word + " ";
-            if (y < margin + fontSize) {
-              page = pdfDoc.addPage();
-              y = height - margin;
-            }
-          } else {
-            currentLine = testLine;
+          } catch (e) {
+            currentLine += "? ";
           }
         }
         if (currentLine.trim()) {
           page.drawText(currentLine.trim(), { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-          y -= fontSize * 1.5;
+          y -= fontSize * 1.4;
         }
       }
 
@@ -402,9 +427,20 @@ export const convertDocument = onCall({
     // --- MODE 3: PDF TO WORD ---
     if (targetFormat === "docx" && (mimeType === "application/pdf" || filename.toLowerCase().endsWith(".pdf"))) {
       console.log("Mode: PDF to Word");
-      const data = await pdfParse(buffer);
+      let data;
+      try {
+        data = await pdfParse(buffer);
+      } catch (e: any) {
+        console.error("PDF Parse Error:", e);
+        throw new Error("Could not read the PDF file. It might be password-protected or corrupted.");
+      }
+
       const text = data.text || "";
       console.log(`Extracted text length: ${text.length} chars`);
+
+      if (text.trim().length < 5) {
+        throw new Error("This PDF seems to be an image or scanned document. We couldn't extract enough editable text to create a Word document.");
+      }
 
       // Clean text to remove control characters that might break XML in docx
       const cleanedText = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
@@ -412,43 +448,36 @@ export const convertDocument = onCall({
       const doc = new Document({
         sections: [{
           properties: {},
-          children: cleanedText.split("\n").map((line: string) => {
-            const l = line.trim();
-            if (!l) return new Paragraph({ children: [] });
-            return new Paragraph({
-              children: [new TextRun(l)],
-            });
-          }),
+          children: cleanedText.split("\n")
+            .map((l: string) => l.trim())
+            .filter((l: string) => l.length > 0)
+            .map((line: string) => {
+              return new Paragraph({
+                children: [new TextRun({ text: line, size: 24 })],
+                spacing: { after: 200 }
+              });
+            }),
         }],
       });
 
       console.log("Packing docx document...");
-      const docBuffer = await Packer.toBuffer(doc);
-      console.log(`Docx packed, size: ${docBuffer.length} bytes`);
-      return { fileBase64: docBuffer.toString("base64") };
+      try {
+        const docBuffer = await Packer.toBuffer(doc);
+        console.log(`Docx packed, size: ${docBuffer.length} bytes`);
+        return { fileBase64: docBuffer.toString("base64") };
+      } catch (e: any) {
+        console.error("Docx Packer Error:", e);
+        throw new Error("Failed to generate the Word file. The document content might be too complex.");
+      }
     }
 
     // --- MODE 4: PDF TO IMAGE ---
     if (targetFormat === "jpg" && (mimeType === "application/pdf" || filename.toLowerCase().endsWith(".pdf"))) {
-      console.log("Mode: PDF to Image - Currently Disabled for Maintenance");
-      throw new HttpsError("unimplemented", "PDF to Image is currently under maintenance. Please try Word or Image conversion.");
-      /*
-      // @ts-ignore
-      const pdfImgConvert = require("pdf-img-convert");
-      const images = await pdfImgConvert.convert(buffer, {
-        width: 1200,
-        page_numbers: [1]
-      });
-      const imageBuffer = Buffer.from(images[0]);
-      return { fileBase64: imageBuffer.toString("base64") };
-      */
+       // PDF to Image is still complex in Cloud Functions without native dependencies.
+       throw new HttpsError("unimplemented", "PDF to Image requires a higher-tier processing engine. This feature is coming soon.");
     }
 
-    // --- UNSUPPORTED MODES ---
-    throw new HttpsError(
-      "unimplemented",
-      `Conversion from ${mimeType} to ${targetFormat} is not yet supported.`
-    );
+    throw new HttpsError("unimplemented", `Conversion tool ${toolId} is not fully implemented.`);
 
   } catch (error: any) {
     console.error("Conversion Error Exception:", error);
@@ -785,6 +814,58 @@ export const getUserDocuments = onCall({ cors: true }, async (request) => {
   } catch (error: any) {
     console.error("Prisma Documents Error:", error);
     throw new HttpsError("internal", error.message || "Failed to fetch documents from Postgres.");
+  }
+});
+
+export const deleteDocument = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const { documentId } = request.data as { documentId: string };
+  if (!documentId) {
+    throw new HttpsError("invalid-argument", "Missing documentId.");
+  }
+
+  const email = request.auth.token.email;
+  if (!email) {
+    throw new HttpsError("invalid-argument", "User email not found.");
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!user) {
+      throw new HttpsError("not-found", "User not found in database.");
+    }
+
+    // Verify ownership
+    const document = await prisma.document.findUnique({
+      where: { id: documentId }
+    });
+
+    if (!document) {
+      // If not found in Postgres, maybe it's in Firestore? 
+      // But the frontend only lists Postgres docs now.
+      throw new HttpsError("not-found", "Document not found.");
+    }
+
+    if (document.ownerId !== user.id) {
+      throw new HttpsError("permission-denied", "You do not have permission to delete this document.");
+    }
+
+    // Delete the document (Cascade will handle Recipients, Signatures, etc. as defined in schema)
+    await prisma.document.delete({
+      where: { id: documentId }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Delete Document Error:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("internal", error.message || "Failed to delete document from Postgres.");
   }
 });
 

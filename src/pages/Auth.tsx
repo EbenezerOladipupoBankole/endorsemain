@@ -223,7 +223,7 @@ const Auth = () => {
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2670&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay" />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <Link to="/" className="flex items-center gap-2.5">
-            <Logo className="h-10 w-auto brightness-0 invert" />
+            <Logo className="h-12 md:h-20 w-auto brightness-0 invert" />
           </Link>
 
           <div className="space-y-6">
@@ -506,7 +506,7 @@ const Auth = () => {
                       <Input
                         id="fullName"
                         type="text"
-                        placeholder="Ebenezer Bankole"
+                        placeholder="Your Full Name"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         className="pl-10 h-12 bg-slate-50/50 border-slate-200"

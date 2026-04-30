@@ -15,13 +15,43 @@ const Blog = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mobileProductOpen, setMobileProductOpen] = useState(false);
   const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const { collection, getDocs, query, orderBy } = await import("firebase/firestore");
+        const { db } = await import("@/components/client");
+        
+        const q = query(collection(db, "blogs"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const fetchedPosts = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        if (fetchedPosts.length > 0) {
+          setPosts(fetchedPosts);
+        } else {
+          // Fallback to static posts if DB is empty
+          setPosts(staticPosts);
+        }
+      } catch (error) {
+        console.error("Error fetching blogs:", error);
+        setPosts(staticPosts);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
     window.scrollTo(0, 0);
   }, []);
 
-  const posts = [
+  const staticPosts = [
     {
+      id: "featured-1",
       category: "Product Updates",
       title: "New Feature: Bulk Send for Enterprise Teams",
       excerpt: "Efficiency just got an upgrade. Learn how to send hundreds of documents for signature in minutes with our new Bulk Send feature, designed for HR and Sales teams.",
@@ -31,6 +61,7 @@ const Blog = () => {
       image: "bg-blue-500/5"
     },
     {
+      id: "static-1",
       category: "Compliance",
       title: "Understanding eIDAS and ESIGN: A Global Compliance Guide",
       excerpt: "Navigating the complex world of digital signature legality. We break down what you need to know about regulations in the US, EU, and beyond.",
@@ -40,6 +71,7 @@ const Blog = () => {
       image: "bg-purple-500/5"
     },
     {
+      id: "static-2",
       category: "Security",
       title: "How We Protect Your Data: SOC 2 & Encryption",
       excerpt: "Security is our top priority. A deep dive into our 256-bit encryption, audit trails, and why enterprise-grade security is non-negotiable.",
@@ -49,6 +81,7 @@ const Blog = () => {
       image: "bg-green-500/5"
     },
     {
+      id: "static-3",
       category: "Productivity",
       title: "5 Strategies to Close Deals Faster",
       excerpt: "Reduce friction in your sales cycle. Actionable tips for preparing contracts that get signed immediately, not next week.",
@@ -58,6 +91,7 @@ const Blog = () => {
       image: "bg-orange-500/5"
     },
     {
+      id: "static-4",
       category: "Engineering",
       title: "Building Scalable Real-Time Collaboration",
       excerpt: "A technical look at the WebSocket architecture behind Endorse's lightning-fast signature processing and live status updates.",
@@ -67,6 +101,7 @@ const Blog = () => {
       image: "bg-red-500/5"
     },
     {
+      id: "static-5",
       category: "Case Study",
       title: "How a Fortune 500 Firm Digitized HR Onboarding",
       excerpt: "See how moving to digital signatures saved 1,000+ hours of administrative work annually for a global logistics company.",
@@ -81,9 +116,9 @@ const Blog = () => {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b bordercab yo-border/40">
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-6 h-24 md:h-32 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5" aria-label="Endorse">
-            <Logo className="h-14 w-auto drop-shadow-sm" />
+            <Logo className="h-12 md:h-20 w-auto drop-shadow-sm" />
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <DropdownMenu>
@@ -139,7 +174,7 @@ const Blog = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                  <Link to="/help-center" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
                       <HelpCircle className="w-5 h-5 text-primary" />
                     </div>
@@ -152,7 +187,7 @@ const Blog = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                  <Link to="/api-docs" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
                       <Code className="w-5 h-5 text-primary" />
                     </div>
@@ -210,8 +245,8 @@ const Blog = () => {
               {mobileResourcesOpen && (
                 <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
                   <Link to="/blog" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileText className="w-4 h-4" /> Blog</Link>
-                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
-                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
+                  <Link to="/help-center" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
+                  <Link to="/api-docs" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
                 </div>
               )}
             </div>
@@ -285,11 +320,19 @@ const Blog = () => {
           {/* Post Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {posts.map((post, i) => (
-              <Link key={i} to="#" className="group flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-all duration-300">
-                <div className={`aspect-[16/9] ${post.image} relative overflow-hidden`}>
-                   <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500">
-                      <FileText className="w-12 h-12" />
-                   </div>
+              <Link key={i} to={`/blog/${post.id}`} className="group flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-all duration-300">
+                <div className="aspect-[16/9] relative overflow-hidden bg-muted">
+                   {post.image?.startsWith('http') || post.image?.startsWith('/') ? (
+                     <img 
+                       src={post.image} 
+                       alt={post.title} 
+                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                     />
+                   ) : (
+                     <div className={`w-full h-full ${post.image || 'bg-primary/5'} flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500`}>
+                        <FileText className="w-12 h-12" />
+                     </div>
+                   )}
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">

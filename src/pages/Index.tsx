@@ -94,7 +94,7 @@ const Index = () => {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Logo className="h-8 w-auto" />
+            <Logo className="h-12 md:h-20 w-auto" />
             <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
               <a href="#" className="text-foreground transition-colors">Dashboard</a>
               <a href="#" className="hover:text-foreground transition-colors">Documents</a>

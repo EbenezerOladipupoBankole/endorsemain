@@ -128,9 +128,9 @@ const Landing = () => {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
-        <div className="container mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-4 md:px-6 h-24 md:h-32 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <Logo className="h-14 w-auto drop-shadow-sm" />
+            <Logo className="h-12 md:h-20 w-auto drop-shadow-sm" />
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <DropdownMenu>
@@ -186,7 +186,7 @@ const Landing = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                  <Link to="/help-center" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
                       <HelpCircle className="w-5 h-5 text-primary" />
                     </div>
@@ -199,7 +199,7 @@ const Landing = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="#" className="flex items-start gap-3 p-3 w-full">
+                  <Link to="/api-docs" className="flex items-start gap-3 p-3 w-full">
                     <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
                       <Code className="w-5 h-5 text-primary" />
                     </div>
@@ -265,8 +265,8 @@ const Landing = () => {
               {mobileResourcesOpen && (
                 <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
                   <Link to="/blog" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileText className="w-4 h-4" /> Blog</Link>
-                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
-                  <Link to="#" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
+                  <Link to="/help-center" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
+                  <Link to="/api-docs" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
                 </div>
               )}
             </div>
@@ -850,7 +850,7 @@ const Landing = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
             <div className="lg:col-span-1">
               <Link to="/" className="flex items-center gap-2.5 mb-6">
-                <Logo className="h-[80px] w-auto" />
+                <Logo className="h-14 md:h-20 w-auto" />
               </Link>
               <p className="text-muted-foreground text-base leading-relaxed mb-6">
                 The professional way to sign and endorse documents securely online.
@@ -871,14 +871,21 @@ const Landing = () => {
                 <li><a href="#" className="hover:text-foreground transition-colors">API Documentation</a></li>
               </ul>
             </div>
-
             <div>
               <h4 className="font-semibold text-lg text-foreground mb-6">Company</h4>
-              <ul className="space-y-4 text-base text-muted-foreground">
-                <li><Link to="/about" className="hover:text-foreground transition-colors">About Us</Link></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Careers</a></li>
-                <li><Link to="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
+              <ul role="list" className="mt-6 space-y-4">
+                <li><Link to="/about" className="text-sm leading-6 text-gray-600 hover:text-primary transition-colors">About</Link></li>
+                <li><Link to="/blog" className="text-sm leading-6 text-gray-600 hover:text-primary transition-colors">Blog</Link></li>
+                <li><Link to="/help-center" className="text-sm leading-6 text-gray-600 hover:text-primary transition-colors">Help Center</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold leading-6 text-gray-900 uppercase tracking-wider">Open Source</h3>
+              <ul role="list" className="mt-6 space-y-4">
+                <li><Link to="/api-docs" className="text-sm leading-6 text-gray-600 hover:text-primary transition-colors">Documentation Site</Link></li>
+                <li><a href="https://github.com/endorse/python-sdk" target="_blank" rel="noopener noreferrer" className="text-sm leading-6 text-gray-600 hover:text-primary transition-colors">Python SDK</a></li>
+                <li><a href="https://github.com/endorse" target="_blank" rel="noopener noreferrer" className="text-sm leading-6 text-gray-600 hover:text-primary transition-colors">GitHub Repository</a></li>
               </ul>
             </div>
 

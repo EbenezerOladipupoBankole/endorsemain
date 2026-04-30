@@ -57,13 +57,37 @@ const tools = [
     borderColor: "group-hover:border-orange-200",
     accept: ".pdf",
     targetFormat: "jpg"
+  },
+  {
+    id: "merge-pdf",
+    title: "Merge PDF",
+    description: "Combine multiple PDF files into one single document.",
+    icon: LayoutGrid,
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    borderColor: "group-hover:border-green-200",
+    accept: ".pdf",
+    targetFormat: "pdf",
+    multiple: true
+  },
+  {
+    id: "lock-pdf",
+    title: "Protect PDF",
+    description: "Add a password to your PDF document for security.",
+    icon: Lock,
+    color: "text-slate-700",
+    bgColor: "bg-slate-100",
+    borderColor: "group-hover:border-slate-300",
+    accept: ".pdf",
+    targetFormat: "pdf"
   }
 ];
 
 const FileConversion = () => {
   const { user } = useAuth();
   const [selectedTool, setSelectedTool] = useState<typeof tools[0] | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [password, setPassword] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -84,8 +108,13 @@ const FileConversion = () => {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      if (selectedTool?.multiple) {
+        setFiles(prev => [...prev, ...selectedFiles]);
+      } else {
+        setFiles([selectedFiles[0]]);
+      }
       setIsSuccess(false);
     }
   };
@@ -104,34 +133,51 @@ const FileConversion = () => {
     e.preventDefault();
     setIsDragging(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      // In a production app, you might want to validate file type here
-      setFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      if (selectedTool?.multiple) {
+        setFiles(prev => [...prev, ...droppedFiles]);
+      } else {
+        setFiles([droppedFiles[0]]);
+      }
       setIsSuccess(false);
     }
   };
 
   const handleConvert = async () => {
-    if (!file || !selectedTool) {
+    if (files.length === 0 || !selectedTool) {
       toast.error("Please select a file.");
+      return;
+    }
+
+    if (selectedTool.id === "lock-pdf" && !password) {
+      toast.error("Please enter a password.");
       return;
     }
 
     setIsConverting(true);
     try {
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = (error) => reject(error);
-        reader.readAsDataURL(file);
+      const filePromises = files.map(f => {
+        return new Promise<{base64: string, name: string, type: string}>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve({
+            base64: (reader.result as string).split(',')[1],
+            name: f.name,
+            type: f.type
+          });
+          reader.onerror = reject;
+          reader.readAsDataURL(f);
+        });
       });
+
+      const processedFiles = await Promise.all(filePromises);
 
       const convertDocument = httpsCallable(functions, 'convertDocument');
       const result = await convertDocument({
-        file: base64,
-        filename: file.name,
-        mimeType: file.type,
-        targetFormat: selectedTool.targetFormat
+        files: processedFiles, // Send all files
+        targetFormat: selectedTool.targetFormat,
+        toolId: selectedTool.id,
+        password: password
       });
 
       const data = result.data as { pdfBase64?: string; fileBase64?: string };
@@ -156,22 +202,24 @@ const FileConversion = () => {
       setConvertedBlob(blob);
       setIsSuccess(true);
       toast.success(`Successfully converted to ${selectedTool.targetFormat.toUpperCase()}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Conversion error:", error);
-      toast.error("Conversion failed. Please try again.");
+      const errorMessage = error.message || "Conversion failed. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setIsConverting(false);
     }
   };
 
   const handleDownload = () => {
-    if (!convertedBlob || !selectedTool || !file) return;
+    if (!convertedBlob || !selectedTool || files.length === 0) return;
 
     const url = URL.createObjectURL(convertedBlob);
     const link = document.createElement('a');
     link.href = url;
 
-    const newFileName = file.name.substring(0, file.name.lastIndexOf('.')) + '.' + selectedTool.targetFormat;
+    const baseName = files.length > 1 ? "merged_document" : files[0].name.substring(0, files[0].name.lastIndexOf('.'));
+    const newFileName = baseName + '.' + selectedTool.targetFormat;
     link.download = newFileName;
 
     document.body.appendChild(link);
@@ -182,7 +230,8 @@ const FileConversion = () => {
   };
 
   const handleReset = () => {
-    setFile(null);
+    setFiles([]);
+    setPassword("");
     setIsSuccess(false);
     setConvertedBlob(null);
     setIsDragging(false);
@@ -194,7 +243,7 @@ const FileConversion = () => {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-8 w-auto" />
+            <Logo className="h-12 md:h-20 w-auto" />
           </Link>
           <div className="flex items-center gap-4">
             {user ? (
@@ -302,7 +351,7 @@ const FileConversion = () => {
             <Card className="border-2 border-dashed border-border shadow-2xl bg-card/50 backdrop-blur-sm overflow-hidden relative">
               <div className={`absolute inset-0 ${selectedTool.bgColor} opacity-5 pointer-events-none`} />
               <CardContent className="p-8 md:p-16 flex flex-col items-center justify-center gap-8 min-h-[400px]">
-                {!file ? (
+                {files.length === 0 ? (
                   <div
                     className={`w-full flex flex-col items-center justify-center p-10 rounded-3xl transition-all duration-300 border-2 border-dashed ${isDragging
                       ? "border-primary bg-primary/5 scale-[1.02]"
@@ -318,7 +367,7 @@ const FileConversion = () => {
                       </div>
                       <div className="text-center space-y-2">
                         <p className="text-xl font-semibold group-hover:text-primary transition-colors">
-                          Drag & Drop or Click to Upload
+                          {selectedTool.multiple ? "Upload PDF Files to Merge" : "Drag & Drop or Click to Upload"}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Supported files: <span className="font-mono bg-secondary px-1 rounded">{selectedTool.accept.replace(/,/g, ', ')}</span>
@@ -330,25 +379,56 @@ const FileConversion = () => {
                         className="hidden"
                         onChange={handleFileChange}
                         accept={selectedTool.accept}
+                        multiple={selectedTool.multiple}
                       />
                     </label>
                   </div>
                 ) : (
                   <div className="w-full max-w-md space-y-8">
-                    <div className="flex items-center justify-between p-4 bg-background rounded-xl border border-border shadow-sm">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 ${selectedTool.bgColor} rounded-lg`}>
-                          <selectedTool.icon className={`w-6 h-6 ${selectedTool.color}`} />
+                    <div className="space-y-3">
+                      {files.map((f, index) => (
+                        <div key={index} className="flex items-center justify-between p-4 bg-background rounded-xl border border-border shadow-sm">
+                          <div className="flex items-center gap-4">
+                            <div className={`p-3 ${selectedTool.bgColor} rounded-lg`}>
+                              <selectedTool.icon className={`w-6 h-6 ${selectedTool.color}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate max-w-[200px]">{f.name}</p>
+                              <p className="text-xs text-muted-foreground">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setFiles(prev => prev.filter((_, i) => i !== index))} 
+                            disabled={isConverting}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate max-w-[200px]">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={handleReset} disabled={isConverting}>
-                        <X className="w-4 h-4" />
-                      </Button>
+                      ))}
+                      {selectedTool.multiple && !isSuccess && (
+                        <Button variant="outline" className="w-full border-dashed" asChild>
+                          <label htmlFor="add-more" className="cursor-pointer">
+                            + Add More Files
+                            <input id="add-more" type="file" className="hidden" onChange={handleFileChange} accept={selectedTool.accept} multiple />
+                          </label>
+                        </Button>
+                      )}
                     </div>
+
+                    {selectedTool.id === "lock-pdf" && !isSuccess && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Set PDF Password</label>
+                        <input
+                          type="password"
+                          placeholder="Enter password to protect PDF"
+                          className="w-full p-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary outline-none"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                      </div>
+                    )}
 
                     {!isSuccess ? (
                       <Button
@@ -358,17 +438,17 @@ const FileConversion = () => {
                         disabled={isConverting}
                       >
                         {isConverting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <ArrowRight className="w-5 h-5 mr-2" />}
-                        Convert to {selectedTool.targetFormat.toUpperCase()}
+                        {selectedTool.id === "merge-pdf" ? `Merge ${files.length} Files` : `Convert to ${selectedTool.targetFormat.toUpperCase()}`}
                       </Button>
                     ) : (
                       <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex items-center gap-2 text-green-600 justify-center font-medium p-4 bg-green-50 rounded-xl border border-green-100">
-                          <CheckCircle2 className="w-5 h-5" /> Conversion Complete
+                          <CheckCircle2 className="w-5 h-5" /> {selectedTool.id === "merge-pdf" ? "Merging Complete" : "Conversion Complete"}
                         </div>
                         <Button className="w-full h-14 text-lg font-semibold" size="lg" onClick={handleDownload}>
                           <Download className="w-4 h-4 mr-2" /> Download {selectedTool.targetFormat.toUpperCase()}
                         </Button>
-                        <Button variant="ghost" onClick={handleReset}>Convert Another File</Button>
+                        <Button variant="ghost" onClick={handleReset}>Start Over</Button>
                       </div>
                     )}
                   </div>

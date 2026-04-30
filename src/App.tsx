@@ -17,6 +17,11 @@ import Terms from "./pages/Terms";
 import CookiePolicy from "./pages/CookiePolicy";
 import Team from "./pages/Team";
 import FileConversion from "./pages/FileConversion";
+import AdminBlog from "./pages/AdminBlog";
+import BlogPost from "./pages/BlogPost";
+import HelpCenter from "./pages/HelpCenter";
+import AdminHelpCenter from "./pages/AdminHelpCenter";
+import ApiDocs from "./pages/ApiDocs";
 import { useAuth } from "./components/AuthContext";
 
 const queryClient = new QueryClient();
@@ -37,10 +42,15 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/conversion" element={<FileConversion />} />
+          <Route path="/blog/:id" element={<BlogPost />} />
+          <Route path="/help-center" element={<HelpCenter />} />
+          <Route path="/api-docs" element={<ApiDocs />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sign/:id" element={<SignDocument />} />
             <Route path="/team" element={<Team />} />
+            <Route path="/admin/blog" element={<AdminBlog />} />
+            <Route path="/admin/help" element={<AdminHelpCenter />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
