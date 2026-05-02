@@ -11,8 +11,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useAuth } from "@/components/AuthContext";
+
 const About = () => {
+  const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const [mobileProductOpen, setMobileProductOpen] = useState(false);
   const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
 
@@ -112,9 +116,15 @@ const About = () => {
             <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground transition-colors">Company</Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/auth">
-              <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
-            </Link>
+            {user ? (
+              <Link to="/dashboard">
+                <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Dashboard</Button>
+              </Link>
+            ) : (
+              <Link to="/auth">
+                <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -160,8 +170,10 @@ const About = () => {
             </div>
             <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
             <div className="flex flex-col gap-3 mt-2">
-              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                <Button className="w-full bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
+              <Link to={user ? "/dashboard" : "/auth"} onClick={() => setIsMenuOpen(false)}>
+                <Button className="w-full bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
+                  {user ? "Dashboard" : "Get Started"}
+                </Button>
               </Link>
             </div>
           </div>
@@ -397,9 +409,9 @@ const About = () => {
               Ready to modernize your workflow? Start using Endorse today.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/auth">
+              <Link to={user ? "/dashboard" : "/auth"}>
                 <Button size="lg" className="h-14 px-8 text-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                  Get Started for Free
+                  {user ? "Go to Dashboard" : "Get Started for Free"}
                 </Button>
               </Link>
               <Button variant="outline" size="lg" className="h-14 px-8 text-lg">

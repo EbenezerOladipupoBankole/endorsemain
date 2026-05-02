@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { staticPosts } from "@/lib/blog-data";
+import { useAuth } from "@/components/AuthContext";
 
 const Blog = () => {
+  const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mobileProductOpen, setMobileProductOpen] = useState(false);
   const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
@@ -55,7 +57,7 @@ const Blog = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b bordercab yo-border/40">
+      <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/40">
         <div className="container mx-auto px-6 h-24 md:h-32 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5" aria-label="Endorse">
             <Logo className="h-12 md:h-20 w-auto drop-shadow-sm" />
@@ -144,9 +146,15 @@ const Blog = () => {
             <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Company</Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/auth">
-              <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
-            </Link>
+            {user ? (
+              <Link to="/dashboard">
+                <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Dashboard</Button>
+              </Link>
+            ) : (
+              <Link to="/auth">
+                <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -192,8 +200,8 @@ const Blog = () => {
             </div>
             <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
             <div className="flex flex-col gap-3 mt-2">
-              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                <Button className="w-full bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
+              <Link to={user ? "/dashboard" : "/auth"} onClick={() => setIsMenuOpen(false)}>
+                <Button className="w-full bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">{user ? "Dashboard" : "Get Started"}</Button>
               </Link>
             </div>
           </div>

@@ -71,10 +71,17 @@ const HelpCenter = () => {
             <Button variant="ghost" asChild>
               <Link to="/blog">Blog</Link>
             </Button>
-            <Button asChild className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
-              <Link to="/auth">Sign In</Link>
-            </Button>
+            {user ? (
+              <Button asChild className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+            ) : (
+              <Button asChild className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
+                <Link to="/auth">Sign In</Link>
+              </Button>
+            )}
           </div>
+
         </div>
       </nav>
 

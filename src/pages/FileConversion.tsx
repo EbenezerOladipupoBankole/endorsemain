@@ -248,7 +248,7 @@ const FileConversion = () => {
           <div className="flex items-center gap-4">
             {user ? (
               <Link to="/dashboard">
-                <Button variant="ghost">Dashboard</Button>
+                <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Dashboard</Button>
               </Link>
             ) : (
               <>
@@ -256,11 +256,12 @@ const FileConversion = () => {
                   <Button variant="ghost">Sign In</Button>
                 </Link>
                 <Link to="/auth?mode=signup">
-                  <Button>Get Started</Button>
+                  <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
                 </Link>
               </>
             )}
           </div>
+
         </div>
       </header>
 

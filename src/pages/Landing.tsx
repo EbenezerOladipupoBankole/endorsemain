@@ -216,9 +216,15 @@ const Landing = () => {
             <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Company</Link>
           </div>
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/auth?mode=signup">
-              <Button className="font-medium text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Get Started Free</Button>
-            </Link>
+            {user ? (
+              <Link to="/dashboard">
+                <Button className="font-medium text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Dashboard</Button>
+              </Link>
+            ) : (
+              <Link to="/auth?mode=signup">
+                <Button className="font-medium text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Get Started Free</Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -273,8 +279,10 @@ const Landing = () => {
 
             <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
             <div className="flex flex-col gap-3 mt-2">
-              <Link to="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
-                <Button size="lg" className="w-full text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">Get Started Free</Button>
+              <Link to={user ? "/dashboard" : "/auth?mode=signup"} onClick={() => setIsMenuOpen(false)}>
+                <Button size="lg" className="w-full text-base bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black">
+                  {user ? "Dashboard" : "Get Started Free"}
+                </Button>
               </Link>
             </div>
           </div>
