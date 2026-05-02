@@ -8,9 +8,12 @@ interface UserProfile {
   [key: string]: any;
 }
 
+export const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
+
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
+  isAdmin: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -18,9 +21,11 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
+  isAdmin: false,
   loading: true,
   signOut: async () => { },
 });
+
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -67,7 +72,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await signOut(auth);
   };
 
-  const value = { user, userProfile, loading, signOut: signOutUser };
+  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email.toLowerCase()) : false;
+
+  const value = { user, userProfile, isAdmin, loading, signOut: signOutUser };
+
 
   return (
     <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -55,8 +55,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
-
 // Lazy load heavy components to reduce initial bundle size
 const PDFViewer = lazy(() => import('@/components/esign/PDFViewer').then(module => ({ default: module.PDFViewer })));
 
@@ -102,8 +100,8 @@ const convertWordToPDF = async (file: File): Promise<Blob> => {
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, userProfile, loading: authLoading, signOut } = useAuth();
-  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email) : false;
+  const { user, userProfile, isAdmin, loading: authLoading, signOut } = useAuth();
+
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);

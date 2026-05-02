@@ -31,3 +31,5 @@ dist-ssr
 scripts/service-account-key.json
 service-account-key.json
 *.json.local
+full_logs.json
+functions_list.json

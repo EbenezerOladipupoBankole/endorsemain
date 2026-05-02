@@ -15,11 +15,8 @@ import { functions, auth, db, storage } from "@/components/client";
 import { setDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com', 'Ikeakeassociates@gmail.com'];
-
-
 const Settings = () => {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
@@ -38,8 +35,8 @@ const Settings = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
-  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email) : false;
   const currentPlan = isAdmin ? 'business' : (userProfile?.plan || "free");
+
 
   useEffect(() => {
     const tab = searchParams.get("tab");

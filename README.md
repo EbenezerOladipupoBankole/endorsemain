@@ -60,6 +60,7 @@ For the live backend to work, you must set these secrets in Firebase Cloud:
 firebase functions:secrets:set PAYSTACK_SECRET_KEY_LIVE
 firebase functions:secrets:set PAYSTACK_SECRET_KEY_TEST
 firebase functions:secrets:set STRIPE_SECRET_KEY
+firebase functions:secrets:set DATABASE_URL
 firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
 firebase functions:secrets:set GMAIL_EMAIL
 firebase functions:secrets:set GMAIL_PASSWORD

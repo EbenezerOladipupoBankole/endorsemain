@@ -11,6 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { staticPosts } from "@/lib/blog-data";
+
 const Blog = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mobileProductOpen, setMobileProductOpen] = useState(false);
@@ -49,68 +51,6 @@ const Blog = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const staticPosts = [
-    {
-      id: "featured-1",
-      category: "Product Updates",
-      title: "New Feature: Bulk Send for Enterprise Teams",
-      excerpt: "Efficiency just got an upgrade. Learn how to send hundreds of documents for signature in minutes with our new Bulk Send feature, designed for HR and Sales teams.",
-      date: "Oct 24, 2024",
-      readTime: "4 min read",
-      author: "Product Team",
-      image: "bg-blue-500/5"
-    },
-    {
-      id: "static-1",
-      category: "Compliance",
-      title: "Understanding eIDAS and ESIGN: A Global Compliance Guide",
-      excerpt: "Navigating the complex world of digital signature legality. We break down what you need to know about regulations in the US, EU, and beyond.",
-      date: "Oct 18, 2024",
-      readTime: "7 min read",
-      author: "Legal Team",
-      image: "bg-purple-500/5"
-    },
-    {
-      id: "static-2",
-      category: "Security",
-      title: "How We Protect Your Data: SOC 2 & Encryption",
-      excerpt: "Security is our top priority. A deep dive into our 256-bit encryption, audit trails, and why enterprise-grade security is non-negotiable.",
-      date: "Oct 12, 2024",
-      readTime: "5 min read",
-      author: "Security Team",
-      image: "bg-green-500/5"
-    },
-    {
-      id: "static-3",
-      category: "Productivity",
-      title: "5 Strategies to Close Deals Faster",
-      excerpt: "Reduce friction in your sales cycle. Actionable tips for preparing contracts that get signed immediately, not next week.",
-      date: "Oct 05, 2024",
-      readTime: "3 min read",
-      author: "Success Team",
-      image: "bg-orange-500/5"
-    },
-    {
-      id: "static-4",
-      category: "Engineering",
-      title: "Building Scalable Real-Time Collaboration",
-      excerpt: "A technical look at the WebSocket architecture behind Endorse's lightning-fast signature processing and live status updates.",
-      date: "Sep 28, 2024",
-      readTime: "9 min read",
-      author: "Engineering",
-      image: "bg-red-500/5"
-    },
-    {
-      id: "static-5",
-      category: "Case Study",
-      title: "How a Fortune 500 Firm Digitized HR Onboarding",
-      excerpt: "See how moving to digital signatures saved 1,000+ hours of administrative work annually for a global logistics company.",
-      date: "Sep 20, 2024",
-      readTime: "7 min read",
-      author: "Endorse Team",
-      image: "bg-indigo-500/5"
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-background">

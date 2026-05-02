@@ -23,8 +23,6 @@ import { Loader2, Plus, Trash2, Edit2, Save, Eye, Video, Youtube } from "lucide-
 import { Link, Navigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 
-const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
-
 interface Tutorial {
   id: string;
   title: string;
@@ -35,8 +33,9 @@ interface Tutorial {
 }
 
 const AdminHelpCenter = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.email ? ADMIN_EMAILS.includes(user.email) : false;
+  const { user, isAdmin } = useAuth();
+
+
 
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
   const [loading, setLoading] = useState(true);
