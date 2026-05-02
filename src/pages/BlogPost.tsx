@@ -81,15 +81,16 @@ const BlogPost = () => {
   return (
     <div className="min-h-screen bg-background">
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 md:px-6 h-16 md:h-24 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-12 md:h-20 w-auto" />
+            <Logo className="h-8 md:h-16 w-auto" />
           </Link>
-          <Button variant="ghost" asChild>
-            <Link to="/blog"><ArrowLeft className="w-4 h-4 mr-2" /> Back to Blog</Link>
+          <Button variant="ghost" size="sm" asChild className="text-xs md:text-sm">
+            <Link to="/blog"><ArrowLeft className="w-4 h-4 mr-1 md:mr-2" /> Back to Blog</Link>
           </Button>
         </div>
       </nav>
+
 
       <main className="pt-32 pb-20 px-4 md:px-6">
         <article className="container mx-auto max-w-3xl">
@@ -147,9 +148,19 @@ const BlogPost = () => {
             </div>
           </header>
 
-          <div className="prose prose-lg dark:prose-invert max-w-none mb-16 whitespace-pre-wrap leading-relaxed text-muted-foreground">
-            {post.content}
-          </div>
+          <div 
+            className="prose prose-lg md:prose-xl dark:prose-invert max-w-none mb-16 leading-relaxed
+              prose-img:rounded-2xl prose-img:shadow-lg prose-img:mx-auto
+              prose-headings:font-display prose-headings:font-bold
+              prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
+            style={{ 
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word'
+            }}
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
+
+
 
           <footer className="pt-12 border-t border-border">
             <div className="bg-secondary/30 rounded-2xl p-8 text-center">

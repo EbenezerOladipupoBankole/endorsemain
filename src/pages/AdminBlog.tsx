@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Edit2, Save, X, Eye, Upload, Image as ImageIcon } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
+import RichTextEditor from "@/components/blog/RichTextEditor";
+
 
 interface BlogPost {
   id: string;
@@ -293,13 +295,11 @@ const AdminBlog = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="content">Content (Supports HTML/Markdown in rendering)</Label>
-                  <Textarea 
-                    id="content" 
-                    value={currentPost.content} 
-                    onChange={e => setCurrentPost({...currentPost, content: e.target.value})}
-                    placeholder="Full article content..."
-                    className="min-h-[300px] font-mono text-sm"
+                  <Label htmlFor="content">Content</Label>
+                  <RichTextEditor 
+                    value={currentPost.content || ""} 
+                    onChange={value => setCurrentPost({...currentPost, content: value})}
+                    placeholder="Write your article here..."
                   />
                 </div>
 

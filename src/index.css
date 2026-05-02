@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -237,3 +237,30 @@
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* Global Font Classes for Rich Text Editor */
+.ql-font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+.ql-font-inter { font-family: 'Inter', sans-serif; }
+.ql-font-playfair { font-family: 'Playfair Display', serif; }
+.ql-font-georgia { font-family: Georgia, serif; }
+.ql-font-times-new-roman { font-family: 'Times New Roman', Times, serif; }
+.ql-font-arial { font-family: Arial, Helvetica, sans-serif; }
+.ql-font-verdana { font-family: Verdana, Geneva, sans-serif; }
+.ql-font-courier-new { font-family: 'Courier New', Courier, monospace; }
+
+/* Responsive Content Styles */
+.ql-editor img, 
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+
+.ql-editor iframe,
+.prose iframe {
+  max-width: 100%;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.75rem;
+}
+
