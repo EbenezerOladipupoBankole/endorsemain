@@ -323,115 +323,119 @@ const Auth = () => {
               </Button>
             </form>
           ) : needsVerification ? (
-            <div className="space-y-6">
-              <div className="bg-blue-50 border border-blue-100 p-8 rounded-2xl text-center shadow-sm">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Mail className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Verify your email</h3>
-                <p className="text-slate-600 mb-8 text-sm leading-relaxed">
-                  We've sent a verification link to <span className="font-semibold text-blue-600">{email}</span>.
-                  Please click the link in your email to activate your account and start signing.
-                </p>
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleRefreshStatus}
-                    disabled={loading}
-                    className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "I've Verified My Email"}
-                  </Button>
-                  <Button
-                    onClick={handleResendVerification}
-                    disabled={loading}
-                    variant="outline"
-                    className="w-full h-12 border-blue-200 hover:bg-blue-50 text-blue-700"
-                  >
-                    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Resend Verification Email"}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setNeedsVerification(false);
-                      auth.signOut();
-                    }}
-                    variant="ghost"
-                    className="w-full text-slate-500 hover:text-slate-900"
-                  >
-                    Back to Sign In
-                  </Button>
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-white border border-slate-200/60 p-8 md:p-10 rounded-3xl text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
+                {/* Decorative background blur */}
+                <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#FFC83D]/20 rounded-full blur-3xl" />
+                <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl" />
+                
+                <div className="relative z-10">
+                  <div className="w-20 h-20 bg-gradient-to-tr from-[#FFC83D] to-[#ffda75] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#FFC83D]/30 border-4 border-white">
+                    <Mail className="w-8 h-8 text-black" />
+                  </div>
+                  <h3 className="text-3xl font-display font-bold text-slate-900 mb-3">Welcome to Endorse! 🎉</h3>
+                  <p className="text-slate-600 mb-8 text-base leading-relaxed">
+                    We're thrilled to have you on board. We've sent a verification link to <span className="font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">{email}</span>.
+                    Just click the link to activate your account and start signing.
+                  </p>
+                  <div className="space-y-4">
+                    <Button
+                      onClick={handleRefreshStatus}
+                      disabled={loading}
+                      className="w-full h-12 bg-black hover:bg-slate-800 text-white font-bold rounded-xl text-base shadow-md transition-all"
+                    >
+                      {loading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : "I've Verified My Email"}
+                    </Button>
+                    <Button
+                      onClick={handleResendVerification}
+                      disabled={loading}
+                      variant="outline"
+                      className="w-full h-12 border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl"
+                    >
+                      {loading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : "Resend Verification Email"}
+                    </Button>
+                    <button
+                      onClick={() => {
+                        setNeedsVerification(false);
+                        auth.signOut();
+                      }}
+                      className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors pt-2 block mx-auto"
+                    >
+                      Use a different account
+                    </button>
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-center text-slate-400">
-                Can't find the email? Check your spam folder.
+              <p className="text-xs text-center text-slate-400 font-medium">
+                Can't find the email? Don't forget to check your spam folder.
               </p>
             </div>
           ) : forgotPassword ? (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               {resetSent ? (
-                <div className="bg-green-50 border border-green-100 p-8 rounded-2xl text-center shadow-sm animate-in fade-in zoom-in duration-300">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Mail className="w-8 h-8 text-green-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">Reset link sent!</h3>
-                  <p className="text-slate-600 mb-6 text-sm leading-relaxed">
-                    We've sent a secure recovery link to <span className="font-semibold text-green-700">{email}</span>.
-                  </p>
-
-                  <div className="bg-white border border-slate-100 rounded-xl p-4 mb-6 shadow-inner text-center">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-3">What to look for</p>
-                    <div className="py-2.5 px-6 bg-[#FFC83D] text-black font-bold rounded-lg inline-block text-xs shadow-sm">
-                      Reset Password
+                <div className="bg-white border border-slate-200/60 p-8 rounded-3xl text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-b from-green-50/50 to-transparent" />
+                  <div className="relative z-10">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 ring-4 ring-white shadow-sm">
+                      <Mail className="w-8 h-8 text-green-600" />
                     </div>
-                  </div>
+                    <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Check your inbox</h3>
+                    <p className="text-slate-600 mb-8 text-sm leading-relaxed">
+                      We've sent a secure recovery link to <br/><span className="font-semibold text-slate-900">{email}</span>.
+                    </p>
 
-                  <div className="p-3 bg-white/50 rounded-lg text-[11px] text-slate-500 mb-6 flex items-start gap-2 text-left">
-                    <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                    <p>For your security, if an account isn't associated with this email, you won't receive a message. This prevents unauthorized users from verifying account existence.</p>
+                    <Button
+                      onClick={() => window.open('https://mail.google.com', '_blank')}
+                      className="w-full h-12 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-bold mb-4 shadow-md border-none rounded-xl"
+                    >
+                      Open Email App
+                    </Button>
+                    <Button
+                      onClick={() => { setForgotPassword(false); setResetSent(false); }}
+                      variant="ghost"
+                      className="w-full h-12 text-slate-500 hover:text-slate-900 font-bold rounded-xl"
+                    >
+                      Back to Sign In
+                    </Button>
                   </div>
-
-                  <Button
-                    onClick={() => window.open('https://mail.google.com', '_blank')}
-                    className="w-full h-11 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-bold mb-3 shadow-md border-none"
-                  >
-                    Check Your Inbox
-                  </Button>
-                  <Button
-                    onClick={() => { setForgotPassword(false); setResetSent(false); }}
-                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white"
-                  >
-                    Return to Sign In
-                  </Button>
                 </div>
               ) : (
-                <form onSubmit={handleResetPassword} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="reset-email" className="text-sm font-bold text-slate-700">Password Recovery</Label>
-                    <p className="text-xs text-muted-foreground mb-4">Enter your work email and we'll send you a secure link to reset your credentials.</p>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="reset-email"
-                        type="email"
-                        placeholder="you@company.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 h-12 bg-slate-50/50 border-slate-200"
-                        required
-                      />
-                    </div>
+                <form onSubmit={handleResetPassword} className="bg-white border border-slate-200/60 p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                  <div className="mb-6">
+                    <h3 className="text-2xl font-display font-bold text-slate-900 mb-2">Reset Password</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed">Enter your email and we'll send you a secure link to reset your credentials.</p>
                   </div>
+                  
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email" className="text-sm font-bold text-slate-700">Work Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          id="reset-email"
+                          type="email"
+                          placeholder="you@company.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="pl-10 h-12 bg-slate-50/50 border-slate-200 rounded-xl"
+                          required
+                          autoFocus
+                        />
+                      </div>
+                    </div>
 
-                  <Button type="submit" className="w-full h-12 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-bold border-none" disabled={loading}>
-                    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Send Recovery Link"}
-                  </Button>
+                    <Button type="submit" className="w-full h-12 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-bold border-none rounded-xl shadow-md" disabled={loading}>
+                      {loading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : "Send Recovery Link"}
+                    </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => setForgotPassword(false)}
-                    className="w-full text-center text-sm text-slate-500 hover:text-slate-900 font-bold"
-                  >
-                    Cancel and Return
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setForgotPassword(false)}
+                      className="w-full text-center text-sm text-slate-400 hover:text-slate-700 font-bold transition-colors pt-2"
+                    >
+                      Wait, I remember my password
+                    </button>
+                  </div>
                 </form>
               )}
             </div>

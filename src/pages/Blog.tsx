@@ -25,11 +25,11 @@ const Blog = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const { collection, getDocs, query, orderBy } = await import("firebase/firestore");
+        const { collection, getDocsFromServer, query, orderBy } = await import("firebase/firestore");
         const { db } = await import("@/components/client");
         
         const q = query(collection(db, "blogs"), orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocsFromServer(q);
         const fetchedPosts = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()

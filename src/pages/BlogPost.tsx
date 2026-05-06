@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { db } from "@/components/client";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDocFromServer } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { ArrowLeft, Calendar, User, Clock, Share2, Loader2, FileText } from "lucide-react";
@@ -28,7 +28,7 @@ const BlogPost = () => {
     const fetchPost = async () => {
       if (!id) return;
       try {
-        const docSnap = await getDoc(doc(db, "blogs", id));
+        const docSnap = await getDocFromServer(doc(db, "blogs", id));
         if (docSnap.exists()) {
           setPost(docSnap.data() as BlogPost);
         } else {

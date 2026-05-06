@@ -148,23 +148,39 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
 
         .rich-text-editor .ql-container {
           min-height: 400px;
-          font-size: 16px;
-          border-bottom-left-radius: 0.75rem;
-          border-bottom-right-radius: 0.75rem;
-          background: white;
+          font-size: 20px;
+          border: none !important;
+          background: transparent;
+          font-family: 'Times New Roman', Times, serif;
         }
         .rich-text-editor .ql-toolbar {
-          border-top-left-radius: 0.75rem;
-          border-top-right-radius: 0.75rem;
-          background: #f9fafb;
-          border-color: #e5e7eb;
+          border: none !important;
+          border-bottom: 1px solid #e5e7eb !important;
+          background: #ffffff;
+          position: sticky;
+          top: 64px;
+          z-index: 40;
+          padding: 12px 0 !important;
         }
         .rich-text-editor .ql-editor.ql-blank::before {
-          color: #9ca3af;
+          color: #b3b3b1;
           font-style: normal;
+          left: 0;
         }
         .rich-text-editor .ql-editor {
-          line-height: 1.6;
+          line-height: 1.8;
+          padding: 1rem 0;
+          color: #242424;
+        }
+        .rich-text-editor .ql-editor p {
+          margin-bottom: 1em;
+        }
+        .rich-text-editor .ql-editor h1, 
+        .rich-text-editor .ql-editor h2 {
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-weight: 700;
+          margin-top: 1.5em;
+          margin-bottom: 0.5em;
         }
       `}</style>
       <ReactQuill

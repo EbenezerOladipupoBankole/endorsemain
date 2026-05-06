@@ -202,47 +202,80 @@ const AdminBlog = () => {
         </div>
 
         {isEditing && (
-          <Card className="mb-10 border-primary/20 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
-            <CardHeader>
-              <CardTitle>{currentPost.id ? "Edit Post" : "Create New Post"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSave} className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input 
-                      id="title" 
-                      value={currentPost.title} 
-                      onChange={e => setCurrentPost({...currentPost, title: e.target.value})}
-                      placeholder="Post title"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Input 
-                      id="category" 
-                      value={currentPost.category} 
-                      onChange={e => setCurrentPost({...currentPost, category: e.target.value})}
-                      placeholder="e.g. Product Updates"
-                    />
-                  </div>
-                </div>
+          <div className="fixed inset-0 z-50 bg-background overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
+                  <X className="w-4 h-4 mr-2" /> Cancel
+                </Button>
+                <span className="text-sm text-muted-foreground font-medium">
+                  {currentPost.id ? "Editing Post" : "Draft in Progress"}
+                </span>
+              </div>
+              <Button onClick={handleSave} disabled={submitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 rounded-full px-6">
+                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                {currentPost.id ? "Update" : "Publish"}
+              </Button>
+            </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="author">Author</Label>
-                    <Input 
-                      id="author" 
-                      value={currentPost.author} 
-                      onChange={e => setCurrentPost({...currentPost, author: e.target.value})}
-                    />
+            <div className="max-w-3xl mx-auto py-12 px-4 md:px-0">
+              <input 
+                type="text" 
+                value={currentPost.title} 
+                onChange={e => setCurrentPost({...currentPost, title: e.target.value})}
+                placeholder="Title"
+                className="w-full text-5xl font-bold border-none outline-none focus:ring-0 bg-transparent placeholder:text-muted-foreground/30 mb-8 font-serif text-foreground"
+              />
+              
+              <div className="prose prose-lg dark:prose-invert max-w-none mb-16">
+                <RichTextEditor 
+                  value={currentPost.content || ""} 
+                  onChange={value => setCurrentPost({...currentPost, content: value})}
+                  placeholder="Tell your story..."
+                />
+              </div>
+
+              <div className="border-t pt-8 pb-20">
+                <h3 className="text-xl font-bold mb-6 font-serif">Post Settings</h3>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="category" className="text-muted-foreground text-xs uppercase tracking-wider">Category</Label>
+                      <Input 
+                        id="category" 
+                        value={currentPost.category} 
+                        onChange={e => setCurrentPost({...currentPost, category: e.target.value})}
+                        placeholder="e.g. Product Updates"
+                        className="bg-secondary/50 border-transparent focus:bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="author" className="text-muted-foreground text-xs uppercase tracking-wider">Author</Label>
+                      <Input 
+                        id="author" 
+                        value={currentPost.author} 
+                        onChange={e => setCurrentPost({...currentPost, author: e.target.value})}
+                        className="bg-secondary/50 border-transparent focus:bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="excerpt" className="text-muted-foreground text-xs uppercase tracking-wider">Excerpt</Label>
+                      <Textarea 
+                        id="excerpt" 
+                        value={currentPost.excerpt} 
+                        onChange={e => setCurrentPost({...currentPost, excerpt: e.target.value})}
+                        placeholder="Short summary for the grid view..."
+                        rows={3}
+                        className="bg-secondary/50 border-transparent focus:bg-background resize-none"
+                      />
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="image">Featured Image</Label>
-                    <div className="flex items-center gap-4">
+                    <Label className="text-muted-foreground text-xs uppercase tracking-wider mb-2 block">Featured Image</Label>
+                    <div className="flex flex-col gap-4">
                       {currentPost.image ? (
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                        <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
                           {currentPost.image.startsWith('bg-') ? (
                             <div className={`w-full h-full ${currentPost.image}`} />
                           ) : (
@@ -252,20 +285,21 @@ const AdminBlog = () => {
                             type="button"
                             variant="destructive" 
                             size="icon" 
-                            className="absolute top-0 right-0 h-6 w-6 rounded-none"
+                            className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-sm"
                             onClick={() => setCurrentPost({ ...currentPost, image: "" })}
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-4 h-4" />
                           </Button>
                         </div>
                       ) : (
-                        <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center bg-muted">
-                          <ImageIcon className="w-8 h-8 text-muted-foreground opacity-20" />
+                        <div className="w-full aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center bg-secondary/30 text-muted-foreground hover:bg-secondary/50 transition-colors">
+                          <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
+                          <span className="text-sm font-medium">Add a cover image</span>
                         </div>
                       )}
-                      <div className="flex-1">
-                        <label className="cursor-pointer">
-                          <div className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors w-fit text-sm font-medium">
+                      <div>
+                        <label className="cursor-pointer inline-block w-full">
+                          <div className="flex justify-center items-center gap-2 px-4 py-2.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors w-full text-sm font-medium">
                             {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                             {currentPost.image ? "Change Image" : "Upload Image"}
                           </div>
@@ -277,44 +311,14 @@ const AdminBlog = () => {
                             disabled={uploadingImage}
                           />
                         </label>
-                        <p className="text-[10px] text-muted-foreground mt-2">Recommended: 1200x630px. PNG, JPG or WebP.</p>
+                        <p className="text-[11px] text-center text-muted-foreground mt-2">Recommended: 1200x630px. High-quality WebP, PNG, or JPG.</p>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="excerpt">Excerpt (Summary)</Label>
-                  <Textarea 
-                    id="excerpt" 
-                    value={currentPost.excerpt} 
-                    onChange={e => setCurrentPost({...currentPost, excerpt: e.target.value})}
-                    placeholder="Short summary for the grid view..."
-                    rows={2}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="content">Content</Label>
-                  <RichTextEditor 
-                    value={currentPost.content || ""} 
-                    onChange={value => setCurrentPost({...currentPost, content: value})}
-                    placeholder="Write your article here..."
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={submitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
-                    {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                    {currentPost.id ? "Update Post" : "Publish Post"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          </div>
         )}
 
         <div className="space-y-4">
