@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { staticPosts } from "@/lib/blog-data";
+
 import { useAuth } from "@/components/AuthContext";
 
 const Blog = () => {
@@ -38,12 +38,11 @@ const Blog = () => {
         if (fetchedPosts.length > 0) {
           setPosts(fetchedPosts);
         } else {
-          // Fallback to static posts if DB is empty
-          setPosts(staticPosts);
+          setPosts([]);
         }
       } catch (error) {
         console.error("Error fetching blogs:", error);
-        setPosts(staticPosts);
+        setPosts([]);
       } finally {
         setLoading(false);
       }
@@ -232,42 +231,47 @@ const Blog = () => {
           </div>
 
           {/* Featured Post */}
-          <div className="mb-20">
-            <div className="group relative rounded-2xl bg-card border border-border overflow-hidden grid md:grid-cols-2 gap-8 hover:shadow-lg transition-all duration-500">
-              <div className="aspect-video md:aspect-auto bg-secondary/50 relative overflow-hidden">
-                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
-                 <div className="absolute inset-0 flex items-center justify-center">
-                    <FileText className="w-20 h-20 text-primary/20 group-hover:scale-110 transition-transform duration-700" />
-                 </div>
-              </div>
-              <div className="p-6 md:p-12 flex flex-col justify-center">
-                <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
-                  <span className="text-primary font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-xs uppercase tracking-wide">Featured</span>
-                  <span>•</span>
-                  <span>Oct 24, 2024</span>
+          {posts.length > 0 && (
+            <div className="mb-20">
+              <Link to={`/blog/${posts[0].id}`} className="group relative rounded-2xl bg-card border border-border overflow-hidden grid md:grid-cols-2 gap-8 hover:shadow-lg transition-all duration-500 block">
+                <div className="aspect-video md:aspect-auto bg-secondary/50 relative overflow-hidden">
+                   {posts[0].image?.startsWith('http') || posts[0].image?.startsWith('/') ? (
+                     <img src={posts[0].image} alt={posts[0].title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                   ) : (
+                     <div className={`w-full h-full ${posts[0].image || 'bg-primary/5'} flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500`}>
+                        <FileText className="w-20 h-20" />
+                     </div>
+                   )}
                 </div>
-                <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 group-hover:text-primary transition-colors">
-                  The Future of Digital Agreements: Trends to Watch in 2025
-                </h2>
-                <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-                  As remote work becomes permanent, the way we sign and manage contracts is evolving. Here are the key trends shaping the industry.
-                </p>
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-muted-foreground">
-                    <Logo className="w-6 h-6" />
+                <div className="p-6 md:p-12 flex flex-col justify-center">
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
+                    <span className="text-primary font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-xs uppercase tracking-wide">Featured</span>
+                    <span>•</span>
+                    <span>{posts[0].createdAt?.seconds ? new Date(posts[0].createdAt.seconds * 1000).toLocaleDateString() : 'Recent'}</span>
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm">Endorse Editorial</p>
-                    <p className="text-xs text-muted-foreground">Industry Trends</p>
+                  <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 group-hover:text-primary transition-colors">
+                    {posts[0].title}
+                  </h2>
+                  <p className="text-muted-foreground text-lg mb-8 leading-relaxed line-clamp-3">
+                    {posts[0].excerpt}
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-muted-foreground">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{posts[0].author}</p>
+                      <p className="text-xs text-muted-foreground">{posts[0].category}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             </div>
-          </div>
+          )}
 
           {/* Post Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {posts.map((post, i) => (
+            {posts.slice(1).map((post, i) => (
               <Link key={i} to={`/blog/${post.id}`} className="group flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-all duration-300">
                 <div className="aspect-[16/9] relative overflow-hidden bg-muted">
                    {post.image?.startsWith('http') || post.image?.startsWith('/') ? (

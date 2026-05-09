@@ -17,7 +17,6 @@ interface BlogPost {
   createdAt: any;
 }
 
-import { staticPosts } from "@/lib/blog-data";
 
 const BlogPost = () => {
   const { id } = useParams();
@@ -32,23 +31,11 @@ const BlogPost = () => {
         if (docSnap.exists()) {
           setPost(docSnap.data() as BlogPost);
         } else {
-          // Check static posts fallback
-          const staticPost = staticPosts.find(p => p.id === id);
-          if (staticPost) {
-            setPost(staticPost as unknown as BlogPost);
-          } else {
-            toast.error("Post not found");
-          }
+          toast.error("Post not found");
         }
       } catch (error) {
         console.error("Error fetching post:", error);
-        // Try static fallback even on error
-        const staticPost = staticPosts.find(p => p.id === id);
-        if (staticPost) {
-          setPost(staticPost as unknown as BlogPost);
-        } else {
-          toast.error("Failed to load post");
-        }
+        toast.error("Failed to load post");
       } finally {
         setLoading(false);
       }
