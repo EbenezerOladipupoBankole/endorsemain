@@ -303,7 +303,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0]);
   const [fontSize, setFontSize] = useState(60);
-  const { userProfile, user } = useAuth();
+  const { userProfile, user, isAdmin } = useAuth();
 
   useEffect(() => {
     SIGNATURE_FONTS.forEach(font => {
@@ -503,7 +503,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
 
     // Check if user is on a paid plan (Bypass for admin email or localhost)
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
+
     const isLocal = window.location.hostname === 'localhost';
 
     if (!isPro && !isAdmin && !isLocal) {

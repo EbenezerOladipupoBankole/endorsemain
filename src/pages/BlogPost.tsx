@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { db } from "@/components/client";
-import { doc, getDocFromServer } from "firebase/firestore";
+import { doc, getDocFromServer, collection, query, where, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { ArrowLeft, Calendar, User, Clock, Share2, Loader2, FileText } from "lucide-react";
@@ -27,9 +27,23 @@ const BlogPost = () => {
     const fetchPost = async () => {
       if (!id) return;
       try {
-        const docSnap = await getDocFromServer(doc(db, "blogs", id));
-        if (docSnap.exists()) {
-          setPost(docSnap.data() as BlogPost);
+        // Try to fetch by ID first
+        try {
+          const docSnap = await getDocFromServer(doc(db, "blogs", id));
+          if (docSnap.exists()) {
+            setPost(docSnap.data() as BlogPost);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          // Ignore error and fall back to slug query
+        }
+
+        // Fetch by slug
+        const q = query(collection(db, "blogs"), where("slug", "==", id));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          setPost(querySnapshot.docs[0].data() as BlogPost);
         } else {
           toast.error("Post not found");
         }

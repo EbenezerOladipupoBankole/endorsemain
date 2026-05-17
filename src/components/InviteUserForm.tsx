@@ -11,7 +11,7 @@ interface InviteUserFormProps {
 export function InviteUserForm({ documentId }: InviteUserFormProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const { userProfile, user } = useAuth();
+  const { userProfile, user, isAdmin } = useAuth();
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +22,7 @@ export function InviteUserForm({ documentId }: InviteUserFormProps) {
 
     // Check if user is on a paid plan (Bypass for admin email or localhost)
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
+
     const isLocal = window.location.hostname === 'localhost';
 
     if (!isPro && !isAdmin && !isLocal) {

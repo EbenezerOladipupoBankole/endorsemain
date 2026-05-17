@@ -339,7 +339,7 @@ const Dashboard = () => {
 
     // Check if user is on a paid plan (Bypass for admin email or localhost)
     const isPro = userProfile?.plan === 'pro' || userProfile?.plan === 'business';
-    const isAdmin = user?.email === 'bankoleebenezer111@gmail.com';
+
     const isLocal = window.location.hostname === 'localhost';
 
     if (!isPro && !isAdmin && !isLocal) {
@@ -613,6 +613,7 @@ const Dashboard = () => {
                   File Converter
                 </Link>
               </Button>
+
               {(isAdmin || userProfile?.plan === 'business') && (
                 <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setIsMobileMenuOpen(false)}>
                   <Link to="/team">
@@ -680,6 +681,7 @@ const Dashboard = () => {
                   File Converter
                 </Link>
               </Button>
+
               {(isAdmin || userProfile?.plan === 'business') && (
                 <Button variant="ghost" className="w-full justify-start" asChild>
                   <Link to="/team">

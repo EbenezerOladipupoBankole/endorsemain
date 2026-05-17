@@ -233,7 +233,7 @@ const Blog = () => {
           {/* Featured Post */}
           {posts.length > 0 && (
             <div className="mb-20">
-              <Link to={`/blog/${posts[0].id}`} className="group relative rounded-2xl bg-card border border-border overflow-hidden grid md:grid-cols-2 gap-8 hover:shadow-lg transition-all duration-500 block">
+              <Link to={`/blog/${posts[0].slug || posts[0].id}`} className="group relative rounded-2xl bg-card border border-border overflow-hidden grid md:grid-cols-2 gap-8 hover:shadow-lg transition-all duration-500 block">
                 <div className="aspect-video md:aspect-auto bg-secondary/50 relative overflow-hidden">
                    {posts[0].image?.startsWith('http') || posts[0].image?.startsWith('/') ? (
                      <img src={posts[0].image} alt={posts[0].title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -272,7 +272,7 @@ const Blog = () => {
           {/* Post Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {posts.slice(1).map((post, i) => (
-              <Link key={i} to={`/blog/${post.id}`} className="group flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-all duration-300">
+              <Link key={i} to={`/blog/${post.slug || post.id}`} className="group flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-all duration-300">
                 <div className="aspect-[16/9] relative overflow-hidden bg-muted">
                    {post.image?.startsWith('http') || post.image?.startsWith('/') ? (
                      <img 

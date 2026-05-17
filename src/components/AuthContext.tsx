@@ -8,7 +8,7 @@ interface UserProfile {
   [key: string]: any;
 }
 
-export const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com'];
+export const ADMIN_EMAILS = ['bankoleebenezer111@gmail.com', 'omakaoe@gmail.com', 'ayindeenny112@gmail.com'];
 
 interface AuthContextType {
   user: User | null;

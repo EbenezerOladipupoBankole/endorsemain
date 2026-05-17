@@ -35,7 +35,7 @@ export const AuditTrail = ({ documentId }: AuditTrailProps) => {
         id: doc.id,
         ...doc.data()
       })) as AuditEvent[];
-      
+
       // If no real-time logs yet, provide some defaults or let them load
       setEvents(items);
       setLoading(false);
@@ -86,14 +86,14 @@ export const AuditTrail = ({ documentId }: AuditTrailProps) => {
     <div className="space-y-6">
       <div className="relative">
         <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-slate-100" />
-        
+
         <div className="space-y-8 relative">
           {events.map((event) => (
             <div key={event.id} className="flex gap-4">
               <div className="relative z-10 w-4 h-4 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center translate-y-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-bold text-slate-900 text-sm">{event.action}</span>
@@ -102,7 +102,7 @@ export const AuditTrail = ({ documentId }: AuditTrailProps) => {
                     <span>{event.action}</span>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5 text-xs text-slate-600">
                     <User className="w-3.5 h-3.5" />
@@ -124,11 +124,11 @@ export const AuditTrail = ({ documentId }: AuditTrailProps) => {
           ))}
         </div>
       </div>
-      
+
       <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100/50 flex items-start gap-3">
         <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
         <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
-          This audit trail is cryptographically signed and stored on Endorse secure ledger. 
+          This audit trail is cryptographically signed and stored on Endorse secure ledger.
           Each event is time-stamped and linked to the document integrity hash (SHA-256).
         </p>
       </div>
