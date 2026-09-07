@@ -10,7 +10,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 const mammoth = require("mammoth");
 const { Document, Packer, Paragraph, TextRun } = require("docx");
-const pdfParse = require("pdf-parse");
+const { PDFParse } = require("pdf-parse");
 
 // Initialize Admin SDK
 if (admin.apps.length === 0) {
@@ -26,6 +26,18 @@ const paystackSecretKeyTest = defineSecret("PAYSTACK_SECRET_KEY_TEST");
 const paystackSecretKeyLive = defineSecret("PAYSTACK_SECRET_KEY_LIVE");
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+
+// --- WHATSAPP BUSINESS API CONFIGURATION ---
+const whatsappAccessToken = defineSecret("WHATSAPP_ACCESS_TOKEN");
+const whatsappPhoneNumberId = defineSecret("WHATSAPP_PHONE_NUMBER_ID");
+
+// Escapes user-controlled strings before they're interpolated into HTML email
+// bodies, since filenames/display names are attacker-controlled input.
+function escapeHtml(value: unknown): string {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
+  }[c] as string));
+}
 
 let transporter: nodemailer.Transporter | null = null;
 
@@ -59,7 +71,7 @@ function getTransporter() {
 
 const APP_URL = "https://e-ndorse.online"; // Updated to new custom domain
 
-const ADMIN_EMAILS = ["bankoleebenezer111@gmail.com", "omakaoe@gmail.com"];
+const ADMIN_EMAILS = ["bankoleebenezer111@gmail.com", "omakaoe@gmail.com", "ayindeenny112@gmail.com"];
 
 interface InvitePayload {
   documentId: string;
@@ -127,6 +139,10 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword], cors:
     const originalData = docSnap.data();
     console.log("Original document data:", originalData);
 
+    if (!isAdmin && originalData?.ownerEmail !== request.auth.token.email) {
+      throw new HttpsError("permission-denied", "You do not have permission to invite signers for this document.");
+    }
+
     // 2. Create New Document (Clone)
     const newDocumentData = {
       ...originalData,
@@ -163,7 +179,7 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword], cors:
       to: recipientEmail,
       subject: "You have been invited to sign a document",
       text: `You have been invited to sign "${originalData?.name}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-      html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>You have been invited to sign <strong>${originalData?.name}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+      html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>You have been invited to sign <strong>${escapeHtml(originalData?.name)}</strong>.</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
     };
 
     await transporter.sendMail(mailOptions);
@@ -192,9 +208,10 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword], 
     throw new HttpsError("invalid-argument", "No signers provided.");
   }
 
-  /* eslint-disable  @typescript-eslint/no-explicit-any */
-  const customLink = (data as any).signingLink;
-  const documentLink = customLink || (documentId ? `${APP_URL}/sign/${documentId}` : APP_URL);
+  // The signing link is always derived from documentId server-side — never
+  // trust a client-supplied URL here, or this endpoint becomes an open
+  // phishing relay (arbitrary link sent from the app's trusted mail account).
+  const documentLink = documentId ? `${APP_URL}/sign/${documentId}` : APP_URL;
   console.log(`Sending invite email with link: ${documentLink}`);
 
   console.log(`Starting bulk invite for document: ${documentName}, ID: ${documentId}`);
@@ -208,7 +225,7 @@ export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword], 
         to: signer.email,
         subject: `${uploaderName} invited you to sign ${documentName}`,
         text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-        html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${uploaderName}</strong> has invited you to sign the document "<strong>${documentName}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
+        html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${escapeHtml(uploaderName)}</strong> has invited you to sign the document "<strong>${escapeHtml(documentName)}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
       });
       console.log(`Invite sent successfully to: ${signer.email}`);
       results.push({ email: signer.email, status: 'sent' });
@@ -429,7 +446,8 @@ export const convertDocument = onCall({
       console.log("Mode: PDF to Word");
       let data;
       try {
-        data = await pdfParse(buffer);
+        const parser = new PDFParse({ data: buffer });
+        data = await parser.getText();
       } catch (e: any) {
         console.error("PDF Parse Error:", e);
         throw new Error("Could not read the PDF file. It might be password-protected or corrupted.");
@@ -625,7 +643,12 @@ export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, strip
       .update(JSON.stringify(req.body))
       .digest("hex");
 
-    if (hash !== req.headers["x-paystack-signature"]) {
+    const signatureHeader = req.headers["x-paystack-signature"];
+    const hashBuf = Buffer.from(hash, "utf8");
+    const sigBuf = Buffer.from(typeof signatureHeader === "string" ? signatureHeader : "", "utf8");
+    const signatureValid = hashBuf.length === sigBuf.length && crypto.timingSafeEqual(hashBuf, sigBuf);
+
+    if (!signatureValid) {
       res.status(400).send("Invalid Paystack signature");
       return;
     }
@@ -981,3 +1004,339 @@ export const inviteTeamMember = onCall({
     throw new HttpsError("unknown", error.message || "Failed to send team invitation.");
   }
 });
+
+// =============================================================================
+// --- WHATSAPP SIGNING CHANNEL ---
+// =============================================================================
+
+/**
+ * Helper: send a WhatsApp message via Meta Cloud API.
+ * Uses a template for the initial invite, plain text for OTP.
+ */
+async function sendWhatsAppMessage(
+  accessToken: string,
+  phoneNumberId: string,
+  toPhone: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  await axios.post(
+    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
+    { messaging_product: "whatsapp", to: toPhone, ...payload },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
+// ---- 1. sendWhatsAppInvites ----
+// Callable from the Dashboard when signer channel = 'whatsapp'
+export const sendWhatsAppInvites = onCall(
+  { secrets: [whatsappAccessToken, whatsappPhoneNumberId], cors: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be logged in.");
+    }
+
+    const { signers, documentName, uploaderName, pdfBase64 } = request.data as {
+      signers: { name: string; phone: string }[];
+      documentName: string;
+      uploaderName: string;
+      pdfBase64: string;
+    };
+
+    if (!signers || signers.length === 0) {
+      throw new HttpsError("invalid-argument", "No WhatsApp signers provided.");
+    }
+
+    const db = admin.firestore();
+    let waToken = "";
+    let waPhoneId = "";
+    try {
+      waToken = whatsappAccessToken.value();
+      waPhoneId = whatsappPhoneNumberId.value();
+    } catch (e) {
+      waToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
+      waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
+    }
+
+    const results: { phone: string; status: string; docId?: string; error?: string }[] = [];
+
+    for (const signer of signers) {
+      try {
+        // 1. Persist document to Firestore
+        const docRef = await db.collection("documents").add({
+          name: documentName,
+          pdfBase64,
+          status: "pending",
+          channel: "whatsapp",
+          recipientPhone: signer.phone,
+          recipientName: signer.name,
+          ownerEmail: request.auth!.token.email || "",
+          uploaderName,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          deliveryStatus: "pending",
+        });
+
+        const signingLink = `${APP_URL}/sign/${docRef.id}`;
+
+        // 2. Send WhatsApp message
+        if (waToken && waPhoneId) {
+          try {
+            // Attempt approved template first
+            await sendWhatsAppMessage(waToken, waPhoneId, signer.phone, {
+              type: "template",
+              template: {
+                name: "document_signing_invite",
+                language: { code: "en_US" },
+                components: [
+                  {
+                    type: "body",
+                    parameters: [
+                      { type: "text", text: signer.name },
+                      { type: "text", text: uploaderName },
+                      { type: "text", text: documentName },
+                      { type: "text", text: signingLink },
+                    ],
+                  },
+                ],
+              },
+            });
+          } catch (templateErr: any) {
+            // Template not approved yet — fall back to plain text
+            console.warn("Template send failed, falling back to text:", templateErr?.response?.data || templateErr.message);
+            await sendWhatsAppMessage(waToken, waPhoneId, signer.phone, {
+              type: "text",
+              text: {
+                body: `Hi ${signer.name},\n\n${uploaderName} has invited you to sign *${documentName}* on Endorse.\n\nClick the link below to view and sign:\n${signingLink}\n\nThis link is unique to you. Do not share it.`,
+              },
+            });
+          }
+          // 3. Mark as sent
+          await docRef.update({ deliveryStatus: "sent" });
+        } else {
+          console.warn("WhatsApp credentials not configured — skipping message send.");
+        }
+
+        results.push({ phone: signer.phone, status: "sent", docId: docRef.id });
+      } catch (err: any) {
+        console.error(`WhatsApp invite failed for ${signer.phone}:`, err?.response?.data || err.message);
+        results.push({ phone: signer.phone, status: "failed", error: err.message });
+      }
+    }
+
+    return { success: true, results };
+  }
+);
+
+// ---- 2. sendWhatsAppOTP ----
+// Callable from the signing verification page when recipient opens /sign/:id
+export const sendWhatsAppOTP = onCall(
+  { secrets: [whatsappAccessToken, whatsappPhoneNumberId], cors: true },
+  async (request) => {
+    const { documentId, phone } = request.data as { documentId: string; phone: string };
+
+    if (!documentId || !phone) {
+      throw new HttpsError("invalid-argument", "Missing documentId or phone.");
+    }
+
+    const db = admin.firestore();
+
+    // Validate document exists and phone matches
+    const docSnap = await db.collection("documents").doc(documentId).get();
+    if (!docSnap.exists) {
+      throw new HttpsError("not-found", "Document not found.");
+    }
+    const docData = docSnap.data()!;
+    if (docData.channel !== "whatsapp") {
+      throw new HttpsError("failed-precondition", "This document is not a WhatsApp-channel document.");
+    }
+    const normalise = (p: string) => p.replace(/[\s\-().+]/g, "");
+    if (normalise(docData.recipientPhone) !== normalise(phone)) {
+      throw new HttpsError("permission-denied", "Phone number does not match the invited recipient.");
+    }
+
+    // Rate-limit: no resend within 60 seconds
+    const otpRef = db.collection("whatsapp_otps").doc(documentId);
+    const existingOtp = await otpRef.get();
+    if (existingOtp.exists) {
+      const data = existingOtp.data()!;
+      const createdAt: admin.firestore.Timestamp = data.createdAt;
+      const secondsSince = (Date.now() - createdAt.toMillis()) / 1000;
+      if (secondsSince < 60) {
+        throw new HttpsError("resource-exhausted", "Please wait before requesting a new OTP.");
+      }
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000);
+
+    await otpRef.set({
+      otp,
+      expiresAt,
+      attempts: 0,
+      phone,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    let waToken = "";
+    let waPhoneId = "";
+    try {
+      waToken = whatsappAccessToken.value();
+      waPhoneId = whatsappPhoneNumberId.value();
+    } catch (e) {
+      waToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
+      waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
+    }
+
+    if (waToken && waPhoneId) {
+      await sendWhatsAppMessage(waToken, waPhoneId, phone, {
+        type: "text",
+        text: {
+          body: `Your Endorse verification code is: *${otp}*\n\nThis code expires in 5 minutes. Do not share it with anyone.`,
+        },
+      });
+    } else {
+      // Dev/emulator mode: log OTP so developer can test without real credentials
+      console.log(`[DEV MODE] WhatsApp OTP for ${phone}: ${otp}`);
+    }
+
+    return { success: true };
+  }
+);
+
+// ---- 3. verifyWhatsAppOTP ----
+// Callable from the OTP verification page; returns a custom Firebase auth token on success
+export const verifyWhatsAppOTP = onCall({ cors: true }, async (request) => {
+  const { documentId, otp } = request.data as { documentId: string; otp: string };
+
+  if (!documentId || !otp) {
+    throw new HttpsError("invalid-argument", "Missing documentId or otp.");
+  }
+
+  const db = admin.firestore();
+  const otpRef = db.collection("whatsapp_otps").doc(documentId);
+  const otpSnap = await otpRef.get();
+
+  if (!otpSnap.exists) {
+    throw new HttpsError("not-found", "No OTP found. Please request a new one.");
+  }
+
+  const otpData = otpSnap.data()!;
+  const { otp: storedOtp, expiresAt, attempts } = otpData;
+
+  // Check attempt limit (max 5)
+  if (attempts >= 5) {
+    throw new HttpsError("resource-exhausted", "Too many failed attempts. Please request a new OTP.");
+  }
+
+  // Check expiry
+  const expiry = (expiresAt as admin.firestore.Timestamp).toMillis();
+  if (Date.now() > expiry) {
+    await otpRef.delete();
+    throw new HttpsError("deadline-exceeded", "OTP has expired. Please request a new one.");
+  }
+
+  // Verify OTP
+  if (otp.trim() !== storedOtp) {
+    await otpRef.update({ attempts: admin.firestore.FieldValue.increment(1) });
+    const remaining = 4 - attempts;
+    throw new HttpsError(
+      "unauthenticated",
+      remaining > 0
+        ? `Incorrect code. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`
+        : "Too many failed attempts. Please request a new OTP."
+    );
+  }
+
+  // Valid OTP — clean up and mint custom auth token for the recipient
+  await otpRef.delete();
+
+  // Update document status to 'viewed'
+  await db.collection("documents").doc(documentId).update({
+    deliveryStatus: "viewed",
+    viewedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // Custom token UID is scoped per-document to avoid collisions with real users
+  const customToken = await admin.auth().createCustomToken(`whatsapp-signer-${documentId}`, {
+    documentId,
+    signerType: "whatsapp",
+  });
+
+  return { success: true, customToken };
+});
+
+// ---- 4. whatsappWebhook ----
+// Public HTTP endpoint — handles Meta webhook verification + delivery status updates
+export const whatsappWebhook = onRequest(
+  { secrets: [whatsappAccessToken], cors: false },
+  async (req, res) => {
+    const VERIFY_TOKEN = "endorse_whatsapp_verify"; // Must match the token set in Meta dashboard
+
+    // --- GET: Hub challenge verification (one-time setup) ---
+    if (req.method === "GET") {
+      const mode = req.query["hub.mode"];
+      const token = req.query["hub.verify_token"];
+      const challenge = req.query["hub.challenge"];
+
+      if (mode === "subscribe" && token === VERIFY_TOKEN) {
+        console.log("WhatsApp webhook verified successfully.");
+        res.status(200).send(challenge);
+      } else {
+        console.warn("WhatsApp webhook verification failed.");
+        res.status(403).send("Forbidden");
+      }
+      return;
+    }
+
+    // --- POST: Incoming webhook events ---
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    try {
+      const body = req.body;
+      const entry = body?.entry?.[0];
+      const changes = entry?.changes?.[0];
+      const value = changes?.value;
+
+      // Handle message status updates (sent → delivered → read)
+      if (value?.statuses) {
+        const db = admin.firestore();
+        for (const status of value.statuses) {
+          const { status: deliveryStatus, recipient_id: recipientPhone } = status;
+          console.log(`WhatsApp status update — ${recipientPhone}: ${deliveryStatus}`);
+
+          // Find matching document(s) by recipientPhone
+          const docs = await db
+            .collection("documents")
+            .where("channel", "==", "whatsapp")
+            .where("recipientPhone", "==", recipientPhone)
+            .where("deliveryStatus", "in", ["pending", "sent", "delivered"])
+            .limit(5)
+            .get();
+
+          const batch = db.batch();
+          docs.forEach((d) => {
+            batch.update(d.ref, {
+              deliveryStatus,
+              [`${deliveryStatus}At`]: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          });
+          await batch.commit();
+        }
+      }
+
+      res.status(200).json({ received: true });
+    } catch (err: any) {
+      console.error("WhatsApp webhook processing error:", err);
+      res.status(200).json({ received: true }); // Always 200 to Meta to prevent retries
+    }
+  }
+);
