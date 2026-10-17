@@ -9,9 +9,11 @@ import { Stripe } from "stripe";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-const mammoth = require("mammoth");
-const { Document, Packer, Paragraph, TextRun } = require("docx");
-const { PDFParse } = require("pdf-parse");
+// Heavy document libraries are loaded on first use so deploy-time code
+// discovery and cold starts stay fast.
+const loadMammoth = () => require("mammoth");
+const loadDocx = () => require("docx");
+const loadPdfParse = () => require("pdf-parse");
 
 // Initialize Admin SDK
 if (admin.apps.length === 0) {
@@ -526,6 +528,7 @@ export const convertDocument = onCall({
     // --- MODE 2: WORD TO PDF ---
     if (filename.match(/\.(doc|docx)$/i) || mimeType.includes("word")) {
       console.log("Mode: Word to PDF");
+      const mammoth = loadMammoth();
       const mammothLib = (mammoth as any).default || mammoth;
       const result = await mammothLib.extractRawText({ buffer });
       const text = result.value;
@@ -587,6 +590,7 @@ export const convertDocument = onCall({
       console.log("Mode: PDF to Word");
       let data;
       try {
+        const { PDFParse } = loadPdfParse();
         const parser = new PDFParse({ data: buffer });
         data = await parser.getText();
       } catch (e: any) {
@@ -604,6 +608,7 @@ export const convertDocument = onCall({
       // Clean text to remove control characters that might break XML in docx
       const cleanedText = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
 
+      const { Document, Packer, Paragraph, TextRun } = loadDocx();
       const doc = new Document({
         sections: [{
           properties: {},
