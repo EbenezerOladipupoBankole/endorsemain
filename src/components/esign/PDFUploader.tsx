@@ -1,6 +1,7 @@
 import { useCallback } from "react";
-import { Upload, FileText } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { FileText, Upload } from "lucide-react";
 
 interface PDFUploaderProps {
   onFileSelect: (file: File) => void;
@@ -43,7 +44,7 @@ export const PDFUploader = ({ onFileSelect, currentFile, accept = ".pdf" }: PDFU
     >
       {currentFile ? (
         <div className="flex items-center justify-center gap-3">
-          <FileText className="h-8 w-8 text-primary" />
+          <FileText className="h-8 w-8 text-[#0A66C2]" />
           <div className="text-left">
             <p className="font-medium text-foreground">{currentFile.name}</p>
             <p className="text-sm text-muted-foreground">
@@ -53,7 +54,7 @@ export const PDFUploader = ({ onFileSelect, currentFile, accept = ".pdf" }: PDFU
         </div>
       ) : (
         <>
-          <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <Upload className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <p className="text-lg font-medium text-foreground mb-2">
             Drop your document here
           </p>

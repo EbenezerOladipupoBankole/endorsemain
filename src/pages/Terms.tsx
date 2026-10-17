@@ -1,8 +1,7 @@
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Logo } from "@/components/Logo";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+
 
 const Terms = () => {
   useEffect(() => {
@@ -11,22 +10,10 @@ const Terms = () => {
 
   return (
     <div className="min-h-screen bg-background font-sans">
-      <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-8 w-auto" />
-          </Link>
-          <Link to="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
-            </Button>
-          </Link>
-        </div>
-      </nav>
+      <SiteHeader />
 
-      <main className="container max-w-4xl py-12 px-4 md:px-6">
-        <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
+      <main className="container max-w-4xl py-10 px-4 md:py-16 md:px-6">
+        <h1 className="text-3xl md:text-4xl font-bold mb-6 md:mb-8 text-slate-900 dark:text-white">Terms of Service</h1>
         <div className="prose prose-slate dark:prose-invert max-w-none space-y-8">
           <p className="text-lg text-muted-foreground">
             Last updated: {new Date().toLocaleDateString()}
@@ -76,11 +63,7 @@ const Terms = () => {
         </div>
       </main>
       
-      <footer className="border-t border-border mt-12">
-        <div className="container py-8 px-4 md:px-6 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Endorse. All rights reserved.
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 };

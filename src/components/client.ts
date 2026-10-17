@@ -28,7 +28,6 @@ for (const [key, value] of Object.entries(firebaseConfig)) {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-console.log("Firebase initialized:", app);
 
 // Initialize Cloud Functions and get a reference to the service
 export const analytics = getAnalytics(app);

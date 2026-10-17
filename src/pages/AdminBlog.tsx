@@ -20,11 +20,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Edit2, Save, X, Eye, Upload, Image as ImageIcon } from "lucide-react";
+
 import { Link, Navigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import RichTextEditor from "@/components/blog/RichTextEditor";
-
+import { ArrowLeft, Edit, ExternalLink, Image as ImageIcon, Loader2, Plus, Send, Trash2, Upload, X } from "lucide-react";
 
 interface BlogPost {
   id: string;
@@ -178,12 +178,12 @@ const AdminBlog = () => {
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-4">
             <Link to="/dashboard">
-              <Logo className="h-12 md:h-20 w-auto" />
+              <Logo className="h-9 md:h-10" />
             </Link>
             <h1 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Blog Admin</h1>
           </div>
           <Button variant="outline" asChild>
-            <Link to="/blog" target="_blank"><Eye className="w-4 h-4 mr-2" /> View Public Blog</Link>
+            <Link to="/blog" target="_blank"><ExternalLink className="w-4 h-4 mr-2" /> View Public Blog</Link>
           </Button>
         </div>
       </header>
@@ -206,14 +206,14 @@ const AdminBlog = () => {
             <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
-                  <X className="w-4 h-4 mr-2" /> Cancel
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Cancel
                 </Button>
                 <span className="text-sm text-muted-foreground font-medium">
                   {currentPost.id ? "Editing Post" : "Draft in Progress"}
                 </span>
               </div>
               <Button onClick={handleSave} disabled={submitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90 rounded-full px-6">
-                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                 {currentPost.id ? "Update" : "Publish"}
               </Button>
             </div>
@@ -288,7 +288,7 @@ const AdminBlog = () => {
                             className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-sm"
                             onClick={() => setCurrentPost({ ...currentPost, image: "" })}
                           >
-                            <X className="w-4 h-4" />
+                            <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ) : (
@@ -348,7 +348,7 @@ const AdminBlog = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="icon" onClick={() => startEdit(post)}>
-                        <Edit2 className="w-4 h-4" />
+                        <Edit className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(post.id)}>
                         <Trash2 className="w-4 h-4" />

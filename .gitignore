@@ -33,3 +33,18 @@ service-account-key.json
 *.json.local
 full_logs.json
 functions_list.json
+
+# Local debug/deploy logs & tool output
+*_log.txt
+*_logs.txt
+*logs*.txt
+log_temp.txt
+debug_out.txt
+full_logs*.json
+projects_full.json
+functions_list.*
+functions/functions_list.txt
+vite.config.ts.timestamp-*.mjs
+
+# Local tooling
+.expo/

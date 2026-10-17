@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
 import { Label } from "@/components/ui/label";
-import { X, PenTool, Type, Download, RotateCcw, Send, Mail, Loader2, Upload, Check, Crop as CropIcon, Calendar, Eraser, UserPlus } from "lucide-react";
+
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
@@ -532,448 +532,183 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-foreground/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl shadow-xl border border-border w-full max-w-lg max-h-[90vh] overflow-hidden animate-scale-in">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 font-sans">
+      <div className="bg-white rounded shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-transparent">
-          <div className="flex items-center gap-3">
-            <Logo className="h-8 w-auto" />
-            <div>
-              <h2 className="font-display text-base font-semibold text-foreground">
-                {document.status === "pending" ? "Sign Document" : "Document Details"}
-              </h2>
-              <p className="text-xs text-muted-foreground">{document.name}</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose} className="w-8 h-8 p-0">
-            <X className="w-4 h-4" />
-          </Button>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 className="text-[20px] font-bold text-gray-800">
+            {document.status === "pending" ? "Adopt Your Signature" : "Document Details"}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Content */}
-        <div className="p-5 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div className="px-6 py-6 overflow-y-auto max-h-[calc(90vh-140px)] custom-scrollbar">
           {document.status === "pending" ? (
             <>
-              {/* Mode Toggle */}
-              <div className="flex gap-2 mb-5">
-                <Button
-                  variant={mode === "draw" ? "default" : "outline"}
-                  className="flex-1 h-9"
-                  size="sm"
-                  onClick={() => setMode("draw")}
-                >
-                  <PenTool className="w-3.5 h-3.5 mr-1.5" />
-                  Draw
-                </Button>
-                <Button
-                  variant={mode === "type" ? "default" : "outline"}
-                  className="flex-1 h-9"
-                  size="sm"
-                  onClick={() => setMode("type")}
-                >
-                  <Type className="w-3.5 h-3.5 mr-1.5" />
-                  Type
-                </Button>
-                <Button
-                  variant={mode === "upload" ? "default" : "outline"}
-                  className="flex-1 h-9"
-                  size="sm"
-                  onClick={() => setMode("upload")}
-                >
-                  <Upload className="w-3.5 h-3.5 mr-1.5" />
-                  Upload
-                </Button>
+              <p className="text-sm text-gray-700 mb-6">Confirm your name, initials, and signature.</p>
+              
+              {/* Inputs */}
+              <div className="flex gap-6 mb-8">
+                <div className="flex-1">
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1 tracking-wider uppercase">Full Name <span className="text-red-500">*</span></label>
+                  <input type="text" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none" defaultValue={userProfile?.displayName || userProfile?.email?.split('@')[0] || "Ebenezer Bankole"} />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1 tracking-wider uppercase">Initials <span className="text-red-500">*</span></label>
+                  <input type="text" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none" defaultValue="EB" />
+                </div>
               </div>
 
-              {/* Signature Area */}
-              <div className="mb-4">
-                <Label className="mb-2 block text-sm">Your Signature</Label>
-                {mode === "draw" ? (
-                  <div className="relative border-2 border-dashed border-border rounded-lg overflow-hidden bg-white">
-                    <div style={{ display: isCropping ? 'none' : 'block' }}>
-                      <SignatureCanvas
-                        ref={signatureRef}
-                        canvasProps={{
-                          className: `w-full h-40 ${isErasing ? "cursor-cell" : "cursor-crosshair"}`,
-                          style: { width: "100%", height: "160px" }
-                        }}
-                        backgroundColor="transparent"
-                        penColor="#000000"
-                      />
+              {/* Tabs */}
+              <div className="flex gap-6 border-b border-gray-200 mb-6">
+                <button onClick={() => setMode('type')} className={`pb-3 text-[11px] font-bold tracking-widest uppercase transition-colors ${mode === 'type' ? 'text-blue-600 border-b-[3px] border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>SELECT STYLE</button>
+                <button onClick={() => setMode('draw')} className={`pb-3 text-[11px] font-bold tracking-widest uppercase transition-colors ${mode === 'draw' ? 'text-blue-600 border-b-[3px] border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>DRAW</button>
+                <button onClick={() => setMode('upload')} className={`pb-3 text-[11px] font-bold tracking-widest uppercase transition-colors ${mode === 'upload' ? 'text-blue-600 border-b-[3px] border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>UPLOAD</button>
+              </div>
 
-                      {/* Floating Tools */}
-                      <div className="absolute bottom-2 right-2 flex gap-1">
-                        <Button
-                          variant={isErasing ? "secondary" : "ghost"}
-                          size="sm"
-                          className={`h-8 px-2 backdrop-blur-sm ${isErasing ? "bg-white/80 text-primary shadow-sm" : "bg-white/40 text-muted-foreground hover:bg-white/60"}`}
-                          onClick={() => setIsErasing(!isErasing)}
-                          title={isErasing ? "Switch to Pen" : "Eraser"}
-                        >
-                          <Eraser className="w-4 h-4" />
-                          {isErasing && <span className="ml-1.5 text-xs">Erasing</span>}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 bg-white/40 text-muted-foreground hover:bg-white/60 backdrop-blur-sm"
-                          onClick={handleStartCrop}
-                          title="Crop Signature"
-                        >
-                          <CropIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 bg-white/40 text-muted-foreground hover:bg-white/60 backdrop-blur-sm"
-                          onClick={clearSignature}
-                          title="Clear Signature"
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                        </Button>
-                      </div>
+              {/* Tab Content */}
+              {mode === "type" && (
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[11px] font-bold text-gray-600 tracking-wider uppercase">PREVIEW</span>
+                    <button className="text-[13px] text-blue-600 hover:underline">Change Style</button>
+                  </div>
+                  
+                  <div className="border border-gray-200 rounded p-4 flex justify-between items-center mb-6 h-[120px]">
+                    {/* Signature Preview */}
+                    <div className="flex-1 flex flex-col justify-center relative pl-4 border-l-[2px] border-blue-600 h-full max-w-[280px]">
+                      <div className="absolute top-0 left-0 w-2 border-t-[2px] border-blue-600"></div>
+                      <div className="absolute bottom-0 left-0 w-2 border-b-[2px] border-blue-600"></div>
+                      <span className="text-[10px] text-gray-500 italic mb-1">Signed by:</span>
+                      {typedSignature ? (
+                        <span className="text-3xl text-black truncate" style={{ fontFamily: selectedFont.family }}>{typedSignature}</span>
+                      ) : (
+                        <span className="text-3xl text-black truncate" style={{ fontFamily: selectedFont.family }}>{userProfile?.displayName || "Ebenezer Bankole"}</span>
+                      )}
+                      <span className="text-[10px] text-gray-500 font-mono mt-1">22C77DF31E19425A...</span>
                     </div>
 
-                    {isCropping && uploadSource && (
-                      <div className="w-full h-64 relative bg-black/5">
-                        <div className="absolute inset-0 bottom-12">
-                          <Cropper
-                            image={uploadSource}
-                            crop={crop}
-                            zoom={zoom}
-                            aspect={3 / 1}
-                            onCropChange={setCrop}
-                            onCropComplete={onCropComplete}
-                            onZoomChange={setZoom}
-                          />
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-background/90 backdrop-blur flex items-center px-4 gap-4 border-t border-border">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 mr-auto flex items-center justify-center"
-                            onClick={() => {
-                              setIsCropping(false);
-                              setUploadSource(null);
-                              setUploadedSignature(null);
-                              setTimeout(() => {
-                                signatureRef.current?.clear();
-                              }, 0);
-                            }}
-                            title="Delete Signature"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                          <span className="text-xs font-medium text-muted-foreground w-12">Zoom</span>
-                          <input
-                            type="range"
-                            value={zoom}
-                            min={1}
-                            max={3}
-                            step={0.1}
-                            aria-labelledby="Zoom"
-                            onChange={(e) => setZoom(Number(e.target.value))}
-                            className="flex-1 h-1 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                          />
-                          <Button size="sm" className="h-7 w-7 p-0 rounded-full" onClick={handleCropConfirm}>
-                            <Check className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    {/* Initials Preview */}
+                    <div className="w-[120px] flex flex-col justify-center relative pl-4 border-l-[2px] border-blue-600 h-full">
+                      <div className="absolute top-0 left-0 w-2 border-t-[2px] border-blue-600"></div>
+                      <div className="absolute bottom-0 left-0 w-2 border-b-[2px] border-blue-600"></div>
+                      <span className="text-[10px] text-gray-500 italic mb-1">DS</span>
+                      <span className="text-3xl text-black truncate" style={{ fontFamily: selectedFont.family }}>EB</span>
+                    </div>
                   </div>
-                ) : mode === "type" ? (
-                  <div className="border-2 border-dashed border-border rounded-lg p-5 bg-white">
-                    <Input
-                      placeholder="Type your full name"
-                      value={typedSignature}
-                      onChange={(e) => setTypedSignature(e.target.value)}
-                      className="text-center text-2xl border-0 bg-transparent focus-visible:ring-0 h-auto py-2 text-black"
-                      style={{ fontFamily: selectedFont.family }}
-                    />
-                    <div className="flex justify-end mt-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-muted-foreground h-6 px-2"
-                        onClick={() => setTypedSignature(new Date().toLocaleDateString(undefined, { dateStyle: 'long' }))}
-                      >
-                        <Calendar className="w-3 h-3 mr-1.5" />
-                        Insert Today's Date
+                </div>
+              )}
+
+              {mode === "draw" && (
+                <div className="mb-6 relative border border-gray-300 rounded overflow-hidden bg-white">
+                  <SignatureCanvas
+                    ref={signatureRef}
+                    canvasProps={{
+                      className: `w-full h-40 ${isErasing ? "cursor-cell" : "cursor-crosshair"}`,
+                      style: { width: "100%", height: "160px" }
+                    }}
+                    backgroundColor="transparent"
+                    penColor="#000000"
+                  />
+                  <div className="absolute bottom-2 right-2 flex gap-2">
+                    <button onClick={clearSignature} className="text-xs text-blue-600 hover:underline">Clear</button>
+                  </div>
+                </div>
+              )}
+
+              {mode === "upload" && (
+                <div className="mb-6 text-center border-2 border-dashed border-gray-300 p-8 rounded">
+                  {uploadedSignature ? (
+                    <img src={uploadedSignature} alt="Uploaded signature" className="max-h-32 object-contain mx-auto mb-4" />
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500 mb-2">Click to select an image</p>
+                      <Input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                      <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                        Select Image
                       </Button>
-                    </div>
-                    {typedSignature && (
-                      <div className="mt-6 pb-4 overflow-x-auto flex justify-center">
-                        <p className="text-center text-black whitespace-nowrap" style={{ fontFamily: selectedFont.family, fontSize: `${fontSize}px` }}>
-                          {typedSignature}
-                        </p>
-                      </div>
-                    )}
+                    </>
+                  )}
+                </div>
+              )}
 
-                    {/* Font Size Slider */}
-                    <div className="flex items-center gap-3 px-2 mt-2">
-                      <span className="text-xs text-muted-foreground w-12">Size</span>
-                      <input
-                        type="range"
-                        min="24"
-                        max="100"
-                        step="2"
-                        value={fontSize}
-                        onChange={(e) => setFontSize(Number(e.target.value))}
-                        className="flex-1 h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                      />
-                      <span className="text-xs text-muted-foreground w-8 text-right">{fontSize}px</span>
-                    </div>
-
-                    {/* Font Selection */}
-                    <div className="flex flex-wrap justify-center gap-2 mt-4 pt-4 border-t border-border/50">
-                      {SIGNATURE_FONTS.map((font) => (
-                        <Button
-                          key={font.id}
-                          type="button"
-                          variant={selectedFont.id === font.id ? "secondary" : "ghost"}
-                          size="sm"
-                          onClick={() => setSelectedFont(font)}
-                          className="text-lg h-auto py-1 px-3 font-normal"
-                          style={{ fontFamily: font.family }}
-                        >
-                          Sign
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className={`border-2 border-dashed rounded-lg overflow-hidden flex flex-col items-center justify-center min-h-[200px] transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-border bg-secondary/30"
-                      }`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                  >
-                    {isCropping && uploadSource ? (
-                      <div className="w-full h-64 relative bg-black/5">
-                        <div className="absolute inset-0 bottom-12">
-                          <Cropper
-                            image={uploadSource}
-                            crop={crop}
-                            zoom={zoom}
-                            aspect={3 / 1}
-                            onCropChange={setCrop}
-                            onCropComplete={onCropComplete}
-                            onZoomChange={setZoom}
-                          />
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-background/90 backdrop-blur flex items-center px-4 gap-4 border-t border-border">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 mr-auto flex items-center justify-center"
-                            onClick={() => {
-                              setIsCropping(false);
-                              setUploadSource(null);
-                              setUploadedSignature(null);
-                            }}
-                            title="Delete Signature"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                          <span className="text-xs font-medium text-muted-foreground w-12">Zoom</span>
-                          <input
-                            type="range"
-                            value={zoom}
-                            min={1}
-                            max={3}
-                            step={0.1}
-                            aria-labelledby="Zoom"
-                            onChange={(e) => setZoom(Number(e.target.value))}
-                            className="flex-1 h-1 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                          />
-                          <Button size="sm" className="h-7 w-7 p-0 rounded-full" onClick={handleCropConfirm}>
-                            <Check className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : uploadedSignature ? (
-                      <div className="relative w-full flex flex-col items-center justify-center p-4">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm"
-                          onClick={() => {
-                            setUploadedSignature(null);
-                            setUploadSource(null);
-                          }}
-                          title="Delete Signature"
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                        <img src={uploadedSignature} alt="Uploaded signature" className="max-h-32 object-contain mb-4" />
-                        <Button variant="outline" size="sm" onClick={() => setIsCropping(true)}>
-                          <CropIcon className="w-3.5 h-3.5 mr-1.5" />
-                          Crop Again
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragging ? "text-primary" : "text-muted-foreground"}`} />
-                        <p className="text-sm text-muted-foreground mb-2">Click or drag image to upload</p>
-                        <Input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleFileUpload}
-                        />
-                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                          Select Image
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Legal Consent */}
-              <div className="mt-6 flex items-start gap-3 px-1">
+              {/* Disclaimer / Agreement checkbox */}
+              <div className="flex items-start gap-2 mb-4 mt-2 p-2.5 bg-gray-50 rounded border border-gray-200">
                 <input
                   type="checkbox"
-                  id="terms"
-                  className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  id="agree-signature-terms"
                   checked={agreedToTerms}
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-[#1e003b] focus:ring-[#1e003b] mt-0.5 cursor-pointer accent-[#1e003b]"
                 />
-                <label htmlFor="terms" className="text-xs text-muted-foreground leading-tight cursor-pointer">
-                  I agree to be legally bound by this document and the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</a> and <span className="text-primary hover:underline">Electronic Record and Signature Disclosure</span>.
+                <label htmlFor="agree-signature-terms" className="text-[11px] text-gray-600 leading-relaxed cursor-pointer select-none">
+                  By checking this box and selecting Adopt and Sign, I agree that this mark will be the electronic representation of my signature or initials whenever I use it. I also understand that recipients of electronic documents I sign will be able to see my Endorse ID, which will include my email address.
                 </label>
               </div>
             </>
           ) : (
             <>
-              {/* Show existing signature */}
-              <div className="mb-5">
-                <Label className="mb-2 block text-sm">Signature</Label>
-                <div className="border-2 border-border rounded-lg p-5 bg-secondary/30">
-                  {document.signature_type === "draw" || document.signature_type === "upload" ? (
-                    <img
-                      src={document.signature_data!}
-                      alt="Signature"
-                      className="max-h-28 mx-auto"
-                    />
-                  ) : (
-                    <p className="text-center font-serif text-3xl italic text-foreground py-2">
-                      {document.signature_data}
-                    </p>
-                  )}
-                </div>
+              {/* Document Details / Signed state (Kept minimal to fit design) */}
+              <div className="border border-gray-200 rounded p-6 flex justify-center items-center mb-6 h-[120px]">
+                {document.signature_type === "draw" || document.signature_type === "upload" ? (
+                  <img
+                    src={document.signature_data!}
+                    alt="Signature"
+                    className="max-h-24 mx-auto"
+                  />
+                ) : (
+                  <p className="text-center font-serif text-3xl italic text-black py-2">
+                    {document.signature_data}
+                  </p>
+                )}
               </div>
-
-              {/* Invite Form */}
-              {showInviteForm && (
-                <div className="mb-5 p-4 bg-secondary/50 rounded-lg border border-border animate-fade-in">
-                  <Label className="mb-2 block text-sm font-semibold">Invite another person to sign</Label>
-                  <p className="text-xs text-muted-foreground mb-3">They will receive a fresh copy of this document to sign.</p>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        type="email"
-                        placeholder="signer@example.com"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        className="pl-9 h-9"
-                      />
-                    </div>
-                    <Button size="sm" className="h-9" onClick={handleInvite} disabled={isInviting}>
-                      {isInviting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        "Invite"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Send Form */}
-              {showSendForm && (
-                <div className="mb-5 p-4 bg-secondary/50 rounded-lg border border-border animate-fade-in">
-                  <Label className="mb-2 block text-sm font-semibold">Send a signed copy</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        type="email"
-                        placeholder="recipient@example.com"
-                        value={recipientEmail}
-                        onChange={(e) => setRecipientEmail(e.target.value)}
-                        className="pl-9 h-9"
-                      />
-                    </div>
-                    <Button size="sm" className="h-9" onClick={handleSend} disabled={isSending}>
-                      {isSending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        "Send"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 px-5 py-4 border-t border-border bg-secondary/30">
-          <Button variant="outline" className="flex-1 h-9" size="sm" onClick={onClose}>
-            Cancel
-          </Button>
+        <div className="px-6 py-4 bg-gray-50 flex items-center gap-3 border-t border-gray-200">
           {document.status === "pending" ? (
-            <Button
-              className="flex-1 h-9 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black"
-              size="sm"
-              onClick={handleSave}
-              disabled={!agreedToTerms || isSaving}
-            >
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <PenTool className="w-3.5 h-3.5 mr-1.5" />
-                  Sign Document
-                </>
-              )}
-            </Button>
+            <>
+              <button
+                className="bg-[#1e003b] hover:bg-[#1e003b]/90 text-white px-6 py-2 rounded text-[13px] font-bold transition-colors"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Adopt and Sign"}
+              </button>
+              <button
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-2 rounded text-[13px] font-bold transition-colors"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+            </>
           ) : (
             <>
-              <Button variant="outline" className="flex-1 h-9" size="sm" onClick={handleDownload}>
-                <Download className="w-3.5 h-3.5 mr-1.5" />
+              <button
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-2 rounded text-[13px] font-bold transition-colors"
+                onClick={onClose}
+              >
+                Close
+              </button>
+              <button
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-2 rounded text-[13px] font-bold transition-colors"
+                onClick={handleDownload}
+              >
                 Download
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 h-9"
-                size="sm"
-                onClick={() => {
-                  setShowInviteForm(!showInviteForm);
-                  setShowSendForm(false);
-                }}
-              >
-                <UserPlus className="w-3.5 h-3.5 mr-1.5" />
-                Invite
-              </Button>
-              <Button
-                className="flex-1 h-9 bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black"
-                size="sm"
-                onClick={() => {
-                  setShowSendForm(!showSendForm);
-                  setShowInviteForm(false);
-                }}
-              >
-                <Send className="w-3.5 h-3.5 mr-1.5" />
-                Send Copy
-              </Button>
+              </button>
             </>
           )}
         </div>

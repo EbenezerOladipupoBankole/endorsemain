@@ -4,6 +4,7 @@ import * as nodemailer from "nodemailer";
 import * as crypto from "crypto";
 import { defineSecret } from "firebase-functions/params";
 import axios from "axios";
+import Anthropic from "@anthropic-ai/sdk";
 import { Stripe } from "stripe";
 import { PrismaClient } from "@prisma/client";
 
@@ -30,6 +31,9 @@ const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 // --- WHATSAPP BUSINESS API CONFIGURATION ---
 const whatsappAccessToken = defineSecret("WHATSAPP_ACCESS_TOKEN");
 const whatsappPhoneNumberId = defineSecret("WHATSAPP_PHONE_NUMBER_ID");
+
+// --- CLAUDE (document summaries) ---
+const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
 // Escapes user-controlled strings before they're interpolated into HTML email
 // bodies, since filenames/display names are attacker-controlled input.
@@ -73,6 +77,27 @@ const APP_URL = "https://e-ndorse.online"; // Updated to new custom domain
 
 const ADMIN_EMAILS = ["bankoleebenezer111@gmail.com", "omakaoe@gmail.com", "ayindeenny112@gmail.com"];
 
+// Admin rights require the admin address to be *verified*: anyone can create an email/password
+// account for an address they don't own, so an unverified claim on an admin email proves nothing.
+function isVerifiedAdmin(auth: { token: { email?: string; email_verified?: boolean } } | undefined): boolean {
+  return !!auth?.token.email && auth.token.email_verified === true && ADMIN_EMAILS.includes(auth.token.email);
+}
+
+// Per-user daily cap on emails/messages the app sends on someone's behalf, so a compromised or
+// malicious account can't use our Gmail / WhatsApp sender to spam people.
+const DAILY_SEND_LIMIT = 50;
+async function consumeSendQuota(uid: string, count = 1): Promise<void> {
+  const day = new Date().toISOString().slice(0, 10);
+  const ref = admin.firestore().collection("send_quota").doc(`${uid}_${day}`);
+  await admin.firestore().runTransaction(async (tx) => {
+    const used = ((await tx.get(ref)).data()?.count as number) || 0;
+    if (used + count > DAILY_SEND_LIMIT) {
+      throw new HttpsError("resource-exhausted", `Daily sending limit reached (${DAILY_SEND_LIMIT}). Please try again tomorrow.`);
+    }
+    tx.set(ref, { count: used + count, uid, day, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  });
+}
+
 interface InvitePayload {
   documentId: string;
   recipientEmail: string;
@@ -82,14 +107,6 @@ interface SendDocumentPayload {
   recipientEmail: string;
   pdfBase64: string;
   documentName: string;
-}
-
-interface SendSignerInvitesPayload {
-  signers: { email: string; role: string }[];
-  documentName: string;
-  uploaderName: string;
-  uploaderEmail: string;
-  documentId: string;
 }
 
 interface AcceptInvitePayload {
@@ -117,7 +134,7 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword], cors:
   const userData = userSnap.data();
   const documentsSigned = userData?.documentsSigned || 0;
   const isPro = userData?.plan === "pro" || userData?.plan === "business";
-  const isAdmin = request.auth.token.email && ADMIN_EMAILS.includes(request.auth.token.email);
+  const isAdmin = isVerifiedAdmin(request.auth);
 
   if (!isPro && !isAdmin && documentsSigned >= 3) {
     throw new HttpsError("resource-exhausted", "You have reached the limit of 3 free documents. Please upgrade to continue.");
@@ -195,49 +212,6 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword], cors:
   }
 });
 
-// Function to handle bulk invites from Dashboard
-export const sendSignerInvites = onCall({ secrets: [gmailEmail, gmailPassword], cors: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "User must be logged in.");
-  }
-
-  const data = request.data as SendSignerInvitesPayload;
-  const { signers, documentName, uploaderName, documentId } = data;
-
-  if (!signers || !Array.isArray(signers) || signers.length === 0) {
-    throw new HttpsError("invalid-argument", "No signers provided.");
-  }
-
-  // The signing link is always derived from documentId server-side — never
-  // trust a client-supplied URL here, or this endpoint becomes an open
-  // phishing relay (arbitrary link sent from the app's trusted mail account).
-  const documentLink = documentId ? `${APP_URL}/sign/${documentId}` : APP_URL;
-  console.log(`Sending invite email with link: ${documentLink}`);
-
-  console.log(`Starting bulk invite for document: ${documentName}, ID: ${documentId}`);
-  const results = [];
-
-  for (const signer of signers) {
-    try {
-      console.log(`Sending invite email to: ${signer.email}`);
-      await getTransporter().sendMail({
-        from: `"Endorse App" <${gmailEmail.value()}>`,
-        to: signer.email,
-        subject: `${uploaderName} invited you to sign ${documentName}`,
-        text: `Hello,\n\n${uploaderName} has invited you to sign the document "${documentName}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
-        html: `<div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse Logo" width="100" style="width: 100px; height: auto;" /></div><p>Hello,</p><p><strong>${escapeHtml(uploaderName)}</strong> has invited you to sign the document "<strong>${escapeHtml(documentName)}</strong>".</p><p>Please click the link below to access your dashboard and sign the document:</p><p><a href="${documentLink}">Go to Document</a></p><p>Best,<br>Endorse Team</p>`,
-      });
-      console.log(`Invite sent successfully to: ${signer.email}`);
-      results.push({ email: signer.email, status: 'sent' });
-    } catch (error: any) {
-      console.error(`Failed to send email to ${signer.email}:`, error);
-      results.push({ email: signer.email, status: 'failed', error: error.message });
-    }
-  }
-
-  return { success: true, results };
-});
-
 export const acceptTeamInvite = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in to accept an invite.");
@@ -277,27 +251,47 @@ export const acceptTeamInvite = onCall({ cors: true }, async (request) => {
   return { success: true, message: 'Team joined successfully.' };
 });
 
-// Function to send the signed document via email
+// Emails a signed PDF (e.g. to a client). Recipients are arbitrary by design, so this is limited to
+// verified accounts, rate limited, size limited, and always identifies the real sender.
 export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
+  if (request.auth.token.email_verified !== true || !request.auth.token.email) {
+    throw new HttpsError("permission-denied", "Please verify your email address before sending documents.");
+  }
 
-  const data = request.data as SendDocumentPayload;
-  const { recipientEmail, pdfBase64, documentName } = data;
-  const base64Content = pdfBase64.split(",")[1]; // Remove data:application/pdf;base64, prefix
+  const { recipientEmail, pdfBase64, documentName } = request.data as SendDocumentPayload;
+  if (typeof recipientEmail !== "string" || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(recipientEmail.trim())) {
+    throw new HttpsError("invalid-argument", "A single valid recipient email address is required.");
+  }
+  if (typeof pdfBase64 !== "string" || !pdfBase64.startsWith("data:application/pdf;base64,")) {
+    throw new HttpsError("invalid-argument", "Only PDF attachments can be sent.");
+  }
+  const base64Content = pdfBase64.slice("data:application/pdf;base64,".length);
+  if (base64Content.length > 10 * 1024 * 1024) {
+    throw new HttpsError("invalid-argument", "The document is too large to email.");
+  }
+  const safeName = String(documentName || "document").replace(/[^\w .()-]/g, "").trim().slice(0, 100) || "document";
+  const senderEmail = request.auth.token.email;
+
+  await consumeSendQuota(request.auth.uid);
 
   try {
     await getTransporter().sendMail({
-      from: `"Endorse App" <${gmailEmail.value()}>`,
-      to: recipientEmail,
-      subject: `Signed Document: ${documentName}`,
-      text: `Please find attached the signed copy of ${documentName}.`,
+      from: `"Endorse" <${gmailEmail.value()}>`,
+      replyTo: senderEmail,
+      to: recipientEmail.trim(),
+      subject: `Signed document from ${senderEmail}: ${safeName}`,
+      text: `${senderEmail} sent you the signed copy of "${safeName}" using Endorse. It's attached to this email.
+
+If you weren't expecting this, you can ignore it.`,
       attachments: [
         {
-          filename: `${documentName}.pdf`,
+          filename: `${safeName}.pdf`,
           content: base64Content,
           encoding: "base64",
+          contentType: "application/pdf",
         },
       ],
     });
@@ -305,7 +299,154 @@ export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword], cors:
     return { success: true };
   } catch (error: any) {
     console.error("Send Document Error:", error);
-    throw new HttpsError("internal", error.message || "Failed to send document.");
+    throw new HttpsError("internal", "Failed to send document.");
+  }
+});
+
+const emailShell = (inner: string) => `
+  <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #ffffff;">
+    <div style="margin-bottom: 20px;"><img src="https://e-ndorse.online/favicon.svg" alt="Endorse" width="44" /></div>
+    ${inner}
+    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0 12px;" />
+    <p style="font-size: 12px; color: #94a3b8;">Sent with Endorse &middot; e-ndorse.online</p>
+  </div>`;
+
+const emailButton = (href: string, label: string) =>
+  `<p style="margin: 28px 0;"><a href="${href}" style="background-color: #0A66C2; color: #ffffff; padding: 12px 26px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 15px;">${label}</a></p>`;
+
+// Emails the recipient of a signature request an invite to sign on Endorse.
+// Everything in the email is read from the stored document — the caller only
+// supplies its ID — and only the document's sender can trigger it.
+export const sendAgreementInvite = onCall({ secrets: [gmailEmail, gmailPassword], cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const { documentId } = request.data as { documentId?: string };
+  if (!documentId) {
+    throw new HttpsError("invalid-argument", "Missing documentId.");
+  }
+
+  const snap = await admin.firestore().collection("documents").doc(documentId).get();
+  const docData = snap.data();
+  if (!snap.exists || !docData) {
+    throw new HttpsError("not-found", "Document not found.");
+  }
+
+  const callerEmail = request.auth.token.email;
+  const isAdmin = isVerifiedAdmin(request.auth);
+  if (!isAdmin && docData.ownerEmail !== callerEmail) {
+    throw new HttpsError("permission-denied", "Only the sender can send invites for this document.");
+  }
+  if (!docData.recipientEmail) {
+    throw new HttpsError("failed-precondition", "This document has no recipient.");
+  }
+  if (docData.status !== "pending") {
+    throw new HttpsError("failed-precondition", "This document has already been signed.");
+  }
+
+  await consumeSendQuota(request.auth.uid);
+
+  const documentLink = `${APP_URL}/sign/${documentId}`;
+  const senderName = String(docData.senderName || docData.adminName || docData.ownerEmail);
+  const recipientName = docData.recipientName || docData.studentName || "";
+  const message = typeof docData.message === "string" ? docData.message.slice(0, 1000) : "";
+
+  try {
+    await getTransporter().sendMail({
+      from: `"${senderName.replace(/["\r\n]/g, "")} via Endorse" <${gmailEmail.value()}>`,
+      replyTo: docData.ownerEmail,
+      to: docData.recipientEmail,
+      subject: `${senderName} sent you "${docData.name}" to sign`,
+      text: `Hi${recipientName ? ` ${recipientName}` : ""},\n\n${senderName} (${docData.ownerEmail}) has asked you to review and sign "${docData.name}".${message ? `\n\nTheir note:\n${message}` : ""}\n\nOpen the document:\n${documentLink}\n\nSign in or create a free Endorse account with ${docData.recipientEmail} to sign it.\n\nEndorse`,
+      html: emailShell(`
+        <p style="font-size: 15px; color: #0f172a;">Hi${recipientName ? ` <strong>${escapeHtml(recipientName)}</strong>` : ""},</p>
+        <p style="font-size: 15px; color: #334155; line-height: 1.6;"><strong>${escapeHtml(senderName)}</strong> (${escapeHtml(docData.ownerEmail)}) has asked you to review and sign:</p>
+        <div style="background-color: #f8fafc; border-left: 4px solid #FFC83D; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
+          <p style="margin: 0; font-weight: bold; color: #0f172a;">${escapeHtml(docData.name)}</p>
+        </div>
+        ${message ? `<p style="font-size: 14px; color: #475569; line-height: 1.6; white-space: pre-line;"><em>&ldquo;${escapeHtml(message)}&rdquo;</em></p>` : ""}
+        ${emailButton(documentLink, "Review &amp; sign")}
+        <p style="font-size: 13px; color: #64748b;">You'll be asked to sign in or create a free Endorse account using <strong>${escapeHtml(docData.recipientEmail)}</strong>.</p>
+      `),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("sendAgreementInvite Error:", error);
+    throw new HttpsError("internal", error.message || "Failed to send invite email.");
+  }
+});
+
+// Sends the signer a confirmation and tells the sender the document was signed.
+// Recipients and content come from the stored document, never from the caller.
+export const notifyAgreementSigned = onCall({ secrets: [gmailEmail, gmailPassword], cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+
+  const { documentId } = request.data as { documentId?: string };
+  if (!documentId) {
+    throw new HttpsError("invalid-argument", "Missing documentId.");
+  }
+
+  const snap = await admin.firestore().collection("documents").doc(documentId).get();
+  const docData = snap.data();
+  if (!snap.exists || !docData) {
+    throw new HttpsError("not-found", "Document not found.");
+  }
+
+  const callerEmail = request.auth.token.email;
+  const isWhatsAppSigner = request.auth.uid === `whatsapp-signer-${documentId}`;
+  const isParty =
+    isWhatsAppSigner ||
+    (!!callerEmail && (callerEmail === docData.recipientEmail || callerEmail === docData.ownerEmail));
+  if (!isParty) {
+    throw new HttpsError("permission-denied", "Not a party to this document.");
+  }
+  if (docData.status !== "signed" && docData.status !== "completed") {
+    throw new HttpsError("failed-precondition", "This document hasn't been signed yet.");
+  }
+
+  const signerName = docData.recipientName || docData.studentName || docData.recipientEmail || docData.recipientPhone;
+  const signerContact = docData.recipientEmail || docData.recipientPhone;
+  const senderName = docData.senderName || docData.adminName || docData.ownerEmail;
+  const signedDateStr = new Date().toUTCString();
+
+  try {
+    const transporter = getTransporter();
+
+    if (docData.recipientEmail) await transporter.sendMail({
+      from: `"Endorse" <${gmailEmail.value()}>`,
+      to: docData.recipientEmail,
+      subject: `You signed "${docData.name}"`,
+      text: `Hi ${signerName},\n\nYour signature on "${docData.name}" was recorded on ${signedDateStr}. ${senderName} has been notified.\n\nEndorse`,
+      html: emailShell(`
+        <p style="font-size: 15px; color: #0f172a;">Hi <strong>${escapeHtml(signerName)}</strong>,</p>
+        <p style="font-size: 15px; color: #334155; line-height: 1.6;">Your signature on <strong>${escapeHtml(docData.name)}</strong> was recorded on ${signedDateStr}. ${escapeHtml(senderName)} has been notified.</p>
+      `),
+    });
+
+    if (docData.ownerEmail) {
+      await transporter.sendMail({
+        from: `"Endorse" <${gmailEmail.value()}>`,
+        to: docData.ownerEmail,
+        subject: `${signerName} signed "${docData.name}"`,
+        text: `${signerName} (${signerContact}) signed "${docData.name}" on ${signedDateStr}.\n\nDownload the signed copy from Team Management:\n${APP_URL}/team\n\nEndorse`,
+        html: emailShell(`
+          <p style="font-size: 15px; color: #334155; line-height: 1.6;"><strong>${escapeHtml(signerName)}</strong> (${escapeHtml(signerContact)}) signed <strong>${escapeHtml(docData.name)}</strong>.</p>
+          <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
+            <p style="margin: 0; font-weight: bold; color: #166534;">Signed &middot; ${signedDateStr}</p>
+          </div>
+          ${emailButton(`${APP_URL}/team`, "Download signed copy")}
+        `),
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("notifyAgreementSigned Error:", error);
+    return { success: false, error: error.message };
   }
 });
 
@@ -951,10 +1092,14 @@ export const inviteTeamMember = onCall({
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
-  const { inviteEmail, role = 'member' } = request.data as { inviteEmail: string; role: string };
-  if (!inviteEmail) {
-    throw new HttpsError("invalid-argument", "Missing invite email.");
+  const { inviteEmail, role: requestedRole = 'member' } = request.data as { inviteEmail: string; role: string };
+  if (!inviteEmail || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(String(inviteEmail).trim())) {
+    throw new HttpsError("invalid-argument", "A valid invite email is required.");
   }
+  if (requestedRole !== 'member' && requestedRole !== 'admin') {
+    throw new HttpsError("invalid-argument", "Role must be 'member' or 'admin'.");
+  }
+  const role = requestedRole;
 
   const db = admin.firestore();
   
@@ -965,6 +1110,13 @@ export const inviteTeamMember = onCall({
   if (!teamId) {
     throw new HttpsError("failed-precondition", "You are not part of a team. Please create one first.");
   }
+
+  // Only team admins may invite people (otherwise any member could add new admins).
+  const callerMember = await db.collection('teams').doc(teamId).collection('members').doc(request.auth.uid).get();
+  if (!callerMember.exists || callerMember.data()?.role !== 'admin') {
+    throw new HttpsError("permission-denied", "Only team admins can invite new members.");
+  }
+  await consumeSendQuota(request.auth.uid);
 
   try {
     const token = crypto.randomBytes(32).toString('hex');
@@ -1031,185 +1183,190 @@ async function sendWhatsAppMessage(
   );
 }
 
-// ---- 1. sendWhatsAppInvites ----
-// Callable from the Dashboard when signer channel = 'whatsapp'
-export const sendWhatsAppInvites = onCall(
+function getWhatsAppCredentials() {
+  try {
+    return { token: whatsappAccessToken.value(), phoneId: whatsappPhoneNumberId.value() };
+  } catch (e) {
+    return { token: process.env.WHATSAPP_ACCESS_TOKEN || "", phoneId: process.env.WHATSAPP_PHONE_NUMBER_ID || "" };
+  }
+}
+
+const maskPhone = (phone: string) => {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits.length > 4 ? `+${"•".repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}` : "your number";
+};
+
+// ---- 1. sendWhatsAppInvite ----
+// Sends the WhatsApp signing invite for one document. The document (created by the
+// sender in Firestore) is the only source of the phone number and message content,
+// and only its sender can trigger this — so it can't be used to message arbitrary numbers.
+export const sendWhatsAppInvite = onCall(
   { secrets: [whatsappAccessToken, whatsappPhoneNumberId], cors: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "User must be logged in.");
     }
-
-    const { signers, documentName, uploaderName, pdfBase64 } = request.data as {
-      signers: { name: string; phone: string }[];
-      documentName: string;
-      uploaderName: string;
-      pdfBase64: string;
-    };
-
-    if (!signers || signers.length === 0) {
-      throw new HttpsError("invalid-argument", "No WhatsApp signers provided.");
+    const { documentId } = request.data as { documentId?: string };
+    if (!documentId) {
+      throw new HttpsError("invalid-argument", "Missing documentId.");
     }
 
-    const db = admin.firestore();
-    let waToken = "";
-    let waPhoneId = "";
+    const docRef = admin.firestore().collection("documents").doc(documentId);
+    const snap = await docRef.get();
+    const docData = snap.data();
+    if (!snap.exists || !docData) {
+      throw new HttpsError("not-found", "Document not found.");
+    }
+    const callerEmail = request.auth.token.email;
+    const isAdmin = isVerifiedAdmin(request.auth);
+    if (!isAdmin && docData.ownerEmail !== callerEmail) {
+      throw new HttpsError("permission-denied", "Only the sender can send invites for this document.");
+    }
+    if (docData.channel !== "whatsapp" || !docData.recipientPhone) {
+      throw new HttpsError("failed-precondition", "This document isn't addressed to a WhatsApp number.");
+    }
+    if (docData.status !== "pending") {
+      throw new HttpsError("failed-precondition", "This document has already been signed.");
+    }
+
+    const { token, phoneId } = getWhatsAppCredentials();
+    if (!token || !phoneId) {
+      throw new HttpsError("failed-precondition", "WhatsApp messaging isn't configured on the server.");
+    }
+
+    await consumeSendQuota(request.auth.uid);
+
+    const signingLink = `${APP_URL}/sign/${documentId}/verify`;
+    const signerName = docData.recipientName || "there";
+    const senderName = docData.senderName || docData.ownerEmail;
+    const to = String(docData.recipientPhone).replace(/\D/g, "");
+
     try {
-      waToken = whatsappAccessToken.value();
-      waPhoneId = whatsappPhoneNumberId.value();
-    } catch (e) {
-      waToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
-      waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
-    }
-
-    const results: { phone: string; status: string; docId?: string; error?: string }[] = [];
-
-    for (const signer of signers) {
       try {
-        // 1. Persist document to Firestore
-        const docRef = await db.collection("documents").add({
-          name: documentName,
-          pdfBase64,
-          status: "pending",
-          channel: "whatsapp",
-          recipientPhone: signer.phone,
-          recipientName: signer.name,
-          ownerEmail: request.auth!.token.email || "",
-          uploaderName,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          deliveryStatus: "pending",
-        });
-
-        const signingLink = `${APP_URL}/sign/${docRef.id}`;
-
-        // 2. Send WhatsApp message
-        if (waToken && waPhoneId) {
-          try {
-            // Attempt approved template first
-            await sendWhatsAppMessage(waToken, waPhoneId, signer.phone, {
-              type: "template",
-              template: {
-                name: "document_signing_invite",
-                language: { code: "en_US" },
-                components: [
-                  {
-                    type: "body",
-                    parameters: [
-                      { type: "text", text: signer.name },
-                      { type: "text", text: uploaderName },
-                      { type: "text", text: documentName },
-                      { type: "text", text: signingLink },
-                    ],
-                  },
+        // Approved template (required by Meta for business-initiated conversations)
+        await sendWhatsAppMessage(token, phoneId, to, {
+          type: "template",
+          template: {
+            name: "document_signing_invite",
+            language: { code: "en_US" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: signerName },
+                  { type: "text", text: senderName },
+                  { type: "text", text: docData.name },
+                  { type: "text", text: signingLink },
                 ],
               },
-            });
-          } catch (templateErr: any) {
-            // Template not approved yet — fall back to plain text
-            console.warn("Template send failed, falling back to text:", templateErr?.response?.data || templateErr.message);
-            await sendWhatsAppMessage(waToken, waPhoneId, signer.phone, {
-              type: "text",
-              text: {
-                body: `Hi ${signer.name},\n\n${uploaderName} has invited you to sign *${documentName}* on Endorse.\n\nClick the link below to view and sign:\n${signingLink}\n\nThis link is unique to you. Do not share it.`,
-              },
-            });
-          }
-          // 3. Mark as sent
-          await docRef.update({ deliveryStatus: "sent" });
-        } else {
-          console.warn("WhatsApp credentials not configured — skipping message send.");
-        }
-
-        results.push({ phone: signer.phone, status: "sent", docId: docRef.id });
-      } catch (err: any) {
-        console.error(`WhatsApp invite failed for ${signer.phone}:`, err?.response?.data || err.message);
-        results.push({ phone: signer.phone, status: "failed", error: err.message });
+            ],
+          },
+        });
+      } catch (templateErr: any) {
+        // Template not approved yet — plain text only delivers inside an open 24h conversation.
+        console.warn("Template send failed, falling back to text:", templateErr?.response?.data || templateErr.message);
+        await sendWhatsAppMessage(token, phoneId, to, {
+          type: "text",
+          text: {
+            body: `Hi ${signerName},\n\n${senderName} has asked you to sign *${docData.name}* on Endorse.\n\nOpen this link to verify your number and sign:\n${signingLink}`,
+          },
+        });
       }
+      await docRef.update({ deliveryStatus: "sent", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      return { success: true };
+    } catch (err: any) {
+      console.error("sendWhatsAppInvite failed:", err?.response?.data || err.message);
+      await docRef.update({ deliveryStatus: "failed" });
+      throw new HttpsError("internal", "WhatsApp message could not be delivered.");
     }
-
-    return { success: true, results };
   }
 );
 
-// ---- 2. sendWhatsAppOTP ----
-// Callable from the signing verification page when recipient opens /sign/:id
+// ---- 2. getWhatsAppSigningInfo ----
+// Public: the verify page needs to show what's being signed before the signer is
+// authenticated. Returns only non-sensitive fields and a masked phone number.
+export const getWhatsAppSigningInfo = onCall({ cors: true }, async (request) => {
+  const { documentId } = request.data as { documentId?: string };
+  if (!documentId) {
+    throw new HttpsError("invalid-argument", "Missing documentId.");
+  }
+  const snap = await admin.firestore().collection("documents").doc(documentId).get();
+  const docData = snap.data();
+  if (!snap.exists || !docData || docData.channel !== "whatsapp") {
+    throw new HttpsError("not-found", "Document not found.");
+  }
+  return {
+    name: docData.name,
+    senderName: docData.senderName || docData.uploaderName || "",
+    recipientName: docData.recipientName || "",
+    maskedPhone: maskPhone(docData.recipientPhone),
+    status: docData.status,
+  };
+});
+
+// ---- 3. sendWhatsAppOTP ----
+// Sends a one-time code to the phone number stored on the document. The caller never
+// supplies the number, so codes only ever go to the invited recipient.
 export const sendWhatsAppOTP = onCall(
   { secrets: [whatsappAccessToken, whatsappPhoneNumberId], cors: true },
   async (request) => {
-    const { documentId, phone } = request.data as { documentId: string; phone: string };
-
-    if (!documentId || !phone) {
-      throw new HttpsError("invalid-argument", "Missing documentId or phone.");
+    const { documentId } = request.data as { documentId?: string };
+    if (!documentId) {
+      throw new HttpsError("invalid-argument", "Missing documentId.");
     }
 
     const db = admin.firestore();
-
-    // Validate document exists and phone matches
     const docSnap = await db.collection("documents").doc(documentId).get();
-    if (!docSnap.exists) {
+    const docData = docSnap.data();
+    if (!docSnap.exists || !docData) {
       throw new HttpsError("not-found", "Document not found.");
     }
-    const docData = docSnap.data()!;
-    if (docData.channel !== "whatsapp") {
+    if (docData.channel !== "whatsapp" || !docData.recipientPhone) {
       throw new HttpsError("failed-precondition", "This document is not a WhatsApp-channel document.");
     }
-    const normalise = (p: string) => p.replace(/[\s\-().+]/g, "");
-    if (normalise(docData.recipientPhone) !== normalise(phone)) {
-      throw new HttpsError("permission-denied", "Phone number does not match the invited recipient.");
+    if (docData.status !== "pending") {
+      throw new HttpsError("failed-precondition", "This document has already been signed.");
     }
 
     // Rate-limit: no resend within 60 seconds
     const otpRef = db.collection("whatsapp_otps").doc(documentId);
     const existingOtp = await otpRef.get();
     if (existingOtp.exists) {
-      const data = existingOtp.data()!;
-      const createdAt: admin.firestore.Timestamp = data.createdAt;
-      const secondsSince = (Date.now() - createdAt.toMillis()) / 1000;
-      if (secondsSince < 60) {
-        throw new HttpsError("resource-exhausted", "Please wait before requesting a new OTP.");
+      const createdAt: admin.firestore.Timestamp | undefined = existingOtp.data()?.createdAt;
+      if (createdAt && (Date.now() - createdAt.toMillis()) / 1000 < 60) {
+        throw new HttpsError("resource-exhausted", "Please wait a minute before requesting a new code.");
       }
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000);
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const phone = String(docData.recipientPhone).replace(/\D/g, "");
 
     await otpRef.set({
       otp,
-      expiresAt,
+      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
       attempts: 0,
       phone,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    let waToken = "";
-    let waPhoneId = "";
-    try {
-      waToken = whatsappAccessToken.value();
-      waPhoneId = whatsappPhoneNumberId.value();
-    } catch (e) {
-      waToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
-      waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
-    }
-
-    if (waToken && waPhoneId) {
-      await sendWhatsAppMessage(waToken, waPhoneId, phone, {
+    const { token, phoneId } = getWhatsAppCredentials();
+    if (token && phoneId) {
+      await sendWhatsAppMessage(token, phoneId, phone, {
         type: "text",
         text: {
           body: `Your Endorse verification code is: *${otp}*\n\nThis code expires in 5 minutes. Do not share it with anyone.`,
         },
       });
     } else {
-      // Dev/emulator mode: log OTP so developer can test without real credentials
+      // Emulator/dev mode: log OTP so a developer can test without real credentials
       console.log(`[DEV MODE] WhatsApp OTP for ${phone}: ${otp}`);
     }
 
-    return { success: true };
+    return { success: true, maskedPhone: maskPhone(phone) };
   }
 );
 
-// ---- 3. verifyWhatsAppOTP ----
+// ---- 4. verifyWhatsAppOTP ----
 // Callable from the OTP verification page; returns a custom Firebase auth token on success
 export const verifyWhatsAppOTP = onCall({ cors: true }, async (request) => {
   const { documentId, otp } = request.data as { documentId: string; otp: string };
@@ -1271,7 +1428,7 @@ export const verifyWhatsAppOTP = onCall({ cors: true }, async (request) => {
   return { success: true, customToken };
 });
 
-// ---- 4. whatsappWebhook ----
+// ---- 5. whatsappWebhook ----
 // Public HTTP endpoint — handles Meta webhook verification + delivery status updates
 export const whatsappWebhook = onRequest(
   { secrets: [whatsappAccessToken], cors: false },
@@ -1340,3 +1497,114 @@ export const whatsappWebhook = onRequest(
     }
   }
 );
+
+// ---- summarizeDocument ----
+// Plain-language summary of a document before signing. The client sends the PDF it is
+// viewing (base64, no data: prefix) or, for HTML agreements, the document text.
+const SUMMARY_SCHEMA = {
+  type: "object",
+  properties: {
+    overview: { type: "string" },
+    keyPoints: { type: "array", items: { type: "string" } },
+    parties: { type: "array", items: { type: "string" } },
+    dates: { type: "array", items: { type: "string" } },
+    amounts: { type: "array", items: { type: "string" } },
+    obligations: { type: "array", items: { type: "string" } },
+    watchOuts: { type: "array", items: { type: "string" } },
+  },
+  required: ["overview", "keyPoints", "parties", "dates", "amounts", "obligations", "watchOuts"],
+  additionalProperties: false,
+} as const;
+
+const SUMMARY_SYSTEM = `You summarize documents for people about to sign them on Endorse, an e-signature app.
+Write for a non-lawyer. Be accurate and specific: quote names, dates, amounts and durations exactly as they appear.
+- overview: 2-3 sentences on what the document is and what signing it means.
+- keyPoints: the 3-7 most important terms.
+- parties, dates, amounts: as stated in the document (empty list if none).
+- obligations: what each party commits to do.
+- watchOuts: terms a signer should read carefully (auto-renewal, penalties, termination, exclusivity, liability, non-compete). Empty list if nothing stands out.
+Only use what is in the document. This is not legal advice.`;
+
+const MAX_SUMMARY_PDF_BYTES = 20 * 1024 * 1024;
+const MAX_SUMMARY_TEXT_CHARS = 400_000;
+
+export const summarizeDocument = onCall({
+  secrets: [anthropicApiKey],
+  memory: "512MiB",
+  timeoutSeconds: 300,
+  cors: true,
+}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Sign in to summarize documents.");
+  }
+
+  const { pdfBase64, text, name } = request.data as { pdfBase64?: string; text?: string; name?: string };
+
+  let documentBlock: Anthropic.Beta.BetaContentBlockParam;
+  if (pdfBase64) {
+    if (pdfBase64.length * 0.75 > MAX_SUMMARY_PDF_BYTES) {
+      throw new HttpsError("invalid-argument", "This document is too large to summarize (20 MB max).");
+    }
+    documentBlock = {
+      type: "document",
+      source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+    };
+  } else if (text && text.trim()) {
+    if (text.length > MAX_SUMMARY_TEXT_CHARS) {
+      throw new HttpsError("invalid-argument", "This document is too long to summarize.");
+    }
+    documentBlock = {
+      type: "document",
+      source: { type: "text", media_type: "text/plain", data: text },
+    };
+  } else {
+    throw new HttpsError("invalid-argument", "Missing document.");
+  }
+
+  const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+
+  try {
+    const response = await client.beta.messages.create({
+      model: "claude-opus-5-5",
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: {
+        effort: "medium",
+        format: { type: "json_schema", schema: SUMMARY_SCHEMA },
+      },
+      system: SUMMARY_SYSTEM,
+      messages: [{
+        role: "user",
+        content: [
+          documentBlock,
+          { type: "text", text: `Summarize this document${name ? ` ("${name}")` : ""}.` },
+        ],
+      }],
+    });
+
+    if (response.stop_reason === "refusal") {
+      throw new HttpsError("failed-precondition", "This document couldn't be summarized.");
+    }
+    if (response.stop_reason === "max_tokens") {
+      throw new HttpsError("resource-exhausted", "The summary was cut off. Please try again.");
+    }
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      throw new HttpsError("internal", "No summary was returned.");
+    }
+    return { summary: JSON.parse(textBlock.text) };
+  } catch (err) {
+    if (err instanceof HttpsError) throw err;
+    if (err instanceof Anthropic.RateLimitError) {
+      throw new HttpsError("resource-exhausted", "Summaries are busy right now. Try again in a minute.");
+    }
+    if (err instanceof Anthropic.APIError) {
+      console.error("summarizeDocument Claude API error:", err.status, err.message, err.requestID);
+      throw new HttpsError("internal", "Could not summarize this document.");
+    }
+    console.error("summarizeDocument error:", err);
+    throw new HttpsError("internal", "Could not summarize this document.");
+  }
+});

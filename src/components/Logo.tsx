@@ -1,14 +1,7 @@
-import { PenTool } from "lucide-react";
-import logo from "../assets/images/logo.png";
+import logo from "../assets/images/logo-cropped.png";
 
-export const Logo = ({ className }: { className?: string }) => {
-  const logoSrc = logo;
-
-  return logoSrc ? (
-    <img src={logoSrc} alt="Logo" className={`shrink-0 object-contain rounded-xl ${className}`} />
-  ) : (
-    <div className={`flex aspect-square shrink-0 items-center justify-center rounded-xl border-2 border-yellow-400 bg-primary text-primary-foreground shadow-sm ${className}`}>
-      <PenTool className="h-1/2 w-1/2 text-yellow-400" />
-    </div>
-  );
-};
+// The image is trimmed to the wordmark, so the className height is the logo's real visual height
+// (e.g. h-9 in headers, h-12 in footers).
+export const Logo = ({ className }: { className?: string }) => (
+  <img src={logo} alt="Endorse" width={402} height={197} className={`w-auto shrink-0 object-contain ${className ?? "h-10"}`} />
+);

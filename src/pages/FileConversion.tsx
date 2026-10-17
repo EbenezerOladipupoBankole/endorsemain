@@ -1,17 +1,12 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Logo } from "@/components/Logo";
-import {
-  Upload, FileType, ArrowRight, Download, Loader2,
-  FileText, Image as ImageIcon, CheckCircle2, X,
-  ArrowLeft, FileImage, Zap, LayoutGrid, Sparkles, Lock
-} from "lucide-react";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { ArrowLeft, ArrowRight, CheckCircle2, Combine, Download, FileImage, FileText, FileType, ImagePlus, Loader2, Lock, ShieldCheck, Sparkles, Upload, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/components/client";
-import { useAuth } from "@/components/AuthContext";
 
 const tools = [
   {
@@ -40,10 +35,10 @@ const tools = [
     id: "image-to-pdf",
     title: "Image to PDF",
     description: "Convert JPG and PNG images to PDF format.",
-    icon: ImageIcon,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50",
-    borderColor: "group-hover:border-purple-200",
+    icon: ImagePlus,
+    color: "text-teal-600",
+    bgColor: "bg-teal-50",
+    borderColor: "group-hover:border-teal-200",
     accept: ".jpg,.jpeg,.png",
     targetFormat: "pdf"
   },
@@ -62,7 +57,7 @@ const tools = [
     id: "merge-pdf",
     title: "Merge PDF",
     description: "Combine multiple PDF files into one single document.",
-    icon: LayoutGrid,
+    icon: Combine,
     color: "text-green-600",
     bgColor: "bg-green-50",
     borderColor: "group-hover:border-green-200",
@@ -84,7 +79,6 @@ const tools = [
 ];
 
 const FileConversion = () => {
-  const { user } = useAuth();
   const [selectedTool, setSelectedTool] = useState<typeof tools[0] | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState("");
@@ -95,14 +89,18 @@ const FileConversion = () => {
 
   const handleToolSelect = (tool: typeof tools[0]) => {
     setSelectedTool(tool);
-    setFile(null);
+    setFiles([]);
+    setPassword("");
+    setConvertedBlob(null);
     setIsSuccess(false);
     setIsDragging(false);
   };
 
   const handleBack = () => {
     setSelectedTool(null);
-    setFile(null);
+    setFiles([]);
+    setPassword("");
+    setConvertedBlob(null);
     setIsSuccess(false);
     setIsDragging(false);
   };
@@ -239,48 +237,24 @@ const FileConversion = () => {
 
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
-      {/* Simple Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-12 md:h-20 w-auto" />
-          </Link>
-          <div className="flex items-center gap-4">
-            {user ? (
-              <Link to="/dashboard">
-                <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Dashboard</Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/auth">
-                  <Button variant="ghost">Sign In</Button>
-                </Link>
-                <Link to="/auth?mode=signup">
-                  <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
-                </Link>
-              </>
-            )}
-          </div>
-
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="flex-1">
         {!selectedTool ? (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             {/* Hero Section */}
-            <div className="relative py-20 px-4 md:px-6 overflow-hidden bg-gradient-to-b from-secondary/30 to-background">
+            <div className="relative py-12 md:py-20 px-4 md:px-6 overflow-hidden bg-gradient-to-b from-secondary/30 to-background">
               <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
               <div className="container max-w-4xl mx-auto text-center">
                 <div className="inline-flex items-center justify-center px-4 py-1.5 mb-6 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20 shadow-sm">
                   <Sparkles className="w-4 h-4 mr-2" />
                   <span>Professional Document Tools</span>
                 </div>
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-foreground">
+                <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-6 text-foreground">
                   Convert Documents <br className="hidden sm:block" />
-                  <span className="text-primary">With Confidence</span>
+                  <span className="text-[#0A66C2]">With Confidence</span>
                 </h1>
-                <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                   Secure, fast, and enterprise-grade conversion tools for all your document needs. No registration required for basic tasks.
                 </p>
               </div>
@@ -296,7 +270,7 @@ const FileConversion = () => {
                   <div className={`absolute top-0 right-0 p-20 ${tool.bgColor} rounded-bl-full opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
                   <div className="relative z-10 flex items-start gap-6">
                     <div className={`p-4 rounded-xl ${tool.bgColor} ${tool.color} group-hover:scale-110 transition-transform duration-300`}>
-                      <tool.icon className="w-8 h-8" />
+                      {tool.icon && <tool.icon className="w-8 h-8" />}
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
@@ -308,7 +282,7 @@ const FileConversion = () => {
                     </div>
                   </div>
                   <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                    <ArrowRight className={`w-6 h-6 ${tool.color}`} />
+                    <ArrowRight className="w-5 h-5 text-primary" />
                   </div>
                 </div>
               ))}
@@ -326,7 +300,7 @@ const FileConversion = () => {
                 </div>
                 <div className="p-6 rounded-2xl bg-secondary/20 border border-border/50">
                   <div className="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 className="w-6 h-6" />
+                    <ShieldCheck className="w-6 h-6" />
                   </div>
                   <h3 className="font-bold text-lg mb-2">High Quality</h3>
                   <p className="text-muted-foreground text-sm">We preserve your document formatting, images, and layout perfectly.</p>
@@ -343,7 +317,7 @@ const FileConversion = () => {
 
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold mb-2 flex items-center justify-center gap-3">
-                <selectedTool.icon className={`w-8 h-8 ${selectedTool.color}`} />
+                {selectedTool.icon && <selectedTool.icon className={`w-8 h-8 ${selectedTool.color}`} />}
                 {selectedTool.title}
               </h2>
               <p className="text-muted-foreground">{selectedTool.description}</p>
@@ -391,7 +365,7 @@ const FileConversion = () => {
                         <div key={index} className="flex items-center justify-between p-4 bg-background rounded-xl border border-border shadow-sm">
                           <div className="flex items-center gap-4">
                             <div className={`p-3 ${selectedTool.bgColor} rounded-lg`}>
-                              <selectedTool.icon className={`w-6 h-6 ${selectedTool.color}`} />
+                              {selectedTool.icon && <selectedTool.icon className={`w-6 h-6 ${selectedTool.color}`} />}
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium truncate max-w-[200px]">{f.name}</p>
@@ -438,7 +412,7 @@ const FileConversion = () => {
                         onClick={handleConvert}
                         disabled={isConverting}
                       >
-                        {isConverting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <ArrowRight className="w-5 h-5 mr-2" />}
+                        {isConverting && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
                         {selectedTool.id === "merge-pdf" ? `Merge ${files.length} Files` : `Convert to ${selectedTool.targetFormat.toUpperCase()}`}
                       </Button>
                     ) : (
@@ -447,7 +421,7 @@ const FileConversion = () => {
                           <CheckCircle2 className="w-5 h-5" /> {selectedTool.id === "merge-pdf" ? "Merging Complete" : "Conversion Complete"}
                         </div>
                         <Button className="w-full h-14 text-lg font-semibold" size="lg" onClick={handleDownload}>
-                          <Download className="w-4 h-4 mr-2" /> Download {selectedTool.targetFormat.toUpperCase()}
+                          <Download className="w-5 h-5 mr-2" /> Download {selectedTool.targetFormat.toUpperCase()}
                         </Button>
                         <Button variant="ghost" onClick={handleReset}>Start Over</Button>
                       </div>
@@ -459,8 +433,9 @@ const FileConversion = () => {
           </div>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 };
 
-export default FileConversion;
+export default FileConversion;

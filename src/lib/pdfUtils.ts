@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFFont, rgb, StandardFonts } from 'pdf-lib';
 
 interface SignaturePosition {
   x: number;
@@ -32,6 +32,22 @@ export const embedSignatureInPDF = async (
 
   return pdfDoc.save();
 };
+
+// Standard PDF fonts only cover WinAnsi (Western European) characters and pdf-lib
+// throws on anything else, which would abort the whole export. Accented letters are
+// reduced to their base letter; other unsupported characters are dropped.
+const toEncodable = (font: PDFFont, value: string) =>
+  Array.from(value.normalize('NFKD'))
+    .filter((ch) => {
+      try {
+        font.encodeText(ch);
+        return true;
+      } catch {
+        return false;
+      }
+    })
+    .join('')
+    .trim();
 
 export const embedItemsInPDF = async (
   pdfFile: File,
@@ -76,8 +92,10 @@ export const embedItemsInPDF = async (
       }
     } else {
       const fontSize = 16 * (item.scale || 1);
-      page.drawText(item.data, {
-        x: xPos - ((item.data.length * fontSize * 0.5) / 2),
+      const text = toEncodable(helveticaFont, item.data);
+      if (!text) continue;
+      page.drawText(text, {
+        x: xPos - ((text.length * fontSize * 0.5) / 2),
         y: yPos - (fontSize / 2),
         size: fontSize,
         font: helveticaFont,

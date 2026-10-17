@@ -3,7 +3,7 @@ import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PenTool, Type, RotateCcw } from "lucide-react";
+
 import { toast } from "sonner";
 
 interface SignaturePadProps {
@@ -59,8 +59,8 @@ export const SignaturePad = ({ onSignatureCreate }: SignaturePadProps) => {
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-4">
-          <Button variant={mode === 'draw' ? 'secondary' : 'ghost'} onClick={() => setMode('draw')} className="flex-1"><PenTool className="w-4 h-4 mr-2" />Draw</Button>
-          <Button variant={mode === 'type' ? 'secondary' : 'ghost'} onClick={() => setMode('type')} className="flex-1"><Type className="w-4 h-4 mr-2" />Type</Button>
+          <Button variant={mode === 'draw' ? 'secondary' : 'ghost'} onClick={() => setMode('draw')} className="flex-1">Draw</Button>
+          <Button variant={mode === 'type' ? 'secondary' : 'ghost'} onClick={() => setMode('type')} className="flex-1">Type</Button>
         </div>
 
         {mode === "draw" ? (
@@ -80,7 +80,7 @@ export const SignaturePad = ({ onSignatureCreate }: SignaturePadProps) => {
           />
         )}
         <div className="flex justify-between items-center mt-4">
-          <Button variant="ghost" onClick={clear}><RotateCcw className="w-4 h-4 mr-2" />Clear</Button>
+          <Button variant="ghost" onClick={clear}>Clear</Button>
           <Button onClick={saveSignature}>Use Signature</Button>
         </div>
       </CardContent>

@@ -1,19 +1,38 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Loader2, Shield, Zap, CreditCard, User, Lock, Smartphone, Copy, X, Users, Palette, Upload } from "lucide-react";
+
 import { toast } from "sonner";
-import { Logo } from "@/components/Logo";
+import { AppHeader } from "@/components/AppHeader";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { Separator } from "@/components/ui/separator";
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, multiFactor, TotpMultiFactorGenerator, TotpSecret } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { functions, auth, db, storage } from "@/components/client";
 import { setDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+import {
+  User,
+  Lock,
+  Shield,
+  Users,
+  Palette,
+  UploadCloud,
+  Check,
+  CheckCircle2,
+  Copy,
+  ArrowLeft,
+  Building,
+  Camera,
+  Trash2,
+  AlertTriangle,
+  CreditCard,
+  PenTool,
+  X
+} from "lucide-react";
 
 const Settings = () => {
   const { user, userProfile, isAdmin, loading } = useAuth();
@@ -35,12 +54,20 @@ const Settings = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
-  const currentPlan = isAdmin ? 'business' : (userProfile?.plan || "free");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoUrl, setPhotoUrl] = useState(user?.photoURL || "");
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const currentPlan = isAdmin ? 'business' : (userProfile?.plan || "free");
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (["billing", "profile", "security", "team", "branding"].includes(tab as string)) {
+    if (tab === "billing") {
+      handleTabChange("profile");
+      return;
+    }
+    if (["profile", "security", "team", "branding"].includes(tab as string)) {
       setActiveTab(tab as string);
     }
 
@@ -50,13 +77,13 @@ const Settings = () => {
 
     if (success || reference) {
       toast.success("Subscription updated successfully! Refreshing page...");
-      navigate('/settings?tab=billing', { replace: true });
+      navigate('/settings?tab=profile', { replace: true });
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     } else if (canceled) {
       toast.info("Payment cancelled.");
-      navigate('/settings?tab=billing', { replace: true });
+      navigate('/settings?tab=profile', { replace: true });
     }
   }, [searchParams, navigate]);
 
@@ -64,8 +91,17 @@ const Settings = () => {
     if (user?.displayName) {
       setDisplayName(user.displayName);
     }
-    // Check if 2FA is already enabled
-    setIs2FAEnabled(user ? multiFactor(user).enrolledFactors.length > 0 : false);
+    if (user?.photoURL) {
+      setPhotoUrl(user.photoURL);
+    }
+    // Check if 2FA is already enabled. multiFactor() throws if the user object isn't a full
+    // Firebase user (e.g. while auth is still restoring), so never let it take the page down.
+    try {
+      setIs2FAEnabled(user ? multiFactor(user).enrolledFactors.length > 0 : false);
+    } catch (error) {
+      console.warn("Could not read 2FA status:", error);
+      setIs2FAEnabled(false);
+    }
 
     // Set branding from profile
     if (userProfile?.branding) {
@@ -73,11 +109,33 @@ const Settings = () => {
         setPrimaryColor(userProfile.branding.primaryColor);
       }
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     setSearchParams({ tab });
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setPhotoFile(file);
+    setIsUploadingPhoto(true);
+    const toastId = toast.loading("Uploading profile image...");
+    try {
+      const storageRef = ref(storage, `avatars/${user.uid}/${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setPhotoUrl(url);
+      await updateProfile(user, { photoURL: url });
+      toast.success("Profile image updated!", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to upload profile image", { id: toastId });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -170,10 +228,7 @@ const Settings = () => {
   const handleManageBilling = async () => {
     setIsUpgrading(true);
     try {
-      // Determine which billing portal to use. 
-      // If the user has a stripeCustomerId, they likely used Stripe.
-      const useStripe = !!userProfile?.stripeCustomerId || (window.location.hostname !== "localhost" && !searchParams.get("local"));
-
+      const useStripe = !!userProfile?.stripeCustomerId || (window.location.hostname !== "localhost");
       const functionName = useStripe ? 'manageStripeSubscription' : 'managePaystackSubscription';
       const manageSubscription = httpsCallable(functions, functionName);
 
@@ -196,11 +251,9 @@ const Settings = () => {
 
   const handleToggle2FA = async () => {
     if (is2FAEnabled) {
-      // Disable 2FA
       if (!window.confirm("Are you sure you want to disable 2FA? Your account will be less secure.")) return;
       try {
         const enrolledFactors = multiFactor(user!).enrolledFactors;
-        // Unenroll all TOTP factors
         for (const factor of enrolledFactors) {
           await multiFactor(user!).unenroll(factor);
         }
@@ -211,7 +264,6 @@ const Settings = () => {
         toast.error("Failed to disable 2FA");
       }
     } else {
-      // Enable 2FA - Start Enrollment
       try {
         const multiFactorSession = await multiFactor(user!).getSession();
         const secret = await TotpMultiFactorGenerator.generateSecret(multiFactorSession);
@@ -222,7 +274,7 @@ const Settings = () => {
         if (error.code === 'auth/requires-recent-login') {
           toast.error("Please sign out and sign in again to enable 2FA.");
         } else {
-          toast.error("Failed to start 2FA setup. Ensure you have upgraded to Identity Platform in Firebase Console.");
+          toast.error("Failed to start 2FA setup. Ensure you have Identity Platform in Firebase Console.");
         }
       }
     }
@@ -257,443 +309,428 @@ const Settings = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-[#0A66C2] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-semibold text-muted-foreground">Loading settings...</p>
+        </div>
       </div>
     );
   }
 
+  const userInitials = displayName
+    ? displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : user?.email?.[0].toUpperCase() || "U";
+
   return (
-    <div className="min-h-screen bg-background font-sans">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-4">
-            <Link to="/dashboard">
-              <Logo className="h-8 w-auto" />
-            </Link>
-            <nav className="hidden md:flex items-center gap-4 text-sm font-medium">
-              <Link to="/dashboard" className="text-muted-foreground hover:text-foreground">Dashboard</Link>
-              <Link to="/settings?tab=profile" className="text-foreground">Settings</Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              {user?.email}
-            </div>
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950/20 font-sans flex flex-col">
+      <AppHeader />
+
+      <main className="flex-1 w-full container py-6 sm:py-8 px-4 md:px-6 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Link to="/dashboard" className="shrink-0">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border shadow-sm bg-white dark:bg-slate-900" aria-label="Return to Dashboard">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Workspace Settings</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Configure your corporate account details, authentication layers, and visual branding.</p>
           </div>
         </div>
-      </header>
 
-      <main className="container py-10 px-4 md:px-6 max-w-5xl mx-auto">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-            <p className="text-muted-foreground">Manage your account settings and subscription.</p>
-          </div>
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+          {/* Left Column: Sidebar tabs navigation */}
+          <aside
+            role="tablist"
+            aria-label="Settings sections"
+            className="w-full lg:w-64 lg:shrink-0 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-1.5 lg:p-4 shadow-sm flex flex-wrap gap-1 lg:flex-col lg:flex-nowrap lg:sticky lg:top-24"
+          >
+            <div className="hidden lg:block px-3 py-2 text-xs uppercase font-extrabold tracking-wider text-slate-500">Settings Sections</div>
+            {[
+              { id: "profile", label: "Profile Information", short: "Profile", icon: User },
+              { id: "security", label: "Security & 2FA", short: "Security", icon: Lock },
+              { id: "team", label: "Team Management", short: "Team", icon: Users, show: isAdmin || userProfile?.plan === "business" },
+              { id: "branding", label: "Custom Branding", short: "Branding", icon: Palette, show: isAdmin || userProfile?.plan === "business" }
+            ].map((tab) => {
+              if (tab.show === false) return null;
+              const IconComp = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex-1 basis-[30%] lg:basis-auto lg:w-full min-h-[44px] flex items-center justify-center lg:justify-start gap-2 lg:gap-3 px-2 lg:px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+                    isActive
+                      ? "bg-[#0A66C2] text-white shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900"
+                  }`}
+                  role="tab"
+                  aria-selected={isActive}
+                >
+                  <IconComp className="w-4 h-4 shrink-0" />
+                  <span className="lg:hidden">{tab.short}</span>
+                  <span className="hidden lg:inline">{tab.label}</span>
+                </button>
+              );
+            })}
+          </aside>
 
-          <Separator />
-
-          {/* Tabs */}
-          <div className="flex flex-wrap items-center gap-2 md:gap-4">
-            <Button
-              variant={activeTab === "profile" ? "default" : "ghost"}
-              onClick={() => handleTabChange("profile")}
-            >
-              <User className="w-4 h-4 mr-2" />
-              Profile
-            </Button>
-            <Button
-              variant={activeTab === "security" ? "default" : "ghost"}
-              onClick={() => handleTabChange("security")}
-            >
-              <Lock className="w-4 h-4 mr-2" />
-              Security
-            </Button>
-            <Button
-              variant={activeTab === "billing" ? "default" : "ghost"}
-              onClick={() => handleTabChange("billing")}
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Billing
-            </Button>
-            {(isAdmin || userProfile?.plan === 'business') && (
-              <Button
-                variant={activeTab === "team" ? "default" : "ghost"}
-                onClick={() => handleTabChange("team")}
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Team
-              </Button>
-            )}
-            {(isAdmin || userProfile?.plan === 'business') && (
-              <Button
-                variant={activeTab === "branding" ? "default" : "ghost"}
-                onClick={() => handleTabChange("branding")}
-              >
-                <Palette className="w-4 h-4 mr-2" />
-                Branding
-              </Button>
-            )}
-          </div>
-
-          {activeTab === "profile" ? (
-            <div className="grid gap-6 max-w-2xl animate-in fade-in slide-in-from-left-4 duration-300">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>Update your account profile details.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSaveProfile} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Display Name</Label>
-                      <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your Name" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" value={user?.email || ""} disabled className="bg-muted" />
-                    </div>
-                    <Button type="submit" disabled={isSaving}>
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Save Changes
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          ) : activeTab === "security" ? (
-            <div className="grid gap-6 max-w-2xl animate-in fade-in slide-in-from-left-4 duration-300">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Change Password</CardTitle>
-                  <CardDescription>Ensure your account is using a long, random password to stay secure.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleChangePassword} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="current-password">Current Password</Label>
-                      <Input
-                        id="current-password"
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-password">New Password</Label>
-                      <Input
-                        id="new-password"
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm New Password</Label>
-                      <Input
-                        id="confirm-password"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                    <Button type="submit" disabled={isChangingPassword}>
-                      {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Update Password
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Two-Factor Authentication</CardTitle>
-                  <CardDescription>Add an extra layer of security to your account.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-primary/10 rounded-full">
-                      <Smartphone className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Authenticator App</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Use an app like Google Authenticator to generate verification codes.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant={is2FAEnabled ? "destructive" : "outline"}
-                    onClick={handleToggle2FA}
-                  >
-                    {is2FAEnabled ? "Disable" : "Enable"}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* 2FA Setup Modal/Overlay */}
-              {show2FASetup && totpSecret && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-                  <Card className="w-full max-w-md relative">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-4 top-4"
-                      onClick={() => setShow2FASetup(false)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                    <CardHeader>
-                      <CardTitle>Set up Authenticator</CardTitle>
-                      <CardDescription>Scan the QR code or enter the key manually in your authenticator app.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="p-4 bg-secondary rounded-lg break-all font-mono text-sm flex items-center justify-between gap-2">
-                        <span>{totpSecret.secretKey}</span>
-                        <Button variant="ghost" size="icon" onClick={() => copyToClipboard(totpSecret.secretKey)}>
-                          <Copy className="w-4 h-4" />
+          {/* Right Column: Tab Content */}
+          <div className="flex-1 w-full min-w-0">
+            {activeTab === "profile" && (
+              <div className="grid gap-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Profile Details</CardTitle>
+                    <CardDescription className="text-sm">Update your corporate identity and photo avatar details.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Profile Photo Upload card */}
+                    <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+                      <div className="relative group w-20 h-20 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden flex items-center justify-center text-2xl font-extrabold text-[#0A66C2] shadow-inner">
+                        {photoUrl ? (
+                          <img src={photoUrl} alt="Profile preview" className="w-full h-full object-cover" />
+                        ) : (
+                          userInitials
+                        )}
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingPhoto}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-bold transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                          aria-label="Upload photo"
+                        >
+                          <Camera className="w-5 h-5 mb-1" />
+                          <span>Upload</span>
+                        </button>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleAvatarChange}
+                          accept="image/png, image/jpeg"
+                          className="hidden"
+                        />
+                      </div>
+                      <div className="space-y-1 text-center sm:text-left">
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Profile Photo</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px]">
+                          JPEG or PNG, up to 2MB.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingPhoto}
+                          className="mt-2 h-10 rounded-xl font-bold gap-2"
+                        >
+                          <Camera className="w-4 h-4" />
+                          {isUploadingPhoto ? "Uploading..." : "Change photo"}
                         </Button>
                       </div>
+                    </div>
+
+                    <form onSubmit={handleSaveProfile} className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Verification Code</Label>
+                        <Label htmlFor="name" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Display Name</Label>
                         <Input
-                          placeholder="Enter 6-digit code"
-                          value={verificationCode}
-                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          id="name"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder="Your Name"
+                          className="rounded-xl border-slate-200 dark:border-slate-800 shadow-sm"
                         />
                       </div>
-                      <Button className="w-full" onClick={handleVerifyAndEnroll} disabled={verificationCode.length !== 6}>
-                        Verify & Activate
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </div>
-          ) : activeTab === "team" ? (
-            <div className="grid gap-6 animate-in fade-in slide-in-from-left-4 duration-300">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Team Management</CardTitle>
-                  <CardDescription>Manage your team members and their roles.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <Users className="w-12 h-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold">Ready to manage your team?</h3>
-                    <p className="text-muted-foreground mb-6 max-w-sm">
-                      You can invite signers and manage team members on the dedicated team page.
-                    </p>
-                    <Button onClick={() => navigate('/team')}>
-                      Go to Team Page
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : activeTab === "branding" ? (
-            <div className="grid gap-6 max-w-2xl animate-in fade-in slide-in-from-left-4 duration-300">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Custom Branding</CardTitle>
-                  <CardDescription>Customize the look and feel of your documents and emails.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSaveBranding} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="logo-upload">Company Logo</Label>
-                      <div className="flex items-center gap-4">
-                        <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center overflow-hidden border">
-                          {userProfile?.branding?.logoUrl ? (
-                            <img src={userProfile.branding.logoUrl} alt="logo" className="object-contain h-full w-full" />
-                          ) : (
-                            <Upload className="w-6 h-6 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          <Input
-                            id="logo-upload"
-                            type="file"
-                            onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)}
-                            accept="image/png, image/jpeg"
-                            className="cursor-pointer"
-                          />
-                          <p className="text-[10px] text-muted-foreground">Recommended: PNG or JPEG, max 2MB. Transparent background works best.</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="primary-color">Primary Theme Color</Label>
-                      <div className="flex items-center gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Workspace Email</Label>
                         <Input
-                          id="primary-color"
-                          type="color"
-                          value={primaryColor}
-                          onChange={(e) => setPrimaryColor(e.target.value)}
-                          className="w-12 h-12 p-1 rounded-md cursor-pointer"
+                          id="email"
+                          value={user?.email || ""}
+                          disabled
+                          className="bg-slate-100 border-slate-200 dark:border-slate-800 text-slate-500 font-mono text-xs rounded-xl"
                         />
-                        <div className="flex-1">
-                          <Input
-                            type="text"
-                            value={primaryColor}
-                            onChange={(e) => setPrimaryColor(e.target.value)}
-                            placeholder="#1a1f2c"
-                            className="font-mono"
-                          />
+                      </div>
+                      <div className="pt-2">
+                        <Button type="submit" disabled={isSaving} className="h-11 rounded-xl shadow-sm font-bold bg-[#0A66C2] hover:bg-[#08519c] text-white w-full sm:w-auto">
+                          {isSaving ? "Saving..." : "Save Changes"}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "security" && (
+              <div className="grid gap-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                {/* Change Password Card */}
+                <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Change Account Password</CardTitle>
+                    <CardDescription className="text-sm">Ensure your account is using a long, random password to stay secure.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleChangePassword} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="current-password">Current Password</Label>
+                        <Input
+                          id="current-password"
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          required
+                          className="rounded-xl border-slate-200 dark:border-slate-800 shadow-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password">New Password</Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          required
+                          minLength={6}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 shadow-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password">Confirm New Password</Label>
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                          minLength={6}
+                          className="rounded-xl border-slate-200 dark:border-slate-800 shadow-sm"
+                        />
+                      </div>
+                      <div className="pt-2">
+                        <Button type="submit" disabled={isChangingPassword} className="h-11 rounded-xl shadow-sm font-bold bg-[#0A66C2] hover:bg-[#08519c] text-white w-full sm:w-auto">
+                          {isChangingPassword ? "Updating..." : "Update Password"}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Two-Factor Authentication Card */}
+                <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Two-Factor Authentication (2FA)</CardTitle>
+                    <CardDescription className="text-sm">Add an extra verification shield to protect corporate documents.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-[#0A66C2]/10 rounded-xl text-[#0A66C2] shrink-0">
+                        <Shield className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-0.5 text-left">
+                        <Label className="text-sm font-bold text-slate-800 dark:text-slate-200">Authenticator App</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Use standard code generator apps (Google Authenticator, Microsoft, or Authy) to secure credentials.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant={is2FAEnabled ? "destructive" : "outline"}
+                      onClick={handleToggle2FA}
+                      className="h-11 rounded-xl font-bold shrink-0 w-full sm:w-auto"
+                    >
+                      {is2FAEnabled ? "Disable 2FA" : "Enable 2FA"}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* 2FA Setup Overlay Modal */}
+                {show2FASetup && totpSecret && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="absolute inset-0" onClick={() => setShow2FASetup(false)} />
+                    <Card className="w-full max-w-md relative z-10 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl overflow-hidden bg-white dark:bg-slate-900 animate-in zoom-in-95 duration-200">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-3 top-3 h-10 w-10 rounded-full"
+                        onClick={() => setShow2FASetup(false)}
+                        aria-label="Close setup"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                      <CardHeader>
+                        <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Configure Authenticator App</CardTitle>
+                        <CardDescription className="text-sm">Follow the steps below to enroll your credential key.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6 text-left">
+                        {/* Step 1 */}
+                        <div className="space-y-2">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">1. Enter Secret Key Code</p>
+                          <p className="text-xs text-muted-foreground">Type or paste this unique code manually into your authenticator app:</p>
+                          <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-900 rounded-xl break-all font-mono text-xs flex items-center justify-between gap-2 shadow-inner">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{totpSecret.secretKey}</span>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-[#0A66C2] hover:bg-slate-200/50 dark:hover:bg-slate-900" onClick={() => copyToClipboard(totpSecret.secretKey)} aria-label="Copy key">
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Step 2 */}
+                        <div className="space-y-3">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">2. Input Verification Code</p>
+                          <div className="space-y-1">
+                            <Label htmlFor="2fa-code" className="text-xs uppercase font-extrabold tracking-wider text-slate-500">Verification Code</Label>
+                            <Input
+                              id="2fa-code"
+                              placeholder="Enter 6-digit code"
+                              value={verificationCode}
+                              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              className="rounded-xl font-mono text-center tracking-widest text-lg font-bold h-12 shadow-sm border-slate-200 dark:border-slate-800"
+                            />
+                          </div>
+                        </div>
+
+                        <Button className="w-full h-11 rounded-xl font-bold bg-[#0A66C2] hover:bg-[#08519c] text-white" onClick={handleVerifyAndEnroll} disabled={verificationCode.length !== 6}>
+                          Verify & Activate 2FA
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "team" && (
+              <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Workspace Teammates</CardTitle>
+                    <CardDescription className="text-sm">Invite teammates, assign legal authority roles, and audit login access.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col items-center justify-center py-10 text-center max-w-sm mx-auto">
+                      <div className="w-16 h-16 bg-[#0A66C2]/10 rounded-2xl flex items-center justify-center text-[#0A66C2] mb-5 shadow-inner">
+                        <Users className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Manage workspace users</h3>
+                      <p className="text-sm text-muted-foreground mt-2 mb-6">
+                        Add teammate email contacts, delegate document signing limits, and configure workspace admin structures.
+                      </p>
+                      <Button onClick={() => navigate('/team')} className="h-11 rounded-xl shadow-md font-bold px-6 bg-[#0A66C2] hover:bg-[#08519c] text-white">
+                        Open Team Management
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "branding" && (
+              <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex flex-col xl:flex-row gap-6 items-start">
+
+                  {/* Left branding card form */}
+                  <Card className="flex-1 w-full border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Company Identity & Color Themes</CardTitle>
+                      <CardDescription className="text-sm">Customize the eSign interface logo and signature buttons for clients.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleSaveBranding} className="space-y-6">
+                        {/* Logo Upload dropzone */}
+                        <div className="space-y-2">
+                          <Label htmlFor="logo-upload" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Workspace Logo</Label>
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+                            <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 shadow-inner p-1">
+                              {userProfile?.branding?.logoUrl ? (
+                                <img src={userProfile.branding.logoUrl} alt="Company logo preview" className="object-contain h-full w-full" />
+                              ) : (
+                                <Building className="w-8 h-8 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="flex-1 w-full min-w-0 space-y-1 text-left">
+                              <Input
+                                id="logo-upload"
+                                type="file"
+                                onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)}
+                                accept="image/png, image/jpeg"
+                                className="cursor-pointer rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs shadow-sm"
+                              />
+                              <p className="text-xs text-muted-foreground">PNG or JPEG, maximum 2MB. Transparent backgrounds look best.</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Theme Primary Color Selector */}
+                        <div className="space-y-2">
+                          <Label htmlFor="primary-color" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Primary Theme Color</Label>
+                          <div className="flex items-center gap-3">
+                            <Input
+                              id="primary-color"
+                              type="color"
+                              value={primaryColor}
+                              onChange={(e) => setPrimaryColor(e.target.value)}
+                              className="w-12 h-12 p-1 rounded-xl cursor-pointer border-slate-200 dark:border-slate-800 shadow-sm shrink-0"
+                            />
+                            <div className="flex-1">
+                              <Input
+                                type="text"
+                                value={primaryColor}
+                                onChange={(e) => setPrimaryColor(e.target.value)}
+                                placeholder="#000000"
+                                className="font-mono rounded-xl border-slate-200 dark:border-slate-800 shadow-sm text-sm"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            This custom brand color will be applied to key workspace buttons and links visible to signers.
+                          </p>
+                        </div>
+
+                        <div className="pt-2">
+                          <Button type="submit" disabled={isSavingBranding} className="h-11 rounded-xl shadow-sm font-bold w-full sm:w-auto bg-[#0A66C2] hover:bg-[#08519c] text-white">
+                            {isSavingBranding ? "Saving..." : "Save Branding"}
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+
+                  {/* Right Branding Preview Frame Mock */}
+                  <div className="w-full xl:w-72 space-y-4">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Live Preview Simulator</div>
+                    <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden p-5 text-left space-y-5">
+                      <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/20 text-center font-bold text-xs text-slate-500">
+                        Signer Workspace Mock
+                      </div>
+
+                      {/* Simulated signature button */}
+                      <div className="space-y-2">
+                        <span className="text-xs uppercase tracking-wider font-extrabold text-slate-400">Button Preview</span>
+                        <button
+                          type="button"
+                          style={{ backgroundColor: primaryColor }}
+                          className="w-full text-white font-bold text-xs py-2.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 pointer-events-none"
+                        >
+                          <PenTool className="w-3.5 h-3.5" /> Sign Document
+                        </button>
+                      </div>
+
+                      {/* Simulated border accents */}
+                      <div className="space-y-2">
+                        <span className="text-xs uppercase tracking-wider font-extrabold text-slate-400">Border Highlight Accent</span>
+                        <div
+                          style={{ borderColor: primaryColor }}
+                          className="border-2 border-dashed bg-slate-50 dark:bg-slate-950 p-4 rounded-xl text-center text-xs text-slate-400 font-mono"
+                        >
+                          eSign Area Frame
                         </div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">This color will be used for buttons, links, and accents across your workspace.</p>
-                    </div>
-                    <Button type="submit" disabled={isSavingBranding} className="w-full md:w-auto">
-                      {isSavingBranding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-                      Save Branding Changes
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          ) : activeTab === "billing" ? (
-            <div className="grid gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-              {/* Current Subscription */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Current Subscription</CardTitle>
-                  <CardDescription>You are currently on the <span className="font-semibold capitalize text-foreground">{currentPlan}</span> plan.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-full ${currentPlan === 'business' ? 'bg-purple-100 text-purple-600' : currentPlan === 'pro' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-600'}`}>
-                      {currentPlan === 'business' ? <Shield className="w-6 h-6" /> : currentPlan === 'pro' ? <Zap className="w-6 h-6" /> : <CreditCard className="w-6 h-6" />}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg capitalize">{currentPlan} Plan</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {currentPlan === 'free' ? 'Basic features for individuals.' :
-                          currentPlan === 'pro' ? 'Advanced features for professionals.' :
-                            'Complete solution for teams.'}
-                      </p>
-                    </div>
-                    <div className="ml-auto">
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${currentPlan === 'free' ? 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80' : 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80'}`}>
-                        {currentPlan === 'free' ? 'Active' : 'Active Subscription'}
-                      </span>
-                    </div>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
 
-              {/* Payment Method */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Payment Method</CardTitle>
-                  <CardDescription>Manage your payment details and billing history.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-primary/10 rounded-full">
-                      <CreditCard className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Payment Details</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Update your credit card or billing address via the secure portal.
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="outline" onClick={handleManageBilling} disabled={isUpgrading}>
-                    {isUpgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Manage Billing"}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Custom Branding section removed from here as it now has its own tab */}
-
-              {/* Upgrade Options */}
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Available Plans</h2>
-                <div className="grid md:grid-cols-3 gap-6">
-                  {/* Free Plan */}
-                  <Card className={`flex flex-col ${currentPlan === 'free' ? 'border-primary shadow-sm' : ''}`}>
-                    <CardHeader>
-                      <CardTitle>Free</CardTitle>
-                      <CardDescription>For individuals starting out</CardDescription>
-                      <div className="mt-2 text-3xl font-bold">$0<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                      <ul className="space-y-2 text-sm">
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> 3 documents/mo</li>
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Basic signatures</li>
-                      </ul>
-                    </CardContent>
-                    <CardFooter>
-                      <Button className="w-full" variant="outline" disabled={currentPlan === 'free'}>
-                        {currentPlan === 'free' ? 'Current Plan' : 'Downgrade'}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-
-                  {/* Pro Plan */}
-                  <Card className={`flex flex-col relative ${currentPlan === 'pro' ? 'border-[#FFC83D] shadow-md bg-yellow-50/10' : ''}`}>
-                    {currentPlan === 'pro' && <div className="absolute top-0 right-0 bg-[#FFC83D] text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg">CURRENT</div>}
-                    <CardHeader>
-                      <CardTitle>Pro</CardTitle>
-                      <CardDescription>For professionals</CardDescription>
-                      <div className="mt-2 text-3xl font-bold">$8<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                      <ul className="space-y-2 text-sm">
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Unlimited documents</li>
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Invite signers</li>
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Audit trails</li>
-                      </ul>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        className="w-full bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black"
-                        disabled={currentPlan === 'pro' || isUpgrading}
-                        onClick={() => handleUpgrade('Pro')}
-                      >
-                        {currentPlan === 'pro' ? 'Current Plan' : isUpgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upgrade to Pro'}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-
-                  {/* Business Plan */}
-                  <Card className={`flex flex-col ${currentPlan === 'business' ? 'border-primary shadow-md' : ''}`}>
-                    <CardHeader>
-                      <CardTitle>Business</CardTitle>
-                      <CardDescription>For teams & organizations</CardDescription>
-                      <div className="mt-2 text-3xl font-bold">$15<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                      <ul className="space-y-2 text-sm">
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Everything in Pro</li>
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Team management</li>
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /> Custom branding</li>
-                      </ul>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        className="w-full"
-                        disabled={currentPlan === 'business' || isUpgrading}
-                        onClick={() => handleUpgrade('Business')}
-                      >
-                        {currentPlan === 'business' ? 'Current Plan' : isUpgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upgrade to Business'}
-                      </Button>
-                    </CardFooter>
-                  </Card>
                 </div>
               </div>
-            </div>
-          ) : (
-            null
-          )}
+            )}
+          </div>
         </div>
       </main>
     </div>

@@ -19,9 +19,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Edit2, Save, Eye, Video, Youtube } from "lucide-react";
+
 import { Link, Navigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
+import { Edit, ExternalLink, Loader2, Plus, Send, Trash2, Youtube } from "lucide-react";
 
 interface Tutorial {
   id: string;
@@ -139,11 +140,11 @@ const AdminHelpCenter = () => {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-4">
-            <Link to="/dashboard"><Logo className="h-12 md:h-20 w-auto" /></Link>
+            <Link to="/dashboard"><Logo className="h-9 md:h-10" /></Link>
             <h1 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Help Center Admin</h1>
           </div>
           <Button variant="outline" asChild>
-            <Link to="/help-center" target="_blank"><Eye className="w-4 h-4 mr-2" /> Preview Help Center</Link>
+            <Link to="/help-center" target="_blank"><ExternalLink className="w-4 h-4 mr-2" /> Preview Help Center</Link>
           </Button>
         </div>
       </header>
@@ -201,7 +202,7 @@ const AdminHelpCenter = () => {
                 <div className="space-y-2">
                   <Label htmlFor="youtubeId">YouTube Video Link or ID</Label>
                   <div className="relative">
-                    <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
                     <Input 
                       id="youtubeId" 
                       className="pl-10"
@@ -226,7 +227,7 @@ const AdminHelpCenter = () => {
                 <div className="flex justify-end gap-3 pt-4">
                   <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
                   <Button type="submit" disabled={submitting} className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">
-                    {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                     {currentTutorial.id ? "Update Tutorial" : "Publish Tutorial"}
                   </Button>
                 </div>
@@ -263,7 +264,7 @@ const AdminHelpCenter = () => {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Button variant="ghost" size="icon" onClick={() => {setCurrentTutorial(t); setIsEditing(true); window.scrollTo(0,0);}}>
-                        <Edit2 className="w-4 h-4" />
+                        <Edit className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(t.id)}>
                         <Trash2 className="w-4 h-4" />

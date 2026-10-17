@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { useAuth } from "./components/AuthContext";
 import { doc, setDoc } from "firebase/firestore";
 import { db, functions } from "./components/client";
 import { httpsCallable } from "firebase/functions";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Check, Shield, Zap, ArrowLeft, Loader2, Lock, Globe, CreditCard } from "lucide-react";
+import { ArrowLeft, Building2, Check, CheckCircle2, Loader2, Lock, ShieldCheck, Zap } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Logo } from "./components/Logo";
 
@@ -18,7 +17,7 @@ const PLANS = [
     description: "Perfect for individuals and professionals",
     features: ["Unlimited documents", "Invite up to 5 signers", "Audit trails", "Priority support"],
     color: "from-blue-500 to-indigo-600",
-    icon: <Zap className="w-5 h-5" />,
+    icon: Zap,
   },
   {
     id: "business",
@@ -27,7 +26,7 @@ const PLANS = [
     description: "Advanced features for teams and companies",
     features: ["Everything in Pro", "Unlimited signers", "Team management", "Custom branding", "24/7 Support"],
     color: "from-purple-500 to-pink-600",
-    icon: <Shield className="w-5 h-5" />,
+    icon: Building2,
   }
 ];
 
@@ -40,8 +39,12 @@ const Payment = () => {
   const [paymentMethod] = useState<'stripe' | 'paystack'>('paystack');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  const forceTestMode = searchParams.get("test") === "true";
-  const isProduction = window.location.hostname !== "localhost" && !forceTestMode;
+  const isProduction = window.location.hostname !== "localhost";
+
+  useEffect(() => {
+    toast.info("All features are currently free! No payment is required.");
+    navigate("/dashboard", { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     const planFromUrl = searchParams.get("plan")?.toLowerCase();
@@ -104,13 +107,10 @@ const Payment = () => {
         cancelUrl: window.location.origin + "/payment?payment=cancel",
       });
 
+      // initializeStripeSession returns { sessionId, url }. stripe.redirectToCheckout()
+      // was removed from @stripe/stripe-js, so redirect to the hosted Checkout URL directly.
       if (data?.url) {
         window.location.href = data.url;
-      } else if (data?.sessionId) {
-        const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-        if (stripe) {
-          await stripe.redirectToCheckout({ sessionId: data.sessionId });
-        }
       } else {
         toast.error("Could not initialize Stripe session.");
       }
@@ -127,7 +127,7 @@ const Payment = () => {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center animate-in zoom-in duration-300">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-10 h-10 text-green-600" />
+            <CheckCircle2 className="w-10 h-10 text-green-600" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-4">Welcome to {selectedPlan.name}!</h1>
           <p className="text-slate-600 mb-8">Your account has been upgraded successfully. You now have access to all {selectedPlan.id} features.</p>
@@ -158,7 +158,7 @@ const Payment = () => {
 
           <div className="mt-8 mb-8">
             <div className="flex items-center gap-2 mb-4 opacity-80">
-              <Logo className="h-6 w-auto" />
+              <Logo className="h-7" />
               <span className="text-slate-300">|</span>
               <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Checkout</span>
             </div>
@@ -232,7 +232,7 @@ const Payment = () => {
             {/* Payment Method Switcher Hidden */}
             <div className="mb-6">
               <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 text-sm">
-                <CreditCard className="w-4 h-4" />
+                <ShieldCheck className="w-4 h-4 shrink-0" />
                 <span className="font-medium">Secure local payment via Paystack</span>
               </div>
             </div>
@@ -267,7 +267,7 @@ const Payment = () => {
           {isLoading && (
             <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
               <div className="text-center">
-                <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-3" />
+                <Loader2 className="w-10 h-10 animate-spin text-indigo-600 mx-auto mb-4" />
                 <p className="font-semibold text-slate-900">Processing...</p>
                 <p className="text-xs text-slate-500 mt-1">Please do not refresh the page.</p>
               </div>

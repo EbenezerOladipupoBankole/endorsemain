@@ -6,7 +6,9 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
 
 // Register custom fonts
-const Font = Quill.import('formats/font');
+// Quill.import() is typed as `unknown` for format paths; 'formats/font' is a
+// ClassAttributor whose whitelist controls the allowed font values.
+const Font = Quill.import('formats/font') as { whitelist: string[] };
 Font.whitelist = [
   'sans-serif', 
   'serif', 
@@ -20,7 +22,7 @@ Font.whitelist = [
   'verdana',
   'courier-new'
 ];
-Quill.register(Font, true);
+Quill.register('formats/font', Font, true);
 
 interface RichTextEditorProps {
   value: string;

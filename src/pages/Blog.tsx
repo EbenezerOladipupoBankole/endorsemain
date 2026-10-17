@@ -1,26 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/Logo";
-import { ChevronRight, FileText, Search, User, Share2, ChevronDown, PenTool, FileType, HelpCircle, Code, Menu, X } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { NewsletterForm } from "@/components/NewsletterForm";
+import { toast } from "sonner";
+import { ArrowRight, FileText, Image as ImageIcon, Search, Share2, Sparkles, User, X } from "lucide-react";
 
+const plainText = (html: unknown) =>
+  String(html ?? "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
 
-import { useAuth } from "@/components/AuthContext";
+const postUrl = (post: any) => `${window.location.origin}/blog/${post.slug || post.id}`;
 
 const Blog = () => {
-  const { user } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [mobileProductOpen, setMobileProductOpen] = useState(false);
-  const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -52,194 +47,90 @@ const Blog = () => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Matches every word typed, anywhere in the title, summary, category, author or article body.
+  const query = search.trim().toLowerCase();
+  const results = useMemo(() => {
+    if (!query) return posts;
+    const words = query.split(/\s+/);
+    return posts.filter((post) => {
+      const haystack = [post.title, post.excerpt, post.category, post.author, plainText(post.content)].join(" ").toLowerCase();
+      return words.every((w) => haystack.includes(w));
+    });
+  }, [posts, query]);
+  const featured = query ? null : results[0];
+  const gridPosts = query ? results : results.slice(1);
+
+  const sharePost = async (post: any) => {
+    const url = postUrl(post);
+    if (navigator.share) {
+      navigator.share({ title: post.title, text: post.excerpt, url }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard");
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/40">
-        <div className="container mx-auto px-6 h-24 md:h-32 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5" aria-label="Endorse">
-            <Logo className="h-12 md:h-20 w-auto drop-shadow-sm" />
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            <DropdownMenu>
-              <DropdownMenuTrigger className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors flex items-center gap-1 outline-none group">
-                Product <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[340px] p-3">
-                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="/#features" className="flex items-start gap-3 p-3 w-full">
-                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
-                      <PenTool className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-sm text-foreground">eSign</span>
-                      <span className="text-xs text-muted-foreground leading-snug">
-                        Create, send, and track legally binding electronic signatures.
-                      </span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="/conversion" className="flex items-start gap-3 p-3 w-full">
-                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
-                      <FileType className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-sm text-foreground">File Conversion</span>
-                      <span className="text-xs text-muted-foreground leading-snug">
-                        Transform documents between PDF, Word, and other formats.
-                      </span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Link to="/#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Pricing</Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="font-sans text-sm font-bold tracking-tight text-foreground transition-colors flex items-center gap-1 outline-none group">
-                Resources <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[340px] p-3">
-                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="/blog" className="flex items-start gap-3 p-3 w-full">
-                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
-                      <FileText className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-sm text-foreground">Blog</span>
-                      <span className="text-xs text-muted-foreground leading-snug">
-                        Latest updates, articles, and insights.
-                      </span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="mb-1 cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="/help-center" className="flex items-start gap-3 p-3 w-full">
-                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
-                      <HelpCircle className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-sm text-foreground">Help Center</span>
-                      <span className="text-xs text-muted-foreground leading-snug">
-                        Guides, tutorials, and support documentation.
-                      </span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer rounded-lg focus:bg-accent">
-                  <Link to="/api-docs" className="flex items-start gap-3 p-3 w-full">
-                    <div className="bg-primary/10 p-2.5 rounded-md shrink-0">
-                      <Code className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-sm text-foreground">API Docs</span>
-                      <span className="text-xs text-muted-foreground leading-snug">
-                        Complete reference for developers.
-                      </span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground hover:text-primary transition-colors">Company</Link>
-          </div>
-          <div className="flex items-center gap-4">
-            {user ? (
-              <Link to="/dashboard">
-                <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Dashboard</Button>
-              </Link>
-            ) : (
-              <Link to="/auth">
-                <Button className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Get Started</Button>
-              </Link>
-            )}
-          </div>
+      <SiteHeader />
 
-          {/* Mobile Menu Toggle */}
-          <button className="md:hidden text-foreground p-2" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu">
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5 h-[calc(100vh-4rem)] overflow-y-auto">
-            <div className="flex flex-col">
-              <button 
-                className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
-                onClick={() => setMobileProductOpen(!mobileProductOpen)}
-              >
-                Product 
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileProductOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {mobileProductOpen && (
-                <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
-                  <Link to="/#features" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><PenTool className="w-4 h-4" /> eSign</Link>
-                  <Link to="/conversion" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileType className="w-4 h-4" /> File Conversion</Link>
-                </div>
-              )}
-            </div>
-            <Link to="/#pricing" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Pricing</Link>
-            <div className="flex flex-col">
-              <button 
-                className="flex items-center justify-between font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors w-full text-left"
-                onClick={() => setMobileResourcesOpen(!mobileResourcesOpen)}
-              >
-                Resources 
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileResourcesOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {mobileResourcesOpen && (
-                <div className="pl-4 flex flex-col gap-1 mt-1 border-l border-border/50 ml-2">
-                  <Link to="/blog" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><FileText className="w-4 h-4" /> Blog</Link>
-                  <Link to="/help-center" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</Link>
-                  <Link to="/api-docs" className="flex items-center gap-2 text-sm text-muted-foreground p-2 hover:text-foreground hover:bg-accent/50 rounded-md" onClick={() => setIsMenuOpen(false)}><Code className="w-4 h-4" /> API Docs</Link>
-                </div>
-              )}
-            </div>
-            <Link to="/about" className="font-sans text-sm font-bold tracking-tight text-foreground p-2 hover:bg-accent rounded-md transition-colors" onClick={() => setIsMenuOpen(false)}>Company</Link>
-            <div className="flex flex-col gap-3 mt-2">
-              <Link to={user ? "/dashboard" : "/auth"} onClick={() => setIsMenuOpen(false)}>
-                <Button className="w-full bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">{user ? "Dashboard" : "Get Started"}</Button>
-              </Link>
-            </div>
-          </div>
-        )}
-      </nav>
-
-      <main className="pt-24 md:pt-32 pb-16 md:pb-20 px-4 md:px-6">
-        <div className="container mx-auto max-w-6xl">
+      <main className="pt-10 md:pt-16 pb-16 md:pb-20 px-4 md:px-6">
+        <div className="container mx-auto max-w-6xl px-0">
           {/* Header */}
-          <div className="text-center mb-20">
+          <div className="text-center mb-12 md:mb-20">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              <FileText className="w-4 h-4" />
+              <Sparkles className="w-4 h-4" />
               The Endorse Blog
             </div>
             <h1 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold mb-6 tracking-tight">
               Insights for the <br/>
-              <span className="text-gradient">Modern Workflow</span>
+              <span className="text-[#0A66C2]">Modern Workflow</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 md:mb-10">
               Latest product updates, industry news, and tips to help you manage documents better.
             </p>
             
             {/* Search Bar */}
             <div className="max-w-md mx-auto relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input placeholder="Search articles..." className="pl-10 h-12 bg-secondary/50 border-border focus:ring-primary" aria-label="Search articles" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search articles..."
+                className="pl-10 pr-11 h-12 bg-secondary/50 border-border text-base focus:ring-primary [&::-webkit-search-cancel-button]:hidden"
+                aria-label="Search articles"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
+            {query && !loading && (
+              <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
+                {results.length === 0
+                  ? `No articles match "${search.trim()}".`
+                  : `${results.length} article${results.length === 1 ? "" : "s"} found for "${search.trim()}"`}
+              </p>
+            )}
           </div>
 
           {/* Featured Post */}
-          {posts.length > 0 && (
-            <div className="mb-20">
-              <Link to={`/blog/${posts[0].slug || posts[0].id}`} className="group relative rounded-2xl bg-card border border-border overflow-hidden grid md:grid-cols-2 gap-8 hover:shadow-lg transition-all duration-500 block">
+          {featured && (
+            <div className="mb-12 md:mb-20">
+              <Link to={`/blog/${featured.slug || featured.id}`} className="group relative rounded-2xl bg-card border border-border overflow-hidden grid md:grid-cols-2 md:gap-8 hover:shadow-lg transition-all duration-500 block">
                 <div className="aspect-video md:aspect-auto bg-secondary/50 relative overflow-hidden">
-                   {posts[0].image?.startsWith('http') || posts[0].image?.startsWith('/') ? (
-                     <img src={posts[0].image} alt={posts[0].title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                   {featured.image?.startsWith('http') || featured.image?.startsWith('/') ? (
+                     <img src={featured.image} alt={featured.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                    ) : (
-                     <div className={`w-full h-full ${posts[0].image || 'bg-primary/5'} flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500`}>
-                        <FileText className="w-20 h-20" />
+                     <div className={`w-full h-full ${featured.image || 'bg-primary/5'} flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500`}>
+                        <FileText className="w-24 h-24" />
                      </div>
                    )}
                 </div>
@@ -247,21 +138,21 @@ const Blog = () => {
                   <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
                     <span className="text-primary font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-xs uppercase tracking-wide">Featured</span>
                     <span>•</span>
-                    <span>{posts[0].createdAt?.seconds ? new Date(posts[0].createdAt.seconds * 1000).toLocaleDateString() : 'Recent'}</span>
+                    <span>{featured.createdAt?.seconds ? new Date(featured.createdAt.seconds * 1000).toLocaleDateString() : 'Recent'}</span>
                   </div>
-                  <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 group-hover:text-primary transition-colors">
-                    {posts[0].title}
+                  <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold mb-4 group-hover:text-primary transition-colors break-words">
+                    {featured.title}
                   </h2>
-                  <p className="text-muted-foreground text-lg mb-8 leading-relaxed line-clamp-3">
-                    {posts[0].excerpt}
+                  <p className="text-muted-foreground text-base md:text-lg mb-6 md:mb-8 leading-relaxed line-clamp-3">
+                    {featured.excerpt}
                   </p>
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-muted-foreground">
                       <User className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-sm">{posts[0].author}</p>
-                      <p className="text-xs text-muted-foreground">{posts[0].category}</p>
+                      <p className="font-semibold text-sm">{featured.author}</p>
+                      <p className="text-xs text-muted-foreground">{featured.category}</p>
                     </div>
                   </div>
                 </div>
@@ -270,9 +161,9 @@ const Blog = () => {
           )}
 
           {/* Post Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {posts.slice(1).map((post, i) => (
-              <Link key={i} to={`/blog/${post.slug || post.id}`} className="group flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-all duration-300">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {gridPosts.map((post) => (
+              <Link key={post.id} to={`/blog/${post.slug || post.id}`} className="group flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-all duration-300">
                 <div className="aspect-[16/9] relative overflow-hidden bg-muted">
                    {post.image?.startsWith('http') || post.image?.startsWith('/') ? (
                      <img 
@@ -282,15 +173,19 @@ const Blog = () => {
                      />
                    ) : (
                      <div className={`w-full h-full ${post.image || 'bg-primary/5'} flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500`}>
-                        <FileText className="w-12 h-12" />
+                        <ImageIcon className="w-12 h-12" />
                      </div>
                    )}
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
                     <span className="text-primary font-medium px-2 py-0.5 rounded-full bg-primary/10 uppercase tracking-wide">{post.category}</span>
-                    <span>•</span>
-                    <span>{post.readTime}</span>
+                    {post.readTime && (
+                      <>
+                        <span>•</span>
+                        <span>{post.readTime}</span>
+                      </>
+                    )}
                   </div>
                   <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors leading-tight">
                     {post.title}
@@ -303,25 +198,19 @@ const Blog = () => {
                       <User className="w-3 h-3" />
                       {post.author}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={(e) => {
                           e.preventDefault();
-                          if (navigator.share) {
-                            navigator.share({
-                              title: post.title,
-                              text: post.excerpt,
-                              url: window.location.href,
-                            }).catch(() => {});
-                          }
+                          sharePost(post);
                         }}
-                        className="text-muted-foreground hover:text-primary transition-colors"
+                        className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                         aria-label="Share post"
                       >
                         <Share2 className="w-4 h-4" />
                       </button>
                       <div className="flex items-center text-xs font-semibold text-foreground group-hover:translate-x-1 transition-transform">
-                        Read <ChevronRight className="w-3 h-3 ml-1" />
+                        Read <ArrowRight className="w-3 h-3 ml-1" />
                       </div>
                     </div>
                   </div>
@@ -330,34 +219,23 @@ const Blog = () => {
             ))}
           </div>
           
+          {!loading && posts.length === 0 && (
+            <p className="py-12 text-center text-muted-foreground">No articles yet — check back soon.</p>
+          )}
+          {loading && <p className="py-12 text-center text-muted-foreground">Loading articles…</p>}
+
           {/* Newsletter CTA */}
           <div className="mt-16 md:mt-24 rounded-2xl bg-secondary/30 border border-border p-6 md:p-12 text-center">
             <h3 className="font-display text-2xl md:text-3xl font-bold mb-4">Subscribe to our newsletter</h3>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
               Get the latest articles, resources, and product updates delivered directly to your inbox.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <Input placeholder="Enter your email" className="bg-background" aria-label="Email address" />
-              <Button>Subscribe</Button>
-            </div>
+            <NewsletterForm source="blog" className="max-w-md mx-auto" />
           </div>
         </div>
       </main>
 
-      {/* Footer (Simple) */}
-      <footer className="bg-background border-t border-border py-12 px-4 md:px-6">
-        <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <p className="text-muted-foreground text-sm">
-            © {new Date().getFullYear()} Endorse. All rights reserved.
-          </p>
-          <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link to="/" className="hover:text-foreground">Home</Link>
-            <Link to="/auth" className="hover:text-foreground">Sign In</Link>
-            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link to="/terms" className="hover:text-foreground">Terms</Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 };

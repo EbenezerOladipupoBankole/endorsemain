@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SignDocument from "./pages/SignDocument";
+import WhatsAppVerify from "./pages/WhatsAppVerify";
 import Blog from "./pages/Blog";
 import About from "./pages/About";
 import Payment from "./Payment";
@@ -16,12 +17,17 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import CookiePolicy from "./pages/CookiePolicy";
 import Team from "./pages/Team";
+import Settings from "./pages/Settings";
 import FileConversion from "./pages/FileConversion";
 import AdminBlog from "./pages/AdminBlog";
 import BlogPost from "./pages/BlogPost";
 import HelpCenter from "./pages/HelpCenter";
 import AdminHelpCenter from "./pages/AdminHelpCenter";
 import ApiDocs from "./pages/ApiDocs";
+import Invoices from "./pages/Invoices";
+import SalesOperations from "./pages/SalesOperations";
+import HrRecruiting from "./pages/HrRecruiting";
+import LegalCompliance from "./pages/LegalCompliance";
 import { useAuth } from "./components/AuthContext";
 
 const queryClient = new QueryClient();
@@ -45,10 +51,17 @@ const App = () => (
           <Route path="/blog/:id" element={<BlogPost />} />
           <Route path="/help-center" element={<HelpCenter />} />
           <Route path="/api-docs" element={<ApiDocs />} />
+          <Route path="/solutions/sales-operations" element={<SalesOperations />} />
+          <Route path="/solutions/hr-recruiting" element={<HrRecruiting />} />
+          <Route path="/solutions/legal-compliance" element={<LegalCompliance />} />
+          {/* Signing pages handle their own auth: email signers log in, WhatsApp signers verify a code. */}
+          <Route path="/sign/:id" element={<SignDocument />} />
+          <Route path="/sign/:id/verify" element={<WhatsAppVerify />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/sign/:id" element={<SignDocument />} />
+            <Route path="/invoices" element={<Invoices />} />
             <Route path="/team" element={<Team />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/admin/blog" element={<AdminBlog />} />
             <Route path="/admin/help" element={<AdminHelpCenter />} />
           </Route>

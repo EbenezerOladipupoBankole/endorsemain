@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/components/client";
-import { CheckCircle2, Clock, Eye, Send, ShieldCheck, User } from "lucide-react";
+import { Activity, CheckCircle2, Clock, Eye, FilePlus, History, PenTool, ShieldCheck, User } from "lucide-react";
 
 interface AuditEvent {
   id: string;
@@ -49,11 +49,11 @@ export const AuditTrail = ({ documentId }: AuditTrailProps) => {
 
   const getIcon = (action: string) => {
     const act = action.toLowerCase();
-    if (act.includes("create") || act.includes("upload")) return <Send className="w-4 h-4 text-blue-500" />;
-    if (act.includes("sign")) return <CheckCircle2 className="w-4 h-4 text-green-500" />;
-    if (act.includes("view")) return <Eye className="w-4 h-4 text-purple-500" />;
-    if (act.includes("complete")) return <ShieldCheck className="w-4 h-4 text-emerald-500" />;
-    return <Clock className="w-4 h-4 text-slate-400" />;
+    if (act.includes("create") || act.includes("upload")) return <FilePlus className="w-3 h-3 text-blue-600" />;
+    if (act.includes("sign")) return <PenTool className="w-3 h-3 text-[#0A66C2]" />;
+    if (act.includes("view")) return <Eye className="w-3 h-3 text-slate-500" />;
+    if (act.includes("complete")) return <CheckCircle2 className="w-3 h-3 text-green-600" />;
+    return <Activity className="w-3 h-3 text-slate-500" />;
   };
 
   if (loading) {
@@ -76,7 +76,7 @@ export const AuditTrail = ({ documentId }: AuditTrailProps) => {
     // Fallback if no logs found in Firestore (might be a fresh migration)
     return (
       <div className="text-center py-8 text-slate-500">
-        <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+        <History className="w-8 h-8 mx-auto mb-2 text-slate-300" />
         <p className="text-sm">No activity events found for this document yet.</p>
       </div>
     );
@@ -105,11 +105,11 @@ export const AuditTrail = ({ documentId }: AuditTrailProps) => {
 
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                    <User className="w-3.5 h-3.5" />
+                    <User className="w-3 h-3 shrink-0" />
                     <span className="truncate">{event.performedBy}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-3 h-3 shrink-0" />
                     <span>{event.timestamp?.seconds ? new Date(event.timestamp.seconds * 1000).toLocaleString() : 'Just now'}</span>
                     {event.ip && (
                       <>

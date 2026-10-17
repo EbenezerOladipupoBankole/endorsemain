@@ -4,14 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, UserPlus, Trash2 } from "lucide-react";
+
 import { toast } from "sonner";
-import { Separator } from "@/components/ui/separator";
-import { Link } from "react-router-dom";
-import { Logo } from "@/components/Logo";
+import { Link, useNavigate } from "react-router-dom";
+import { AppHeader } from "@/components/AppHeader";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/components/client";
 import { collection, onSnapshot, doc, deleteDoc, query, where } from "firebase/firestore";
+
+import { AgreementsList } from "@/components/agreements/AgreementsList";
+import { TemplateStudio, AgreementTemplate } from "@/components/agreements/TemplateStudio";
+import { SendAgreementModal } from "@/components/agreements/SendAgreementModal";
+
+import {
+  Users,
+  UserPlus,
+  Mail,
+  Shield,
+  Trash2,
+  ArrowLeft,
+  Building,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Send
+} from "lucide-react";
 
 interface TeamMember {
   id: string;
@@ -22,12 +39,19 @@ interface TeamMember {
 
 const Team = () => {
   const { user, userProfile } = useAuth();
+  const navigate = useNavigate();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>("member");
   const [isInviting, setIsInviting] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [teamName, setTeamName] = useState("");
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+
+  // ---- Agreement Workspace State inside Team Management ----
+  const [activeTeamTab, setActiveTeamTab] = useState<'agreements' | 'templates' | 'members'>('agreements');
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [selectedTemplateForDispatch, setSelectedTemplateForDispatch] = useState<AgreementTemplate | null>(null);
 
   useEffect(() => {
     const teamId = userProfile?.teamId;
@@ -48,7 +72,7 @@ const Team = () => {
     const unsubMembers = onSnapshot(query(membersRef), (snapshot) => {
       activeMembers = snapshot.docs.map(doc => ({
         id: doc.id,
-        name: doc.data().email,
+        name: doc.data().name || doc.data().email.split('@')[0],
         ...doc.data(),
       } as TeamMember));
       updateCombined();
@@ -81,7 +105,7 @@ const Team = () => {
     setIsInviting(true);
     try {
       const inviteTeamMemberFn = httpsCallable(functions, 'inviteTeamMember');
-      await inviteTeamMemberFn({ inviteEmail, role: 'member' });
+      await inviteTeamMemberFn({ inviteEmail, role: inviteRole });
       toast.success(`Invitation sent to ${inviteEmail}!`);
       setInviteEmail("");
     } catch (error: any) {
@@ -103,7 +127,6 @@ const Team = () => {
       const createTeamFn = httpsCallable(functions, 'createTeam');
       await createTeamFn({ teamName });
       toast.success(`Team "${teamName}" created successfully! Reloading...`);
-      // Reload after a short delay to allow backend to propagate and user to read toast
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -132,138 +155,274 @@ const Team = () => {
       }
     }
   };
+
+  const activeSeats = teamMembers.length;
+  const maxSeats = userProfile?.plan === "business" ? 15 : 10;
+  const seatsPercentage = Math.min((activeSeats / maxSeats) * 100, 100);
+
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950/20 font-sans flex flex-col">
+      <AppHeader />
+
+      <main className="container py-8 px-4 md:px-6 max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
-            <Link to="/dashboard">
-              <Logo className="h-8 w-auto" />
+            <Link to="/dashboard" className="shrink-0">
+              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border shadow-sm bg-white dark:bg-slate-900" aria-label="Return to Dashboard">
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
             </Link>
-            <nav className="hidden md:flex items-center gap-4 text-sm font-medium">
-              <Link to="/dashboard" className="text-muted-foreground hover:text-foreground">Dashboard</Link>
-              <Link to="/team" className="text-foreground">Team Management</Link>
-              <Link to="/settings?tab=profile" className="text-muted-foreground hover:text-foreground">Settings</Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              {user?.email}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Send for Signature</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">Send documents for signature, track who has signed, and manage your teammates.</p>
             </div>
           </div>
+
+          <Button
+            onClick={() => {
+              setSelectedTemplateForDispatch(null);
+              setShowSendModal(true);
+            }}
+            className="bg-[#FFC83D] hover:bg-[#e6b435] text-slate-900 font-bold text-sm h-11 px-5 rounded-xl shadow-md flex items-center justify-center gap-2 w-full sm:w-auto"
+          >
+            <Send className="w-4 h-4" />
+            Send a document
+          </Button>
         </div>
-      </header>
 
-      <main className="container py-10 px-4 md:px-6 max-w-4xl mx-auto">
+        {/* Navigation Tabs for Organization Management */}
+        <div role="tablist" aria-label="Send for signature sections" className="bg-white dark:bg-slate-900 p-1 sm:p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm grid grid-cols-3 gap-1 sm:gap-2 mb-6">
+          {([
+            { id: 'agreements', icon: Send, label: 'Sent for signature', short: 'Sent' },
+            { id: 'templates', icon: FileText, label: 'Templates', short: 'Templates' },
+            { id: 'members', icon: Users, label: 'Teammates', short: 'Team' },
+          ] as const).map(({ id, icon: Icon, label, short }) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={activeTeamTab === id}
+              onClick={() => setActiveTeamTab(id)}
+              className={`min-w-0 min-h-[44px] py-2.5 px-1 sm:px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-1 sm:gap-2 transition-all ${
+                activeTeamTab === id
+                  ? 'bg-[#0A66C2] text-white shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="truncate sm:hidden">{short}</span>
+              <span className="truncate hidden sm:inline">{label}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Team Management</h1>
-            <p className="text-muted-foreground">Invite and manage your team members.</p>
-          </div>
+          {/* TAB CONTENT: SENT FOR SIGNATURE */}
+          {activeTeamTab === 'agreements' && (
+            <AgreementsList
+              onOpenTemplateStudio={() => setActiveTeamTab('templates')}
+              onOpenSendModal={() => {
+                setSelectedTemplateForDispatch(null);
+                setShowSendModal(true);
+              }}
+            />
+          )}
 
-          <Separator />
+          {/* TAB CONTENT: TEMPLATE STUDIO */}
+          {activeTeamTab === 'templates' && (
+            <TemplateStudio
+              onSelectTemplateToDispatch={(tpl) => {
+                setSelectedTemplateForDispatch(tpl);
+                setShowSendModal(true);
+              }}
+            />
+          )}
 
-          {!userProfile?.teamId ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Create a Team</CardTitle>
-                <CardDescription>You are not part of any team. Create one to invite members.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreateTeam} className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="flex-1 w-full space-y-2">
-                    <Label htmlFor="team-name" className="sr-only">Team Name</Label>
-                    <Input
-                      id="team-name"
-                      type="text"
-                      placeholder="Enter team name (e.g. Acme Corp)"
-                      value={teamName}
-                      onChange={(e) => setTeamName(e.target.value)}
-                      required
-                    />
+          {/* TAB CONTENT: TEAM MEMBERS */}
+          {activeTeamTab === 'members' && (
+            <div className="space-y-6">
+              {!userProfile?.teamId ? (
+                <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Create Workspace Team</CardTitle>
+                    <CardDescription className="text-sm">You are currently in an individual workspace. Setup a team workspace to invite collaborators.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleCreateTeam} className="flex flex-col sm:flex-row items-center gap-4">
+                      <div className="flex-1 w-full space-y-2">
+                        <Label htmlFor="team-name" className="sr-only">Team Name</Label>
+                        <Input
+                          id="team-name"
+                          type="text"
+                          placeholder="Enter team name (e.g. Acme Inc.)"
+                          value={teamName}
+                          onChange={(e) => setTeamName(e.target.value)}
+                          required
+                          className="h-11 rounded-xl border-slate-200 dark:border-slate-800 shadow-sm"
+                        />
+                      </div>
+                      <Button type="submit" disabled={isCreatingTeam} className="h-11 w-full sm:w-auto rounded-xl font-bold px-6 bg-[#0A66C2] hover:bg-[#08519c] text-white">
+                        {isCreatingTeam ? "Creating..." : "Create Team"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-6">
+                  {/* Seats Allocation Progress Track */}
+              <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                  <div className="space-y-1 text-left">
+                    <span className="text-xs uppercase font-extrabold tracking-wider text-slate-500">Workspace Capacity</span>
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                      {activeSeats} of {maxSeats} Active Seats Occupied
+                    </h3>
                   </div>
-                  <Button type="submit" disabled={isCreatingTeam} className="w-full sm:w-auto">
-                    {isCreatingTeam ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Create Team
+                  <Button variant="outline" className="h-10 rounded-xl font-bold border-slate-200 dark:border-slate-800 shrink-0 self-stretch sm:self-center" onClick={() => navigate('/settings?tab=branding')}>
+                    Manage Seats
                   </Button>
-                </form>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {/* Invite Members */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Invite New Member</CardTitle>
-                  <CardDescription>Enter the email of the person you want to add to your team.</CardDescription>
+                </div>
+                {/* Progress track */}
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden mb-2">
+                  <div 
+                    style={{ width: `${seatsPercentage}%` }}
+                    className="bg-[#0A66C2] h-full rounded-full transition-all duration-500" 
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground font-medium">
+                  <span>{maxSeats - activeSeats} seats remaining</span>
+                  <span>{Math.round(seatsPercentage)}% capacity</span>
+                </div>
+              </Card>
+
+              {/* Invite Members form */}
+              <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Invite New Teammate</CardTitle>
+                  <CardDescription className="text-sm">Add collaborators to share template layouts and audit sign logs.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleInviteMember} className="flex items-center gap-4">
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor="invite-email" className="sr-only">Email</Label>
-                      <Input
-                        id="invite-email"
-                        type="email"
-                        placeholder="teammate@example.com"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        required
-                      />
+                  <form onSubmit={handleInviteMember} className="flex flex-col md:flex-row items-stretch md:items-end gap-4">
+                    <div className="flex-1 space-y-2 text-left">
+                      <Label htmlFor="invite-email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Teammate Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          id="invite-email"
+                          type="email"
+                          placeholder="teammate@example.com"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          required
+                          className="h-11 pl-10 rounded-xl border-slate-200 dark:border-slate-800 shadow-sm text-sm"
+                        />
+                      </div>
                     </div>
-                    <Button type="submit" disabled={isInviting}>
-                      {isInviting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                      Send Invite
+                    <div className="w-full md:w-44 space-y-2 text-left">
+                      <Label htmlFor="invite-role" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Workspace Role</Label>
+                      <select
+                        id="invite-role"
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member')}
+                        className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+                      >
+                        <option value="member">Workspace Member</option>
+                        <option value="admin">Workspace Admin</option>
+                      </select>
+                    </div>
+                    <Button type="submit" disabled={isInviting} className="rounded-xl font-bold h-11 px-6 shrink-0 shadow-md bg-[#0A66C2] hover:bg-[#08519c] text-white">
+                      {isInviting ? "Inviting..." : "Send Invitation"}
                     </Button>
                   </form>
                 </CardContent>
               </Card>
 
               {/* Team Members List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Team Members</CardTitle>
-                  <CardDescription>A list of people in your organization.</CardDescription>
+              <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Workspace Teammates List</CardTitle>
+                  <CardDescription className="text-sm">Active members and pending user invitation lists in your organization.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0 sm:px-6">
                   {loadingMembers ? (
-                    <div className="flex justify-center items-center h-24">
-                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <div className="flex flex-col items-center justify-center h-32 gap-2">
+                      <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs text-muted-foreground font-semibold">Updating teammate list...</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {teamMembers.map(member => (
-                        <div key={member.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-semibold text-muted-foreground">
-                              {member.name?.split(' ').map(n => n[0]).join('').toUpperCase() || member.email[0].toUpperCase()}
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {teamMembers.map(member => {
+                        const isPending = member.role === "pending";
+                        const isAdminRole = member.role === "admin";
+                        const initials = member.name
+                          ? member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                          : member.email[0].toUpperCase();
+
+                        return (
+                          <div key={member.id} className="flex items-center justify-between py-4 px-4 sm:px-0 transition-colors">
+                            <div className="flex items-center gap-4 text-left min-w-0">
+                              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-sm text-primary shrink-0 overflow-hidden shadow-inner">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-bold text-slate-900 dark:text-white truncate text-sm">
+                                  {isPending ? "Pending Invitation" : member.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate font-mono mt-0.5">{member.email}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">{member.name}</p>
-                              <p className="text-sm text-muted-foreground">{member.email}</p>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {/* Role badge styling */}
+                              <span className={`px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border flex items-center gap-1 ${
+                                isAdminRole 
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50' 
+                                  : isPending 
+                                  ? 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-400 dark:border-yellow-900/50'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800'
+                              }`}>
+                                {isPending ? <Clock className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                                {member.role}
+                              </span>
+
+                              {/* Remove button */}
+                              {user?.email !== member.email && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-10 w-10 text-slate-400 hover:text-destructive hover:bg-destructive/5 rounded-full" 
+                                  onClick={() => handleRemoveMember(member)}
+                                  aria-label={`Remove member ${member.email}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              member.role === 'admin' ? 'bg-primary/10 text-primary' :
-                              member.role === 'member' ? 'bg-slate-100 text-slate-600' :
-                              'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              {member.role}
-                            </span>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => handleRemoveMember(member)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
               </Card>
-            </>
+            </div>
           )}
         </div>
+      )}
+        </div>
       </main>
+
+      {/* Send for signature modal */}
+      {showSendModal && (
+        <SendAgreementModal
+          template={selectedTemplateForDispatch}
+          onClose={() => {
+            setShowSendModal(false);
+            setSelectedTemplateForDispatch(null);
+          }}
+          onSuccess={() => {
+            setActiveTeamTab('agreements');
+          }}
+        />
+      )}
     </div>
   );
 };
