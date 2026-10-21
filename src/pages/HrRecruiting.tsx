@@ -136,7 +136,7 @@ export default function HrRecruiting() {
   const ctaHref = user ? "/dashboard" : "/auth?redirect=/dashboard";
 
   return (
-    <div className="flex min-h-screen flex-col bg-white font-sans text-[#0F172A] dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-white font-sans text-[#0F172A] dark:bg-slate-950 dark:text-slate-100">
       <SiteHeader />
 
       {/* Hero */}

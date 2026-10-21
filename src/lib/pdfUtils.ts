@@ -79,15 +79,22 @@ export const embedItemsInPDF = async (
         }
 
         if (image) {
-          const defaultWidth = 200 * (item.scale || 1);
-          const defaultHeight = 80 * (item.scale || 1);
+          // Same box the viewer uses (200x80 on an 800px-wide page), with the image's
+          // aspect ratio kept, so the download matches what the user saw on screen.
+          const boxWidth = width * (200 / 800) * (item.scale || 1);
+          const boxHeight = width * (80 / 800) * (item.scale || 1);
+          const fit = Math.min(1, boxWidth / image.width, boxHeight / image.height);
+          const drawWidth = image.width * fit;
+          const drawHeight = image.height * fit;
 
           page.drawImage(image, {
-            x: xPos - (defaultWidth / 2),
-            y: yPos - (defaultHeight / 2),
-            width: defaultWidth,
-            height: defaultHeight,
+            x: xPos - (drawWidth / 2),
+            y: yPos - (drawHeight / 2),
+            width: drawWidth,
+            height: drawHeight,
           });
+        } else {
+          console.warn("Could not embed signature image; it was left out of the PDF", item.id);
         }
       }
     } else {

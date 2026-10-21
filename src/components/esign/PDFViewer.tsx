@@ -51,6 +51,18 @@ interface PDFViewerProps {
   onCommentPlace?: (pos: { page: number; x: number; y: number }) => void;
 }
 
+// Font data for PDFs that use the standard 14 fonts (Helvetica, Times…) without embedding them,
+// and character maps for CJK text. Without these, such documents render as garbled glyphs.
+// Copied from pdfjs-dist into public/pdfjs by the copy-pdfjs-assets script.
+export const documentOptions = {
+  standardFontDataUrl: "/pdfjs/standard_fonts/",
+  cMapUrl: "/pdfjs/cmaps/",
+  cMapPacked: true,
+  // Use the bundled font data rather than guessing at a local system font, which can draw
+  // the wrong glyphs (e.g. mixed-case letters squashed together).
+  useSystemFonts: false,
+};
+
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 
@@ -151,9 +163,13 @@ export const PDFViewer = ({
     });
   }, [draggingId, selectedItemId, activeStamp, currentPage, onItemPlace, commentMode, onCommentPlace]);
 
-  const handleDragStart = (e: React.MouseEvent, id: string) => {
+  // Pointer events so fields can be dragged with a finger as well as a mouse.
+  const handleDragStart = (e: React.PointerEvent, id: string) => {
     e.stopPropagation();
     e.preventDefault();
+    // Touch pointers are captured by the item; release so moves reach the page container.
+    const target = e.target as Element;
+    if (target.hasPointerCapture?.(e.pointerId)) target.releasePointerCapture(e.pointerId);
     setDraggingId(id);
     setSelectedItemId(id);
   };
@@ -190,9 +206,10 @@ export const PDFViewer = ({
               top: `${item.y}%`,
               transform: `translate(-50%, -50%) scale(${item.scale})`,
               transformOrigin: "center",
+              touchAction: "none",
               zIndex: isSelected ? 50 : 10,
             }}
-            onMouseDown={(e) => handleDragStart(e, item.id)}
+            onPointerDown={(e) => handleDragStart(e, item.id)}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedItemId(item.id);
@@ -207,7 +224,7 @@ export const PDFViewer = ({
                   left: '50%',
                   transform: `translateX(-50%) scale(${1 / item.scale})`, // keep toolbar size constant regardless of item scale
                 }}
-                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
                 <Button
@@ -270,7 +287,7 @@ export const PDFViewer = ({
                   onChange={(e) => onItemUpdate(item.id, { data: e.target.value })}
                   className="bg-transparent border-none outline-none w-full h-full text-slate-900 placeholder:text-slate-400 font-serif"
                   style={{ fontSize: `${Math.max(10, 16 * displayScale)}px`, fontFamily: '"Times New Roman", Times, Georgia, serif', minWidth: `${Math.max(48, item.data.length * 9 * Math.max(displayScale, 0.625))}px` }}
-                  onMouseDown={(e) => {
+                  onPointerDown={(e) => {
                     if (isSelected) e.stopPropagation();
                   }}
                   readOnly={!isSelected}
@@ -316,11 +333,11 @@ export const PDFViewer = ({
         className="pdf-page relative mx-auto w-fit border border-border bg-white shadow-xl rounded-sm overflow-hidden"
         style={{ cursor: commentMode || activeStamp ? "crosshair" : "default" }}
         onClick={handlePageClick}
-        onMouseMove={handleDrag}
-        onMouseUp={handleDragEnd}
-        onMouseLeave={handleDragEnd}
+        onPointerMove={handleDrag}
+        onPointerUp={handleDragEnd}
+        onPointerLeave={handleDragEnd}
       >
-        <Document file={file} onLoadSuccess={onDocumentLoadSuccess} className="max-w-full">
+        <Document file={file} options={documentOptions} onLoadSuccess={onDocumentLoadSuccess} className="max-w-full">
           <Page
             pageNumber={currentPage}
             width={pageWidth}
@@ -346,7 +363,7 @@ export const PDFViewer = ({
                   active ? "scale-125 bg-[#0A66C2] text-white" : "bg-[#FFC83D] text-slate-900 hover:scale-110"
                 }`}
                 style={{ left: `${c.x}%`, top: `${c.y}%` }}
-                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   onCommentClick?.(c.id);

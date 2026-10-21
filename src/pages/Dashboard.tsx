@@ -14,7 +14,7 @@ import SignatureModal from '@/components/SignatureModal';
 import { SendAgreementModal } from '@/components/agreements/SendAgreementModal';
 import type { AgreementTemplate } from '@/components/agreements/TemplateStudio';
 import { Logo } from '@/components/Logo';
-import { APP_NAV } from '@/components/AppHeader';
+import { APP_NAV, initialsOf } from '@/components/AppHeader';
 import { DocumentTools } from '@/components/esign/DocumentTools';
 import { useViewerState, useDocumentComments } from '@/components/esign/viewerTools';
 import {
@@ -279,15 +279,29 @@ const Dashboard = () => {
   };
 
   const handleModalSave = (signatureData: string, signatureType: "draw" | "type" | "upload") => {
-    if (showSignatureModal === 'initials') {
+    const isInitials = showSignatureModal === 'initials';
+    if (isInitials) {
       setInitials(signatureData);
       setActiveStampType('initials');
-      toast.success('Initials created! Click on the document to place them.');
     } else {
       setSignature(signatureData);
       setActiveStampType('signature');
-      toast.success('Signature created! Click on the document to place it.');
     }
+    // Put it on the page straight away so the user sees it; they can drag it into position.
+    setPlacedItems(prev => [...prev, {
+      id: Math.random().toString(36).substring(7),
+      type: isInitials ? 'initials' : 'signature',
+      data: signatureData,
+      x: 50,
+      y: 50,
+      page: viewer.page,
+      scale: 1,
+    }]);
+    toast.success(
+      isInitials
+        ? 'Initials added to the page. Drag them into place, or click elsewhere on the document to add more.'
+        : 'Signature added to the page. Drag it into place, or click elsewhere on the document to add more.'
+    );
     setIsPlacingSignature(true);
     setShowSignatureModal(null);
   };
@@ -798,6 +812,7 @@ const Dashboard = () => {
             }}
             onClose={() => setShowSignatureModal(null)}
             onSave={handleModalSave}
+            kind={showSignatureModal === "initials" ? "initials" : "signature"}
           />
         )}
       </div>
@@ -928,7 +943,7 @@ const Dashboard = () => {
                       <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
                     ) : (
                       <span className="font-medium text-xs text-accent-foreground">
-                        {user?.email?.substring(0, 2).toUpperCase()}
+                        {initialsOf(user?.displayName || userProfile?.displayName, user?.email)}
                       </span>
                     )}
                   </div>

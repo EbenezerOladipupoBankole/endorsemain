@@ -187,7 +187,7 @@ export default function LegalCompliance() {
   const ctaHref = user ? "/dashboard" : "/auth?redirect=/dashboard";
 
   return (
-    <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <SiteHeader />
 
       {/* Hero */}

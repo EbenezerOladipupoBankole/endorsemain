@@ -25,7 +25,18 @@ interface SignatureModalProps {
   document: Document;
   onClose: () => void;
   onSave: (signatureData: string, signatureType: "draw" | "type" | "upload") => void;
+  /** Which mark is being adopted; decides whether the typed style uses the name or the initials. */
+  kind?: "signature" | "initials";
 }
+
+const initialsFrom = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase())
+    .slice(0, 3)
+    .join("");
 
 const SIGNATURE_FONTS = [
   { id: 'font-dancing', name: 'Dancing Script', family: '"Dancing Script", cursive', url: 'https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap' },
@@ -280,10 +291,14 @@ const textToDataUrl = (text: string, font: string, fontSize: number = 60) => {
   return canvas.toDataURL("image/png");
 };
 
-const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
-  const [mode, setMode] = useState<"draw" | "type" | "upload">("draw");
+const SignatureModal = ({ document, onClose, onSave, kind = "signature" }: SignatureModalProps) => {
+  const [mode, setMode] = useState<"draw" | "type" | "upload">("type");
   const [isErasing, setIsErasing] = useState(false);
-  const [typedSignature, setTypedSignature] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [initials, setInitials] = useState("");
+  // Once the user edits the initials themselves, stop deriving them from the name.
+  const [initialsEdited, setInitialsEdited] = useState(false);
+  const [showFontPicker, setShowFontPicker] = useState(false);
   const [uploadedSignature, setUploadedSignature] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [uploadSource, setUploadSource] = useState<string | null>(null);
@@ -304,6 +319,21 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
   const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0]);
   const [fontSize, setFontSize] = useState(60);
   const { userProfile, user, isAdmin } = useAuth();
+
+  // Prefill from the signed-in account only; the profile can arrive after the modal opens.
+  const accountName = (user?.displayName || userProfile?.displayName || "").trim();
+  useEffect(() => {
+    if (!accountName) return;
+    setFullName((current) => current || accountName);
+    setInitials((current) => current || initialsFrom(accountName));
+  }, [accountName]);
+
+  const handleNameChange = (value: string) => {
+    setFullName(value);
+    if (!initialsEdited) setInitials(initialsFrom(value));
+  };
+
+  const typedText = (kind === "initials" ? initials : fullName).trim();
 
   useEffect(() => {
     SIGNATURE_FONTS.forEach(font => {
@@ -334,7 +364,8 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       signatureRef.current.clear();
       setIsErasing(false);
     } else if (mode === "type") {
-      setTypedSignature("");
+      if (kind === "initials") setInitials("");
+      else setFullName("");
     } else {
       setUploadedSignature(null);
       setUploadSource(null);
@@ -422,22 +453,33 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
       }
       return signatureRef.current?.toDataURL("image/png") || null;
     } else if (mode === "type") {
-      const text = typedSignature.trim();
-      if (!text) return null;
-      return textToDataUrl(text, selectedFont.family, fontSize);
+      if (!typedText) return null;
+      return textToDataUrl(typedText, selectedFont.family, fontSize);
     } else {
       return uploadedSignature;
     }
   };
 
-  const handleSave = () => {
-    if (document.status === "pending" && !agreedToTerms) {
-      toast.error("Please agree to the terms and conditions to sign.");
+  const handleSave = async () => {
+    if (mode === "type" && !typedText) {
+      toast.error(kind === "initials" ? "Please enter your initials." : "Please enter your full name.");
       return;
+    }
+    if (document.status === "pending" && !agreedToTerms) {
+      toast.error("Please tick the agreement box below to adopt your signature.");
+      return;
+    }
+    if (mode === "type") {
+      // Make sure the script font has loaded, otherwise the canvas falls back to a plain font.
+      try {
+        await window.document.fonts.load(`${fontSize}px ${selectedFont.family}`);
+      } catch {
+        // Render with whatever font is available.
+      }
     }
     const signatureData = getSignatureData();
     if (!signatureData) {
-      toast.error("Please add your signature first");
+      toast.error(mode === "draw" ? "Please draw your signature in the box first." : "Please upload an image of your signature first.");
       return;
     }
     setIsSaving(true);
@@ -537,7 +579,7 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-[20px] font-bold text-gray-800">
-            {document.status === "pending" ? "Adopt Your Signature" : "Document Details"}
+            {document.status === "pending" ? (kind === "initials" ? "Adopt Your Initials" : "Adopt Your Signature") : "Document Details"}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -556,11 +598,28 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
               <div className="flex gap-6 mb-8">
                 <div className="flex-1">
                   <label className="block text-[11px] font-bold text-gray-700 mb-1 tracking-wider uppercase">Full Name <span className="text-red-500">*</span></label>
-                  <input type="text" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none" defaultValue={userProfile?.displayName || userProfile?.email?.split('@')[0] || "Ebenezer Bankole"} />
+                  <input
+                    type="text"
+                    autoComplete="name"
+                    placeholder="Type your full name"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
+                    value={fullName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                  />
                 </div>
                 <div className="flex-1">
                   <label className="block text-[11px] font-bold text-gray-700 mb-1 tracking-wider uppercase">Initials <span className="text-red-500">*</span></label>
-                  <input type="text" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none" defaultValue="EB" />
+                  <input
+                    type="text"
+                    placeholder="e.g. JD"
+                    maxLength={5}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
+                    value={initials}
+                    onChange={(e) => {
+                      setInitials(e.target.value.toUpperCase());
+                      setInitialsEdited(true);
+                    }}
+                  />
                 </div>
               </div>
 
@@ -576,29 +635,57 @@ const SignatureModal = ({ document, onClose, onSave }: SignatureModalProps) => {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[11px] font-bold text-gray-600 tracking-wider uppercase">PREVIEW</span>
-                    <button className="text-[13px] text-blue-600 hover:underline">Change Style</button>
+                    <button
+                      type="button"
+                      onClick={() => setShowFontPicker((open) => !open)}
+                      className="text-[13px] text-blue-600 hover:underline"
+                    >
+                      {showFontPicker ? "Done" : "Change Style"}
+                    </button>
                   </div>
-                  
+
+                  {showFontPicker && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                      {SIGNATURE_FONTS.map((font) => (
+                        <button
+                          key={font.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedFont(font);
+                            setShowFontPicker(false);
+                          }}
+                          className={`text-left border rounded px-3 py-2 text-2xl text-black truncate transition-colors ${selectedFont.id === font.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-400'}`}
+                          style={{ fontFamily: font.family }}
+                        >
+                          {(kind === "initials" ? initials : fullName) || font.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="border border-gray-200 rounded p-4 flex justify-between items-center mb-6 h-[120px]">
                     {/* Signature Preview */}
                     <div className="flex-1 flex flex-col justify-center relative pl-4 border-l-[2px] border-blue-600 h-full max-w-[280px]">
                       <div className="absolute top-0 left-0 w-2 border-t-[2px] border-blue-600"></div>
                       <div className="absolute bottom-0 left-0 w-2 border-b-[2px] border-blue-600"></div>
                       <span className="text-[10px] text-gray-500 italic mb-1">Signed by:</span>
-                      {typedSignature ? (
-                        <span className="text-3xl text-black truncate" style={{ fontFamily: selectedFont.family }}>{typedSignature}</span>
+                      {fullName.trim() ? (
+                        <span className="text-3xl text-black truncate" style={{ fontFamily: selectedFont.family }}>{fullName}</span>
                       ) : (
-                        <span className="text-3xl text-black truncate" style={{ fontFamily: selectedFont.family }}>{userProfile?.displayName || "Ebenezer Bankole"}</span>
+                        <span className="text-sm text-gray-400 italic">Type your name above</span>
                       )}
-                      <span className="text-[10px] text-gray-500 font-mono mt-1">22C77DF31E19425A...</span>
                     </div>
 
                     {/* Initials Preview */}
                     <div className="w-[120px] flex flex-col justify-center relative pl-4 border-l-[2px] border-blue-600 h-full">
                       <div className="absolute top-0 left-0 w-2 border-t-[2px] border-blue-600"></div>
                       <div className="absolute bottom-0 left-0 w-2 border-b-[2px] border-blue-600"></div>
-                      <span className="text-[10px] text-gray-500 italic mb-1">DS</span>
-                      <span className="text-3xl text-black truncate" style={{ fontFamily: selectedFont.family }}>EB</span>
+                      <span className="text-[10px] text-gray-500 italic mb-1">Initials:</span>
+                      {initials.trim() ? (
+                        <span className="text-3xl text-black truncate" style={{ fontFamily: selectedFont.family }}>{initials}</span>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">—</span>
+                      )}
                     </div>
                   </div>
                 </div>

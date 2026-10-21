@@ -27,7 +27,7 @@ export const APP_NAV: AppNavItem[] = [
   { label: "File Converter", to: "/conversion", icon: RefreshCw },
 ];
 
-const initialsOf = (name?: string | null, email?: string | null) =>
+export const initialsOf = (name?: string | null, email?: string | null) =>
   (name || email || "U")
     .split(/[\s@.]+/)
     .filter(Boolean)

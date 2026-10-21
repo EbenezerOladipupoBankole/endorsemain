@@ -127,15 +127,27 @@ const SignDocument = () => {
   }, [id, navigate, user, authLoading]);
 
   const handleModalSave = (signatureData: string) => {
-    if (showSignatureModal === "signature") {
-      setSignature(signatureData);
-      setActiveStampType("signature");
-      toast.success('Signature created! Click on the document to place it.');
-    } else if (showSignatureModal === "initials") {
+    const isInitials = showSignatureModal === "initials";
+    if (isInitials) {
       setInitials(signatureData);
-      setActiveStampType("initials");
-      toast.success('Initials created! Click on the document to place it.');
+    } else {
+      setSignature(signatureData);
     }
+    // Put it on the page straight away so the user sees it; they can drag it into position.
+    setPlacedItems(prev => [...prev, {
+      id: Math.random().toString(36).substring(7),
+      type: isInitials ? "initials" : "signature",
+      data: signatureData,
+      x: 50,
+      y: 50,
+      page: viewer.page,
+      scale: 1,
+    }]);
+    toast.success(
+      isInitials
+        ? 'Initials added to the page. Drag them into place.'
+        : 'Signature added to the page. Drag it into place.'
+    );
     setShowSignatureModal(null);
   };
 
@@ -508,6 +520,7 @@ const SignDocument = () => {
           document={{ id: id || 'temp', name: documentData?.name || 'Document', status: 'pending', signature_data: null, signature_type: null }}
           onClose={() => setShowSignatureModal(null)}
           onSave={handleModalSave}
+          kind={showSignatureModal}
         />
       )}
       

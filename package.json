@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "copy-pdfjs-assets": "node -e \"const fs=require('fs');for(const d of ['standard_fonts','cmaps'])fs.cpSync('node_modules/pdfjs-dist/'+d,'public/pdfjs/'+d,{recursive:true})\"",
+    "predev": "npm run copy-pdfjs-assets",
     "dev": "vite",
+    "prebuild": "npm run copy-pdfjs-assets",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

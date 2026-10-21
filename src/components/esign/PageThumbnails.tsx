@@ -1,5 +1,6 @@
 import { Document, Page, pdfjs } from 'react-pdf';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { documentOptions } from './PDFViewer';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -13,7 +14,7 @@ interface PageThumbnailsProps {
 }
 
 const PageThumbnails = ({ file, numPages, currentPage, commentCounts = {}, onSelect }: PageThumbnailsProps) => (
-  <Document file={file} loading={<p className="p-4 text-xs text-slate-500">Loading pages…</p>}>
+  <Document file={file} options={documentOptions} loading={<p className="p-4 text-xs text-slate-500">Loading pages…</p>}>
     <div className="grid grid-cols-2 gap-3">
       {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
         <button
