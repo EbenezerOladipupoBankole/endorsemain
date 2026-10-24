@@ -24,12 +24,14 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <!-- About page hidden for now
   <url>
     <loc>https://e-ndorse.online/about</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  -->
   <url>
     <loc>https://e-ndorse.online/help-center</loc>
     <lastmod>2026-05-06</lastmod>
