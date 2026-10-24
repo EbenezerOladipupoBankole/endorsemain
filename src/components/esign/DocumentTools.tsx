@@ -115,7 +115,9 @@ export const DocumentTools = ({
       setSummary(res.data.summary);
     } catch (err: any) {
       console.error('Error summarizing document:', err);
-      setSummaryError(err?.message || 'Could not summarize this document.');
+      // A bare "internal" (no message from our function) means the service couldn't be reached at all.
+      const bare = !err?.message || err.message.toLowerCase() === 'internal';
+      setSummaryError(bare ? "Summaries aren't available right now. Please try again later." : err.message);
     } finally {
       setSummarizing(false);
     }

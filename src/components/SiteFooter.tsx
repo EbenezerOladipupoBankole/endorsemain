@@ -25,7 +25,7 @@ const COLUMNS: { title: string; links: { label: string; to: string; external?: b
   {
     title: "Company",
     links: [
-      { label: "About", to: "/about" },
+      // { label: "About", to: "/about" },
       { label: "Blog", to: "/blog" },
       { label: "Help Center", to: "/help-center" },
     ],

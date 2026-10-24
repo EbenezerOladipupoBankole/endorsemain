@@ -1,4 +1,5 @@
 import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
 import * as crypto from "crypto";
@@ -109,6 +110,10 @@ interface SendDocumentPayload {
   recipientEmail: string;
   pdfBase64: string;
   documentName: string;
+  /** "invoice" sends the sender's own subject and message instead of the signed-document wording. */
+  kind?: "signed" | "invoice";
+  subject?: string;
+  message?: string;
 }
 
 interface AcceptInvitePayload {
@@ -263,7 +268,7 @@ export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword], cors:
     throw new HttpsError("permission-denied", "Please verify your email address before sending documents.");
   }
 
-  const { recipientEmail, pdfBase64, documentName } = request.data as SendDocumentPayload;
+  const { recipientEmail, pdfBase64, documentName, kind, subject, message } = request.data as SendDocumentPayload;
   if (typeof recipientEmail !== "string" || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(recipientEmail.trim())) {
     throw new HttpsError("invalid-argument", "A single valid recipient email address is required.");
   }
@@ -279,13 +284,24 @@ export const sendDocument = onCall({ secrets: [gmailEmail, gmailPassword], cors:
 
   await consumeSendQuota(request.auth.uid);
 
+  const isInvoice = kind === "invoice";
+  // Sender-written text goes out as plain text only, with the subject kept to one short line.
+  const invoiceSubject = String(subject || "").replace(/[\r\n]+/g, " ").trim().slice(0, 150);
+  const invoiceMessage = String(message || "").trim().slice(0, 5000);
+
   try {
     await getTransporter().sendMail({
       from: `"Endorse" <${gmailEmail.value()}>`,
       replyTo: senderEmail,
       to: recipientEmail.trim(),
-      subject: `Signed document from ${senderEmail}: ${safeName}`,
-      text: `${senderEmail} sent you the signed copy of "${safeName}" using Endorse. It's attached to this email.
+      subject: isInvoice
+        ? `${invoiceSubject || `Invoice: ${safeName}`} (from ${senderEmail})`
+        : `Signed document from ${senderEmail}: ${safeName}`,
+      text: isInvoice
+        ? `${invoiceMessage || `${senderEmail} sent you an invoice using Endorse.`}
+
+The invoice is attached as a PDF. Reply to this email to reach ${senderEmail}.`
+        : `${senderEmail} sent you the signed copy of "${safeName}" using Endorse. It's attached to this email.
 
 If you weren't expecting this, you can ignore it.`,
       attachments: [
@@ -316,6 +332,43 @@ const emailShell = (inner: string) => `
 const emailButton = (href: string, label: string) =>
   `<p style="margin: 28px 0;"><a href="${href}" style="background-color: #0A66C2; color: #ffffff; padding: 12px 26px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 15px;">${label}</a></p>`;
 
+// Emails paid users three days before their 30 days run out, once per period.
+export const remindPlanExpiry = onSchedule(
+  { schedule: "every day 09:00", timeZone: "Africa/Lagos", secrets: [gmailEmail, gmailPassword] },
+  async () => {
+    const db = admin.firestore();
+    const now = Date.now();
+    const snap = await db.collection("users")
+      .where("planExpiresAt", ">", admin.firestore.Timestamp.fromMillis(now))
+      .where("planExpiresAt", "<=", admin.firestore.Timestamp.fromMillis(now + 3 * DAY_MS))
+      .get();
+
+    for (const userDoc of snap.docs) {
+      const data = userDoc.data();
+      if (data.planReminderSent === true) continue;
+      try {
+        const { email } = await admin.auth().getUser(userDoc.id);
+        if (!email) continue;
+        const planName = data.plan === "business" ? "Business" : "Pro";
+        const endsOn = data.planExpiresAt.toDate().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+        await getTransporter().sendMail({
+          from: `"Endorse" <${gmailEmail.value()}>`,
+          to: email,
+          subject: `Your Endorse ${planName} plan ends on ${endsOn}`,
+          html: emailShell(`
+            <h2 style="color: #0f172a; margin: 0 0 12px;">Your ${planName} plan ends soon</h2>
+            <p style="font-size: 15px; color: #475569;">Your 30 days of Endorse ${planName} end on <strong>${endsOn}</strong>.
+            Renew to keep unlimited signing and sending. Nothing renews automatically, and you won't be charged unless you choose to renew.</p>
+            ${emailButton(`https://e-ndorse.online/payment?plan=${data.plan}`, `Renew ${planName}`)}`),
+        });
+        await userDoc.ref.update({ planReminderSent: true });
+      } catch (err) {
+        console.error("Plan reminder failed for", userDoc.id, err);
+      }
+    }
+  }
+);
+
 // Emails the recipient of a signature request an invite to sign on Endorse.
 // Everything in the email is read from the stored document — the caller only
 // supplies its ID — and only the document's sender can trigger it.
@@ -345,6 +398,9 @@ export const sendAgreementInvite = onCall({ secrets: [gmailEmail, gmailPassword]
   }
   if (docData.status !== "pending") {
     throw new HttpsError("failed-precondition", "This document has already been signed.");
+  }
+  if (docData.creditOk === false) {
+    throw new HttpsError("failed-precondition", "This document hasn't been counted against your plan yet.");
   }
 
   await consumeSendQuota(request.auth.uid);
@@ -651,26 +707,132 @@ export const convertDocument = onCall({
 
 // --- PAYMENT INTEGRATIONS ---
 
+// Prices live here, on the server. The browser only says which plan it wants, so nobody can
+// change what they pay, and the webhook checks the amount actually paid before upgrading.
+const PLAN_PRICES_USD: Record<string, number> = { pro: 8, business: 15 };
+// Fixed conversion for Paystack charges, in Naira per US dollar.
+const NGN_PER_USD = 1600;
+const planPriceKobo = (planId: string) => Math.round(PLAN_PRICES_USD[planId] * 100 * NGN_PER_USD);
+
+// Paystack test mode is only used by the local emulator. Deployed functions always use the live
+// key, so a payment made with a test card can never upgrade a real account.
+const paystackIsLive = () => process.env.FUNCTIONS_EMULATOR !== "true";
+
+const requirePlan = (planId: unknown): string => {
+  if (typeof planId !== "string" || !(planId in PLAN_PRICES_USD)) {
+    throw new HttpsError("invalid-argument", "Unknown plan.");
+  }
+  return planId;
+};
+
+// Free accounts get this many documents in total (signed-and-downloaded or sent for signature).
+const FREE_DOCUMENT_LIMIT = 3;
+// Each payment buys this many days of the paid plan. There are no automatic renewals.
+const PLAN_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// A plan with no end date (team members, payments made before plans expired) stays active.
+const hasActivePaidPlan = (data: admin.firestore.DocumentData | undefined) => {
+  if (!data || (data.plan !== "pro" && data.plan !== "business")) return false;
+  const endsAt = data.planExpiresAt?.toMillis?.();
+  return endsAt === undefined || endsAt > Date.now();
+};
+
+// Gives the user PLAN_DAYS of the plan, added on to any time left on the same plan. Each payment
+// reference is recorded so a webhook delivered twice can't extend the plan twice.
+const grantPaidPlan = async (userId: string, planId: string, paymentRef: string, extra: Record<string, unknown> = {}) => {
+  const db = admin.firestore();
+  const userRef = db.collection("users").doc(userId);
+  const paymentRecord = db.collection("payments").doc(paymentRef.replace(/\//g, "_"));
+  await db.runTransaction(async (tx) => {
+    const [userSnap, paymentSnap] = await Promise.all([tx.get(userRef), tx.get(paymentRecord)]);
+    if (paymentSnap.exists) return;
+    const current = userSnap.data();
+    const currentEnd = current?.plan === planId ? current?.planExpiresAt?.toMillis?.() : undefined;
+    const start = currentEnd && currentEnd > Date.now() ? currentEnd : Date.now();
+    tx.set(paymentRecord, { userId, planId, at: admin.firestore.FieldValue.serverTimestamp() });
+    tx.set(userRef, {
+      plan: planId,
+      planExpiresAt: admin.firestore.Timestamp.fromMillis(start + PLAN_DAYS * DAY_MS),
+      planReminderSent: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...extra,
+    }, { merge: true });
+  });
+};
+
+// Uses one free document, unless the user has an active paid plan. For "send", the documents being
+// sent are marked as counted; invites and signing are refused for any document that isn't.
+export const claimDocumentCredit = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in.");
+  }
+  const { kind, documentIds } = request.data as { kind?: string; documentIds?: unknown };
+  if (kind !== "download" && kind !== "send") {
+    throw new HttpsError("invalid-argument", "Unknown action.");
+  }
+  const ids = kind === "send" && Array.isArray(documentIds)
+    ? documentIds.filter((id): id is string => typeof id === "string" && id.length > 0)
+    : [];
+  if (kind === "send" && (ids.length === 0 || ids.length > 50)) {
+    throw new HttpsError("invalid-argument", "No documents to send.");
+  }
+
+  const db = admin.firestore();
+  const callerEmail = request.auth.token.email;
+  const userRef = db.collection("users").doc(request.auth.uid);
+  const isAdmin = isVerifiedAdmin(request.auth);
+
+  return db.runTransaction(async (tx) => {
+    const userSnap = await tx.get(userRef);
+    const docSnaps = await Promise.all(ids.map((id) => tx.get(db.collection("documents").doc(id))));
+    for (const snap of docSnaps) {
+      if (!snap.exists || !callerEmail || snap.data()?.ownerEmail !== callerEmail) {
+        throw new HttpsError("permission-denied", "You can only send your own documents.");
+      }
+    }
+
+    const data = userSnap.data();
+    const paid = isAdmin || hasActivePaidPlan(data);
+    const used = Number(data?.freeDocsUsed || 0);
+    if (!paid) {
+      if (used >= FREE_DOCUMENT_LIMIT) {
+        throw new HttpsError("resource-exhausted", `You've used your ${FREE_DOCUMENT_LIMIT} free documents. Upgrade to keep signing and sending.`);
+      }
+      tx.set(userRef, { freeDocsUsed: used + 1 }, { merge: true });
+    }
+    for (const snap of docSnaps) {
+      tx.update(snap.ref, { creditOk: true });
+    }
+
+    const freeUsed = paid ? used : used + 1;
+    return { paid, freeUsed, freeLimit: FREE_DOCUMENT_LIMIT, remaining: paid ? null : FREE_DOCUMENT_LIMIT - freeUsed };
+  });
+});
+
 // 1. Paystack Integration
 export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTest, paystackSecretKeyLive], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
-  const { email, amount, planId, callbackUrl, mode } = request.data;
+  const { callbackUrl } = request.data;
+  const planId = requirePlan(request.data?.planId);
+  const email = request.auth.token.email;
+  if (!email) {
+    throw new HttpsError("failed-precondition", "Your account needs an email address to pay.");
+  }
 
-  const isLiveMode = mode === 'live';
+  const isLiveMode = paystackIsLive();
   // Use secret.value() if available, otherwise fallback to process.env (for local dev)
   const secretKey = isLiveMode
     ? (paystackSecretKeyLive.value() || process.env.PAYSTACK_SECRET_KEY_LIVE)
     : (paystackSecretKeyTest.value() || process.env.PAYSTACK_SECRET_KEY_TEST);
 
-  console.log(`[Payment Init] Mode: ${mode}, IsLive: ${isLiveMode}`);
-  const keyPrefix = secretKey ? secretKey.substring(0, 15) : "UNDEFINED";
-  console.log(`[Payment Init] Secret Key Prefix: ${keyPrefix}...`); // Logs first 15 chars to check sk_live vs sk_test
+  console.log(`[Payment Init] Live: ${isLiveMode}, plan: ${planId}`);
 
   if (!secretKey) {
-    console.error("Missing Paystack Secret Key. Mode:", mode);
+    console.error("Missing Paystack Secret Key. Live:", isLiveMode);
     throw new HttpsError("failed-precondition", "Payment configuration is missing.");
   }
 
@@ -679,9 +841,8 @@ export const initializePaystackPayment = onCall({ secrets: [paystackSecretKeyTes
       "https://api.paystack.co/transaction/initialize",
       {
         email,
-        // The amount is converted from USD to NGN (at a rate of 1600) and then to kobo.
-        // For live transactions, you may want a dynamic exchange rate.
-        amount: Math.round(parseFloat(amount) * 100 * 1600),
+        amount: planPriceKobo(planId),
+        currency: "NGN",
         callback_url: callbackUrl,
         metadata: {
           planId,
@@ -711,7 +872,8 @@ export const initializeStripeSession = onCall({ secrets: [stripeSecretKey], cors
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
 
-  const { planId, amount, successUrl, cancelUrl } = request.data;
+  const { successUrl, cancelUrl } = request.data;
+  const planId = requirePlan(request.data?.planId);
   const stripe = new Stripe(stripeSecretKey.value(), { apiVersion: "2023-10-16" as any });
 
   try {
@@ -725,7 +887,7 @@ export const initializeStripeSession = onCall({ secrets: [stripeSecretKey], cors
               name: `${planId.toUpperCase()} Plan Subscription`,
               description: `Upgrade to ${planId} plan on Endorse`,
             },
-            unit_amount: Math.round(parseFloat(amount) * 100), // amount in cents
+            unit_amount: PLAN_PRICES_USD[planId] * 100, // amount in cents
           },
           quantity: 1,
         },
@@ -749,8 +911,6 @@ export const initializeStripeSession = onCall({ secrets: [stripeSecretKey], cors
 
 // 3. Webhook to handle successful payments (Generic for both if possible, or separate)
 export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, stripeWebhookSecret, paystackSecretKeyTest, paystackSecretKeyLive] }, async (req, res) => {
-  const db = admin.firestore();
-
   // Stripe Webhook Logic
   if (req.headers["stripe-signature"]) {
     const stripe = new Stripe(stripeSecretKey.value(), { apiVersion: "2023-10-16" as any });
@@ -770,12 +930,16 @@ export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, strip
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const { userId, planId } = session.metadata || {};
+      const paidInFull =
+        !!planId && planId in PLAN_PRICES_USD &&
+        session.payment_status === "paid" &&
+        session.currency === "usd" &&
+        (session.amount_total ?? 0) >= PLAN_PRICES_USD[planId] * 100;
 
-      if (userId && planId) {
-        await db.collection("users").doc(userId).set({
-          plan: planId,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
+      if (userId && planId && paidInFull) {
+        await grantPaidPlan(userId, planId, `stripe_${session.id}`);
+      } else if (userId && planId) {
+        console.warn("Stripe payment did not match the plan price; plan not changed.", session.id);
       }
     }
   }
@@ -783,7 +947,8 @@ export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, strip
   // Paystack Webhook Logic
   else if (req.headers["x-paystack-signature"]) {
     // Verify signature then update
-    const secret = req.body.data?.metadata?.mode === 'live' ? paystackSecretKeyLive.value() : paystackSecretKeyTest.value();
+    // Never trust the event to say which key signed it: deployed functions only accept live events.
+    const secret = paystackIsLive() ? paystackSecretKeyLive.value() : paystackSecretKeyTest.value();
 
     const hash = crypto.createHmac("sha512", secret)
       .update(JSON.stringify(req.body))
@@ -802,14 +967,19 @@ export const handlePaymentWebhook = onRequest({ secrets: [stripeSecretKey, strip
     const event = req.body;
     if (event.event === "charge.success") {
       const { userId, planId } = event.data.metadata || {};
-      if (userId && planId) {
-        await db.collection("users").doc(userId).set({
-          plan: planId,
+      const paidInFull =
+        !!planId && planId in PLAN_PRICES_USD &&
+        event.data.currency === "NGN" &&
+        Number(event.data.amount) >= planPriceKobo(planId);
+      if (userId && planId && !paidInFull) {
+        console.warn("Paystack payment did not match the plan price; plan not changed.", event.data.reference);
+      }
+      if (userId && planId && paidInFull) {
+        await grantPaidPlan(userId, planId, `paystack_${event.data.reference}`, {
           paymentProvider: "paystack",
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           // Clear stripe ID if they switch to paystack
           stripeCustomerId: null,
-        }, { merge: true });
+        });
       }
     }
   }
@@ -1233,6 +1403,9 @@ export const sendWhatsAppInvite = onCall(
     if (docData.status !== "pending") {
       throw new HttpsError("failed-precondition", "This document has already been signed.");
     }
+    if (docData.creditOk === false) {
+      throw new HttpsError("failed-precondition", "This document hasn't been counted against your plan yet.");
+    }
 
     const { token, phoneId } = getWhatsAppCredentials();
     if (!token || !phoneId) {
@@ -1331,6 +1504,9 @@ export const sendWhatsAppOTP = onCall(
     }
     if (docData.status !== "pending") {
       throw new HttpsError("failed-precondition", "This document has already been signed.");
+    }
+    if (docData.creditOk === false) {
+      throw new HttpsError("failed-precondition", "This document isn't ready to sign yet.");
     }
 
     // Rate-limit: no resend within 60 seconds

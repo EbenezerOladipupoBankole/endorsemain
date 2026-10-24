@@ -11,7 +11,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SignDocument from "./pages/SignDocument";
 import WhatsAppVerify from "./pages/WhatsAppVerify";
 import Blog from "./pages/Blog";
-import About from "./pages/About";
+// About page is hidden for now; uncomment this and the /about route to bring it back.
+// import About from "./pages/About";
 import Payment from "./Payment";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -28,6 +29,10 @@ import Invoices from "./pages/Invoices";
 import SalesOperations from "./pages/SalesOperations";
 import HrRecruiting from "./pages/HrRecruiting";
 import LegalCompliance from "./pages/LegalCompliance";
+import ProductESign from "./pages/product/ESign";
+import ProductSendForSignature from "./pages/product/SendForSignature";
+import ProductInvoices from "./pages/product/Invoices";
+import ProductTemplates from "./pages/product/Templates";
 import { useAuth } from "./components/AuthContext";
 
 const queryClient = new QueryClient();
@@ -42,7 +47,7 @@ const App = () => (
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/blog" element={<Blog />} />
-          <Route path="/about" element={<About />} />
+          {/* <Route path="/about" element={<About />} /> */}
           <Route path="/payment" element={<Payment />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
@@ -54,6 +59,10 @@ const App = () => (
           <Route path="/solutions/sales-operations" element={<SalesOperations />} />
           <Route path="/solutions/hr-recruiting" element={<HrRecruiting />} />
           <Route path="/solutions/legal-compliance" element={<LegalCompliance />} />
+          <Route path="/product/esign" element={<ProductESign />} />
+          <Route path="/product/send-for-signature" element={<ProductSendForSignature />} />
+          <Route path="/product/invoices" element={<ProductInvoices />} />
+          <Route path="/product/templates" element={<ProductTemplates />} />
           {/* Signing pages handle their own auth: email signers log in, WhatsApp signers verify a code. */}
           <Route path="/sign/:id" element={<SignDocument />} />
           <Route path="/sign/:id/verify" element={<WhatsAppVerify />} />

@@ -7,7 +7,6 @@ import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/f
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/components/client';
 import { useAuth } from '@/components/AuthContext';
-import { AuditTrail } from '@/components/AuditTrail';
 import jsPDF from 'jspdf';
 import { sanitizeHtml, shareByEmailHref, shareByWhatsAppHref, signingLink } from './signingUtils';
 import {
@@ -46,6 +45,8 @@ interface SignatureRecord {
   status: 'pending' | 'signed' | 'completed';
   signedAt?: any;
   createdAt?: any;
+  viewedAt?: any;
+  deliveryStatus?: string;
   signature_data?: string;
   signature_positions?: any[];
 }
@@ -61,6 +62,43 @@ const displayName = (r: SignatureRecord) => r.recipientName || r.studentName || 
 const isWhatsApp = (r: SignatureRecord) => r.channel === 'whatsapp';
 const toMillis = (ts: any) => (ts?.toMillis ? ts.toMillis() : 0);
 const formatDate = (ts: any) => (ts?.toDate ? ts.toDate().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+const formatDateTime = (ts: any) =>
+  ts?.toDate ? ts.toDate().toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
+
+const DELIVERY_LABEL: Record<string, string> = {
+  sent: 'WhatsApp message sent',
+  delivered: 'Delivered on WhatsApp',
+  read: 'Read on WhatsApp',
+  failed: "WhatsApp message couldn't be delivered",
+};
+
+/** What Endorse actually stores about a sent document, in order. */
+const SigningRecord = ({ record }: { record: SignatureRecord }) => {
+  const rows = [
+    { label: `Sent to ${displayName(record)} by ${isWhatsApp(record) ? 'WhatsApp' : 'email'}`, at: formatDateTime(record.createdAt) },
+    ...(isWhatsApp(record) && record.deliveryStatus && DELIVERY_LABEL[record.deliveryStatus]
+      ? [{ label: DELIVERY_LABEL[record.deliveryStatus], at: null }]
+      : []),
+    ...(record.viewedAt ? [{ label: 'Opened after verifying their WhatsApp code', at: formatDateTime(record.viewedAt) }] : []),
+    isSigned(record)
+      ? { label: `Signed by ${displayName(record)}`, at: formatDateTime(record.signedAt) }
+      : { label: 'Waiting for signature', at: null },
+  ];
+  return (
+    <ol className="space-y-2.5">
+      {rows.map((row, i) => (
+        <li key={i} className="flex items-start justify-between gap-3 text-xs">
+          <span className="flex items-center gap-2 text-slate-700">
+            <span className={`h-2 w-2 shrink-0 rounded-full ${i === rows.length - 1 && isSigned(record) ? 'bg-emerald-500' : 'bg-[#0A66C2]'}`} />
+            {row.label}
+          </span>
+          {row.at && <span className="shrink-0 text-slate-400">{row.at}</span>}
+        </li>
+      ))}
+    </ol>
+  );
+};
+
 const safeFilename = (name: string) => `${name.replace(/[^a-zA-Z0-9-_ ]/g, '').trim() || 'document'}_signed.pdf`;
 
 export const AgreementsList: React.FC<AgreementsListProps> = ({ onOpenTemplateStudio, onOpenSendModal }) => {
@@ -477,8 +515,8 @@ export const AgreementsList: React.FC<AgreementsListProps> = ({ onOpenTemplateSt
               )}
 
               <div className="border-t border-slate-100 pt-3">
-                <h4 className="mb-2 text-xs font-bold text-slate-700">Audit trail</h4>
-                <AuditTrail documentId={viewing.id} />
+                <h4 className="mb-2 text-xs font-bold text-slate-700">Signing record</h4>
+                <SigningRecord record={viewing} />
               </div>
             </div>
 

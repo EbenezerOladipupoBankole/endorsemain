@@ -1,26 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { useDocumentMeta } from "@/components/FeaturePage";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthContext";
-import { ArrowRight, ArrowDown, Bell, Check, FileText, Receipt, Send } from "lucide-react";
+import { Bell, Check, FileText, Receipt, Send } from "lucide-react";
 
-const STAGES = ["Draft", "Sent", "Viewed", "Signed", "Invoiced"] as const;
+const STAGES = ["Draft", "Sent", "Reminded", "Signed", "Invoiced"] as const;
 
 const BOARD: Record<(typeof STAGES)[number], { name: string; value: string }[]> = {
   Draft: [{ name: "Vertex Systems", value: "$21,000" }],
-  Sent: [{ name: "Starlight Digital", value: "$8,200" }],
-  Viewed: [{ name: "Nimbus Co", value: "$12,400" }],
-  Signed: [{ name: "Halcyon Labs", value: "$6,750" }],
+  Sent: [{ name: "Starlight Digital", value: "R 150,000" }],
+  Reminded: [{ name: "Nimbus Co", value: "KSh 1.6m" }],
+  Signed: [{ name: "Halcyon Labs", value: "₦9.8m" }],
   Invoiced: [{ name: "Orbit Freight", value: "$31,500" }],
 };
 
 const STAGE_NOTE = [
   "MSA drafted from template",
   "Link sent to billing@acme.com",
-  "Opened on iPhone · 2 min",
+  "Reminder sent · 1 click",
   "Signed by J. Okafor",
-  "INV-2291 sent automatically",
+  "INV-2291 created in Endorse",
 ];
 
 const OLD_WAY = [
@@ -36,13 +38,13 @@ const NEW_WAY = [
   { at: "0 min", label: "Signing link sent from template" },
   { at: "6 min", label: "Opened on mobile" },
   { at: "14 min", label: "Signed" },
-  { at: "14 min", label: "Invoice issued automatically" },
+  { at: "20 min", label: "Invoice created and sent" },
 ];
 
 const usd = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
-function LiveBoard() {
+function DealJourney() {
   const [stage, setStage] = useState(0);
 
   useEffect(() => {
@@ -53,10 +55,8 @@ function LiveBoard() {
   return (
     <div className="rounded-2xl bg-[#0A66C2] p-3 sm:p-4 shadow-2xl shadow-[#0A66C2]/20">
       <div className="flex items-center justify-between px-1 pb-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">Pipeline · this week</span>
-        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#FFC83D]">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFC83D]" /> Live
-        </span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">How one deal moves</span>
+        <span className="text-[11px] font-medium text-white/60">Illustration</span>
       </div>
 
       <div className="-mx-1 overflow-x-auto px-1 pb-1">
@@ -171,7 +171,12 @@ function StuckRevenueCalculator() {
 
 export default function SalesOperations() {
   const { user } = useAuth();
-  const ctaHref = user ? "/dashboard" : "/auth?redirect=/dashboard";
+  useDocumentMeta(
+    "Endorse for Sales & Operations — Get contracts signed the same day",
+    "Send proposals and contracts as a signing link by email or WhatsApp, see the moment they're signed, and invoice the same day. Free to start."
+  );
+  // These buttons are about sending, so they open Send for Signature; new visitors sign up first.
+  const ctaHref = user ? "/team" : "/auth?mode=signup&redirect=%2Fteam";
 
   return (
     <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -189,24 +194,22 @@ export default function SalesOperations() {
             </div>
             <div className="space-y-5 lg:pb-2">
               <p className="text-base leading-relaxed text-slate-600 dark:text-slate-400">
-                Send proposals and MSAs as a signing link, let reminders do the chasing, and have the invoice go out the
-                moment the ink dries.
+                Send proposals and MSAs as a signing link, see the moment they're signed, and get the invoice out the
+                same day.
               </p>
               <div className="flex flex-wrap items-center gap-4">
-                <Link to={ctaHref}>
-                  <Button className="h-11 rounded-lg bg-[#0A66C2] px-6 font-semibold text-white hover:bg-[#08519c]">
-                    Send your first contract <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button asChild className="h-11 rounded-lg bg-[#0A66C2] px-6 font-semibold text-white hover:bg-[#08519c]">
+                  <Link to={ctaHref}>Send your first contract</Link>
+                </Button>
                 <a href="#calculator" className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-slate-700 hover:text-[#0A66C2] dark:text-slate-300">
-                  What's stuck in your pipeline? <ArrowDown className="h-3.5 w-3.5" />
+                  What's stuck in your pipeline?
                 </a>
               </div>
             </div>
           </div>
 
           <div className="mt-12">
-            <LiveBoard />
+            <DealJourney />
           </div>
         </div>
       </section>
@@ -248,7 +251,7 @@ export default function SalesOperations() {
                 ))}
               </ol>
               <p className="mt-8 border-t border-white/20 pt-5 text-sm text-white/80">
-                Same day. Nobody had to send a follow-up.
+                Same day, and you can see where every contract stands.
               </p>
             </div>
           </div>
@@ -262,17 +265,17 @@ export default function SalesOperations() {
             {
               icon: FileText,
               title: "Templates that fill themselves",
-              desc: "Keep your MSA, SOW and renewal terms as templates. Client details drop in, legal language stays untouched.",
+              desc: "Keep your services agreement and renewal terms as templates. Client details drop in, legal language stays untouched.",
             },
             {
               icon: Bell,
-              title: "Reminders you don't have to write",
-              desc: "Unsigned after two days? Endorse nudges the signer on a schedule you set, and stops the moment they sign.",
+              title: "Reminders in one click",
+              desc: "Still unsigned? Resend the signing link from your dashboard in one click — no awkward follow-up email to write.",
             },
             {
               icon: Receipt,
-              title: "Invoice on signature",
-              desc: "Signing triggers an itemized invoice to the client, so finance hears about the deal before you tell them.",
+              title: "Invoices in the same place",
+              desc: "Once it's signed, create an itemized invoice in Endorse and email the PDF to your client in a minute.",
             },
           ].map((f) => (
             <div key={f.title} className="border-t-[3px] border-[#FFC83D] pt-5">
@@ -304,13 +307,15 @@ export default function SalesOperations() {
             <h2 className="font-['Playfair_Display',Georgia,serif] text-2xl font-medium text-white sm:text-3xl">Send one contract. Time it.</h2>
             <p className="mt-2 text-white/75">Free to start — no card, no sales call.</p>
           </div>
-          <Link to={ctaHref}>
-            <Button className="h-12 rounded-lg bg-[#FFC83D] px-7 font-bold text-slate-900 hover:bg-[#e6b435]">
+          <Button asChild className="h-12 rounded-lg bg-[#FFC83D] px-7 font-bold text-slate-900 hover:bg-[#e6b435]">
+            <Link to={ctaHref}>
               <Send className="mr-2 h-4 w-4" /> Start sending
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </section>
+
+      <SiteFooter />
     </div>
   );
 }

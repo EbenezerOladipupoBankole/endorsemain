@@ -3,7 +3,7 @@ import { useNavigate, Link, useSearchParams, useLocation } from "react-router-do
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import { httpsCallable } from "firebase/functions";
@@ -29,7 +29,6 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaResolver, setMfaResolver] = useState<any>(null);
   const [verificationCode, setVerificationCode] = useState("");
@@ -228,35 +227,36 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
-      {/* Minimal top bar: logo home + a way back to the marketing site */}
+      {/* Minimal top bar: the logo doubles as the link back to the home page */}
       <header className="w-full">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 md:px-6">
+        <div className="flex h-12 items-center px-4 md:h-16 md:px-8">
           <Link to="/" aria-label="Endorse home" className="flex min-h-[44px] items-center">
-            <Logo className="h-10 w-auto" />
-          </Link>
-          <Link
-            to="/"
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to site
+            <Logo className="h-9 w-auto md:h-10" />
           </Link>
         </div>
       </header>
 
-      <main className="flex flex-1 items-start justify-center px-4 pb-10 pt-2 sm:items-center md:p-6">
-      <div className="w-full max-w-[440px] animate-in fade-in zoom-in-95 duration-500">
-        <div className="bg-white rounded-[28px] shadow-[0_8px_40px_rgba(0,0,0,0.04)] border border-slate-100 p-6 sm:p-8 md:p-10">
+      <main className="flex flex-1 items-start justify-center px-4 pb-3 pt-0 sm:items-center md:px-6 md:pb-10">
+      <div className="w-full max-w-[420px] animate-in fade-in zoom-in-95 duration-500">
+        <div className="bg-white rounded-[28px] shadow-[0_8px_40px_rgba(0,0,0,0.04)] border border-slate-100 p-5 sm:p-8">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-[28px] sm:text-[32px] leading-tight font-bold text-[#1e293b] mb-2 tracking-tight">
+          <div className="mb-5">
+            <h1 className="text-2xl sm:text-[28px] leading-tight font-bold text-[#1e293b] mb-1 tracking-tight">
               {isSignUp ? "Create your account" : "Log in to Endorse"}
             </h1>
-            <p className="text-slate-500 text-[15px]">
-              {isSignUp
-                ? "Enter your details to create your account"
-                : "Enter your email and password to log in"}
+            {/* The switch sits up top so someone who landed on the wrong form sees it straight away. */}
+            {!(forgotPassword || mfaRequired || needsVerification || (mode === "resetPassword" && oobCode)) && (
+            <p className="text-slate-500 text-sm">
+              {isSignUp ? "Already have an account?" : "New to Endorse?"}{" "}
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="font-semibold text-[#0A66C2] hover:underline"
+              >
+                {isSignUp ? "Log in" : "Create an account"}
+              </button>
             </p>
+            )}
           </div>
 
           {/* Form Content */}
@@ -271,7 +271,7 @@ const Auth = () => {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-[56px] rounded-2xl bg-slate-50 border-none pl-4 pr-14 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
+                    className="h-12 rounded-2xl bg-slate-50 border-none pl-4 pr-14 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
                     required
                     minLength={6}
                   />
@@ -285,7 +285,7 @@ const Auth = () => {
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full h-[56px] rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-semibold text-lg transition-all shadow-lg shadow-[#0A66C2]/20" disabled={loading}>
+              <Button type="submit" className="w-full h-12 rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-semibold text-lg transition-all shadow-lg shadow-[#0A66C2]/20" disabled={loading}>
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save New Password"}
               </Button>
             </form>
@@ -299,12 +299,12 @@ const Auth = () => {
                   placeholder="000000"
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="h-[56px] rounded-2xl bg-slate-50 border-none px-4 text-base placeholder:text-slate-400 text-center text-2xl tracking-[12px] font-bold focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
+                  className="h-12 rounded-2xl bg-slate-50 border-none px-4 text-base placeholder:text-slate-400 text-center text-2xl tracking-[12px] font-bold focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
                   autoFocus
                   required
                 />
               </div>
-              <Button type="submit" className="w-full h-[56px] rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-semibold text-lg transition-all shadow-lg shadow-[#0A66C2]/20" disabled={loading || verificationCode.length !== 6}>
+              <Button type="submit" className="w-full h-12 rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-semibold text-lg transition-all shadow-lg shadow-[#0A66C2]/20" disabled={loading || verificationCode.length !== 6}>
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify"}
               </Button>
               <button
@@ -325,10 +325,10 @@ const Auth = () => {
                 We've sent a link to <span className="font-semibold text-slate-900">{email}</span>. Please click it to continue.
               </p>
               <div className="space-y-3">
-                <Button onClick={handleRefreshStatus} disabled={loading} className="w-full h-[56px] rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-semibold shadow-lg shadow-[#0A66C2]/20">
+                <Button onClick={handleRefreshStatus} disabled={loading} className="w-full h-12 rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-semibold shadow-lg shadow-[#0A66C2]/20">
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "I've Verified My Email"}
                 </Button>
-                <Button onClick={handleResendVerification} disabled={loading} variant="ghost" className="w-full h-[56px] rounded-2xl text-slate-600 font-medium hover:bg-slate-50">
+                <Button onClick={handleResendVerification} disabled={loading} variant="ghost" className="w-full h-12 rounded-2xl text-slate-600 font-medium hover:bg-slate-50">
                   Resend Verification
                 </Button>
               </div>
@@ -343,11 +343,11 @@ const Auth = () => {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-[56px] rounded-2xl bg-slate-50 border-none px-4 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
+                  className="h-12 rounded-2xl bg-slate-50 border-none px-4 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
                   required
                 />
               </div>
-              <Button type="submit" className="w-full h-[56px] rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-semibold text-lg shadow-lg shadow-[#0A66C2]/20" disabled={loading}>
+              <Button type="submit" className="w-full h-12 rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-semibold text-lg shadow-lg shadow-[#0A66C2]/20" disabled={loading}>
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send Reset Link"}
               </Button>
               <button
@@ -361,24 +361,24 @@ const Auth = () => {
           ) : (
             <>
               {/* Main Auth Form */}
-              <form onSubmit={handleEmailAuth} className="space-y-5">
+              <form onSubmit={handleEmailAuth} className="space-y-4">
                 {isSignUp && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="fullName" className="text-sm font-medium text-slate-700">Full name</Label>
                     <Input
                       id="fullName"
                       type="text"
-                      placeholder="Jane Doe"
+                      placeholder="Your full name"
                       autoComplete="name"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="h-[56px] rounded-2xl bg-slate-50 border-none px-4 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
+                      className="h-12 rounded-2xl bg-slate-50 border-none px-4 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
                       required={isSignUp}
                     />
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email</Label>
                   <Input
                     id="email"
@@ -387,12 +387,12 @@ const Auth = () => {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-[56px] rounded-2xl bg-slate-50 border-none px-4 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
+                    className="h-12 rounded-2xl bg-slate-50 border-none px-4 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
                     required
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="password" className="text-sm font-medium text-slate-700">Password</Label>
                   <div className="relative">
                     <Input
@@ -402,7 +402,7 @@ const Auth = () => {
                       placeholder="At least 6 characters"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-[56px] rounded-2xl bg-slate-50 border-none pl-4 pr-14 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
+                      className="h-12 rounded-2xl bg-slate-50 border-none pl-4 pr-14 text-base placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#0A66C2] transition-all"
                       required
                       minLength={6}
                     />
@@ -417,8 +417,9 @@ const Auth = () => {
                   </div>
                 </div>
 
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between gap-2">
+                {/* Remember Me & Forgot Password (login only) */}
+                {!isSignUp && (
+                <div className="-my-1 flex items-center justify-between gap-2">
                   <label htmlFor="remember" className="flex min-h-[44px] items-center gap-2.5 pl-1 pr-2 text-[14px] text-slate-600 cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -427,20 +428,19 @@ const Auth = () => {
                     />
                     Remember me
                   </label>
-                  {!isSignUp && (
-                    <button
-                      type="button"
-                      onClick={() => setForgotPassword(true)}
-                      className="min-h-[44px] px-1 text-[14px] font-semibold text-[#0A66C2] hover:text-[#08519c] transition-colors"
-                    >
-                      Forgot password?
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setForgotPassword(true)}
+                    className="min-h-[44px] px-1 text-[14px] font-semibold text-[#0A66C2] hover:text-[#08519c] transition-colors"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
+                )}
 
                 <Button
                   type="submit"
-                  className="w-full h-[56px] rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-lg transition-all shadow-lg shadow-[#0A66C2]/20 mt-2"
+                  className="w-full h-12 rounded-2xl bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-base transition-all shadow-lg shadow-[#0A66C2]/20"
                   disabled={loading}
                 >
                   {loading ? (
@@ -454,40 +454,24 @@ const Auth = () => {
                 </Button>
               </form>
 
-              {/* Security Check (Preserved but styled more subtly) */}
-              {!isSignUp && (
-                <label htmlFor="security-check" className="mt-3 flex min-h-[44px] items-center gap-2.5 pl-1 text-sm text-slate-500 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="security-check"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="h-5 w-5 shrink-0 rounded-md border-slate-300 accent-[#0A66C2] cursor-pointer"
-                  />
-                  <span>
-                    I agree to the{" "}
-                    <Link to="/terms" className="inline-flex min-h-[44px] items-center font-medium text-[#0A66C2] hover:underline">Terms of Service</Link>.
-                  </span>
-                </label>
-              )}
-
               {/* Separator */}
-              <div className="relative my-8">
+              <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-slate-100" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-4 text-slate-400">Or</span>
+                  <span className="bg-white px-3 text-slate-400">or</span>
                 </div>
               </div>
 
               {/* Social Logins */}
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={loading}
-                  className="w-full h-[56px] rounded-2xl bg-white border border-slate-100 flex items-center justify-center gap-3 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+                  aria-label="Continue with Google"
+                  className="w-full h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center gap-2.5 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -495,33 +479,30 @@ const Auth = () => {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
-                  Continue with Google
+                  Google
                 </button>
 
                 <button
                   type="button"
                   onClick={handleAppleSignIn}
                   disabled={loading}
-                  className="w-full h-[56px] rounded-2xl bg-white border border-slate-100 flex items-center justify-center gap-3 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+                  aria-label="Continue with Apple"
+                  className="w-full h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center gap-2.5 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M17.05 20.28c-.98.95-2.05 1.79-3.48 1.79-1.42 0-1.89-.88-3.56-.88-1.68 0-2.2.85-3.51.88-1.33.03-2.52-.94-3.52-1.93-2.03-2.02-3.58-5.71-3.58-8.94 0-3.21 1.63-5.22 4.04-5.25 1.25-.01 2.24.77 3.01.77.74 0 1.95-.92 3.44-.79 1.54.06 2.7.63 3.47 1.75-2.85 1.71-2.4 5.37.47 6.64-.67 1.73-1.54 3.45-2.84 4.76zm-3.08-16.14c.67-.81 1.12-1.94.99-3.06-1.01.04-2.24.67-2.96 1.51-.65.75-1.22 1.9-.1 3.03.11.02.21.03.31.03 1.05-.01 2.09-.69 1.76-1.51z"/>
                   </svg>
-                  Continue with Apple
+                  Apple
                 </button>
               </div>
 
               {/* Footer */}
-              <div className="mt-8 text-center">
-                <p className="text-slate-500 text-[15px]">
-                  {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUp(!isSignUp)}
-                    className="inline-flex min-h-[44px] items-center px-1 text-[#0A66C2] font-bold hover:underline transition-all"
-                  >
-                    {isSignUp ? "Log In" : "Sign Up"}
-                  </button>
+              <div className="mt-4 text-center">
+                <p className="text-xs text-slate-400">
+                  By continuing, you agree to our{" "}
+                  <Link to="/terms" className="text-slate-500 underline underline-offset-2 hover:text-[#0A66C2]">Terms</Link>
+                  {" "}and{" "}
+                  <Link to="/privacy" className="text-slate-500 underline underline-offset-2 hover:text-[#0A66C2]">Privacy Policy</Link>.
                 </p>
               </div>
             </>

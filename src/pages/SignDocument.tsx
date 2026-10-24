@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { PDFViewer, PlacedItem } from '@/components/esign/PDFViewer';
 import SignatureModal from '@/components/SignatureModal';
+import { Logo } from '@/components/Logo';
 import { sanitizeHtml } from '@/components/agreements/signingUtils';
 import { DocumentTools } from '@/components/esign/DocumentTools';
 import { useViewerState, useDocumentComments } from '@/components/esign/viewerTools';
@@ -281,9 +282,9 @@ const SignDocument = () => {
       {/* Top Bar - Brand Color #0A66C2 */}
       <header className="bg-[#0A66C2] h-14 flex items-center justify-between gap-3 px-3 sm:px-6 shrink-0 z-50 shadow-md">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="text-base font-extrabold tracking-wide text-[#FFC83D] flex shrink-0 items-center gap-2">
-            <span className="w-7 h-7 rounded-md bg-[#FFC83D] text-black font-black flex items-center justify-center text-xs shadow-sm">E</span>
-            <span className="hidden sm:inline">Endorse</span>
+          {/* The logo's blue lettering needs a light backing on the blue bar. Not a link: signers stay on the document. */}
+          <span className="flex h-9 shrink-0 items-center rounded-lg bg-white px-2 shadow-sm">
+            <Logo className="h-7" />
           </span>
           <span className="truncate text-sm font-medium text-white/85">{documentData?.name}</span>
         </div>
@@ -503,7 +504,7 @@ const SignDocument = () => {
       {/* Minimal Footer */}
       <footer className="hidden h-8 bg-white border-t border-gray-200 md:flex items-center justify-between px-6 text-[10px] text-gray-500 shrink-0 z-50">
         <div className="font-medium">
-          Powered by <span className="font-bold text-blue-600">Endorse</span>
+          <span className="flex items-center gap-1.5">Powered by <Logo className="h-4" /></span>
         </div>
         <div className="flex gap-4 items-center">
           <span className="cursor-pointer hover:text-gray-700 flex items-center gap-1">English (US) <ChevronDown className="w-3 h-3"/></span>

@@ -24,8 +24,7 @@ import {
   BookOpen,
   HelpCircle,
   Code2,
-  Building2,
-  ArrowRight,
+  // Building2, (About link is hidden)
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,24 +39,24 @@ interface NavItem {
 }
 
 const PRODUCT: NavItem[] = [
-  { label: "eSign & Documents", desc: "Send and collect legally binding e-signatures", to: "/dashboard", icon: PenTool, app: true },
-  { label: "Send for Signature", desc: "Invite signers by email or WhatsApp and track status", to: "/team", icon: Users, app: true },
-  { label: "Invoices", desc: "Create, send, and track professional invoices", to: "/invoices", icon: Receipt, badge: "New", app: true },
+  { label: "eSign & Documents", desc: "Send and collect legally binding e-signatures", to: "/product/esign", icon: PenTool },
+  { label: "Send for Signature", desc: "Invite signers by email or WhatsApp and track status", to: "/product/send-for-signature", icon: Users },
+  { label: "Invoices", desc: "Create, send, and track professional invoices", to: "/product/invoices", icon: Receipt, badge: "New" },
   { label: "File Conversion", desc: "Convert between PDF, Word, and more in seconds", to: "/conversion", icon: FileCode },
-  { label: "Templates", desc: "Reusable agreements that fill in each signer's details", to: "/team", icon: Layers, app: true },
+  { label: "Templates", desc: "Reusable agreements that fill in each signer's details", to: "/product/templates", icon: Layers },
 ];
 
 const SOLUTIONS: NavItem[] = [
   { label: "Sales & Operations", desc: "Close deals faster with signing links and reminders", to: "/solutions/sales-operations", icon: Zap },
   { label: "HR & Recruiting", desc: "Paperless offer letters and onboarding packets", to: "/solutions/hr-recruiting", icon: Users },
-  { label: "Legal & Compliance", desc: "Tamper-evident documents with full audit trails", to: "/solutions/legal-compliance", icon: ShieldCheck },
+  { label: "Legal & Compliance", desc: "Verified signers and a record of every signature", to: "/solutions/legal-compliance", icon: ShieldCheck },
 ];
 
 const RESOURCES: NavItem[] = [
   { label: "Blog", desc: "Product news, guides, and industry insights", to: "/blog", icon: BookOpen },
   { label: "Help Center", desc: "Tutorials, walkthroughs, and support", to: "/help-center", icon: HelpCircle },
   { label: "API Docs", desc: "Automate signing from your own software", to: "/api-docs", icon: Code2 },
-  { label: "About Endorse", desc: "Who we are and why we built Endorse", to: "/about", icon: Building2 },
+  // { label: "About Endorse", desc: "Who we are and why we built Endorse", to: "/about", icon: Building2 },
 ];
 
 const SECTIONS = [
@@ -122,13 +121,6 @@ export function SiteHeader() {
             </DropdownMenuItem>
           ))}
         </div>
-        {label === "Product" && (
-          <div className="mt-1 flex items-center justify-end border-t border-slate-100 px-3 pt-3 pb-1 dark:border-slate-800">
-            <Link to="/#features" className="flex items-center gap-1 text-xs font-bold text-[#0A66C2] hover:underline">
-              View all features <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -151,10 +143,7 @@ export function SiteHeader() {
         </div>
 
         <div className="hidden items-center gap-3 lg:flex">
-          {/* Always offer sign in / sign up on public pages, even if a session already exists. */}
-          <Link to="/auth?mode=login" className="px-3 py-2 font-sans text-sm font-extrabold text-[#0A66C2] hover:underline dark:text-[#FFC83D]">
-            Sign In
-          </Link>
+          {/* One entry point: the auth page handles both creating an account and logging in. */}
           <Button asChild className="rounded-full bg-[#FFC83D] px-6 font-extrabold text-black shadow-sm hover:bg-[#e6b435]">
             <Link to="/auth?mode=signup">Get Started</Link>
           </Button>
@@ -220,12 +209,9 @@ export function SiteHeader() {
             </Link>
           </div>
 
-          <div className="sticky bottom-0 space-y-2 border-t border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+          <div className="sticky bottom-0 border-t border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
             <Button asChild className="h-12 w-full rounded-full bg-[#FFC83D] text-base font-extrabold text-black hover:bg-[#e6b435]">
               <Link to="/auth?mode=signup">Get Started — it's free</Link>
-            </Button>
-            <Button asChild variant="outline" className="h-12 w-full rounded-full text-base font-bold text-[#0A66C2]">
-              <Link to="/auth?mode=login">Sign In</Link>
             </Button>
           </div>
         </div>

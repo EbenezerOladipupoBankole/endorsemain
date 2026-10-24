@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { useDocumentMeta } from "@/components/FeaturePage";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthContext";
-import { ArrowRight, Check } from "lucide-react";
+import { Check } from "lucide-react";
 
 const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
 
@@ -11,16 +13,16 @@ const TIMELINE = [
   { time: "9:02", who: "hr", text: "You approve the offer. Endorse texts Jordan a link." },
   { time: "9:04", who: "candidate", text: "Jordan opens it on the bus. Salary, start date, benefits — readable on a phone." },
   { time: "9:05", who: "candidate", text: "Signs with a thumb. Offer accepted." },
-  { time: "9:05", who: "hr", text: "You get a notification. The NDA, W-4 and handbook go out as the next steps — automatically." },
+  { time: "9:05", who: "hr", text: "You get an email with the signed offer. You send the NDA, tax form and handbook from your templates." },
   { time: "9:13", who: "candidate", text: "Jordan finishes the packet before their stop." },
-  { time: "9:13", who: "hr", text: "Every signed document is filed to Jordan's employee record. Nothing to download, rename or upload." },
+  { time: "9:13", who: "hr", text: "Every signed copy is waiting on your dashboard, ready to download. Nothing to print or scan." },
 ] as const;
 
 const PACKET = [
   { name: "Offer letter", note: "Role, compensation and start date. The one they've been waiting for." },
   { name: "Mutual NDA", note: "Signed in the same sitting, not chased a week later." },
-  { name: "W-4", note: "Fillable fields on mobile — no printer, no scanner app." },
-  { name: "Direct deposit", note: "Bank details captured once, stored encrypted." },
+  { name: "Tax details form", note: "Fillable fields on mobile — no printer, no scanner app." },
+  { name: "Direct deposit", note: "Bank details filled in on the form itself — no paper slips." },
   { name: "Handbook acknowledgement", note: "A clear record that they received and read it." },
 ];
 
@@ -43,9 +45,9 @@ function PhoneMockup() {
             </p>
 
             <div className="mt-5 space-y-2 rounded-2xl bg-[#FFF4D6] p-3.5 text-[11px]">
-              <div className="flex justify-between"><span className="text-[#64748B]">Base salary</span><span className="font-semibold text-[#0F172A]">$118,000</span></div>
-              <div className="flex justify-between"><span className="text-[#64748B]">Equity</span><span className="font-semibold text-[#0F172A]">2,400 options</span></div>
-              <div className="flex justify-between"><span className="text-[#64748B]">Location</span><span className="font-semibold text-[#0F172A]">Hybrid · Chicago</span></div>
+              <div className="flex justify-between"><span className="text-[#64748B]">Base salary</span><span className="font-semibold text-[#0F172A]">₦14,400,000</span></div>
+              <div className="flex justify-between"><span className="text-[#64748B]">Annual leave</span><span className="font-semibold text-[#0F172A]">20 days</span></div>
+              <div className="flex justify-between"><span className="text-[#64748B]">Location</span><span className="font-semibold text-[#0F172A]">Hybrid · Lagos</span></div>
             </div>
 
             <div className="mt-5 rounded-2xl border border-dashed border-[#C9D8EA] px-4 py-3 text-center">
@@ -133,7 +135,12 @@ function PacketStack() {
 
 export default function HrRecruiting() {
   const { user } = useAuth();
-  const ctaHref = user ? "/dashboard" : "/auth?redirect=/dashboard";
+  useDocumentMeta(
+    "Endorse for HR & Recruiting — Offer letters signed from any phone",
+    "Send offer letters, NDAs and onboarding forms by WhatsApp or email, let candidates sign from their phone, and track every signature. Free to start."
+  );
+  // These buttons are about sending, so they open Send for Signature; new visitors sign up first.
+  const ctaHref = user ? "/team" : "/auth?mode=signup&redirect=%2Fteam";
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-white font-sans text-[#0F172A] dark:bg-slate-950 dark:text-slate-100">
@@ -148,15 +155,13 @@ export default function HrRecruiting() {
               Their first <em className="text-[#0A66C2]">yes</em> should feel like day one.
             </h1>
             <p className="mt-6 max-w-md text-base leading-relaxed text-[#475569] dark:text-slate-400">
-              Offer letter, NDA, tax forms and handbook — sent as one link your candidate can finish from their phone,
-              and filed for you the moment they do.
+              Offer letter, NDA, tax forms and handbook — sent by WhatsApp or email for your candidate to sign from
+              their phone, and back on your dashboard the moment they do.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-5">
-              <Link to={ctaHref}>
-                <Button className="h-12 rounded-full bg-[#0A66C2] px-7 font-semibold text-white hover:bg-[#08519c]">
-                  Send an offer <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
-              </Link>
+              <Button asChild className="h-12 rounded-full bg-[#0A66C2] px-7 font-semibold text-white hover:bg-[#08519c]">
+                <Link to={ctaHref}>Send an offer</Link>
+              </Button>
               <span className="text-sm text-[#64748B]">Free to start · works on any phone</span>
             </div>
           </div>
@@ -215,7 +220,7 @@ export default function HrRecruiting() {
             The whole packet, in one sitting.
           </h2>
           <p className="mb-12 mt-3 max-w-lg text-[#475569] dark:text-slate-400">
-            Bundle the documents once. Every new hire gets them in order, and you get them back signed.
+            Keep each document as a template. Send them to every new hire and see each one come back signed.
           </p>
           <PacketStack />
         </div>
@@ -227,17 +232,17 @@ export default function HrRecruiting() {
           <div className="rounded-3xl bg-[#FFF4D6] p-8 dark:bg-slate-900">
             <p className="text-2xl text-[#0F172A] dark:text-white" style={serif}>For your new hire</p>
             <ul className="mt-5 space-y-3 text-[15px] text-[#475569] dark:text-slate-400">
-              <li>No account to create, no app to install.</li>
+              <li>Sign from WhatsApp with a one-time code — no account, no app.</li>
               <li>Readable on a phone — no pinch-zooming a PDF.</li>
-              <li>A copy of everything they signed, in their inbox.</li>
+              <li>Readable and signable with a thumb, start to finish.</li>
             </ul>
           </div>
           <div className="rounded-3xl bg-[#0A66C2] p-8 text-white">
             <p className="text-2xl" style={serif}>For your team</p>
             <ul className="mt-5 space-y-3 text-[15px] text-white/80">
-              <li>See who's opened, who's signed and who's stuck.</li>
-              <li>Automatic reminders, so you're not the one nagging.</li>
-              <li>A timestamped audit trail on every document.</li>
+              <li>See who's signed and who still needs to.</li>
+              <li>Send a reminder in one click — no awkward follow-up email.</li>
+              <li>The date and time every document was signed.</li>
             </ul>
           </div>
         </div>
@@ -248,12 +253,12 @@ export default function HrRecruiting() {
         <h2 className="mx-auto max-w-2xl text-3xl text-[#0F172A] sm:text-[2.75rem] sm:leading-tight dark:text-white" style={serif}>
           Make your next offer the <span className="bg-[linear-gradient(transparent_62%,#FFC83D_62%)]">easiest thing</span> they sign this year.
         </h2>
-        <Link to={ctaHref} className="mt-8 inline-block">
-          <Button className="h-12 rounded-full bg-[#0A66C2] px-8 font-semibold text-white hover:bg-[#08519c]">
-            Get started free <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
-        </Link>
+        <Button asChild className="mt-8 h-12 rounded-full bg-[#0A66C2] px-8 font-semibold text-white hover:bg-[#08519c]">
+          <Link to={ctaHref}>Get started free</Link>
+        </Button>
       </section>
+
+      <SiteFooter />
     </div>
   );
 }

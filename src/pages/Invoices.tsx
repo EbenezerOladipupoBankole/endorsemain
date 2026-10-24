@@ -27,7 +27,6 @@ import {
   Building2,
   Upload,
   Check,
-  Sparkles,
   Mail,
 } from "lucide-react";
 
@@ -50,6 +49,8 @@ export const CURRENCIES: CurrencyOption[] = [
   { code: "EUR", symbol: "€", label: "EUR (€) - Euro" },
   { code: "GBP", symbol: "£", label: "GBP (£) - British Pound" },
   { code: "NGN", symbol: "₦", label: "NGN (₦) - Nigerian Naira" },
+  { code: "KES", symbol: "KSh", label: "KES (KSh) - Kenyan Shilling" },
+  { code: "GHS", symbol: "GH₵", label: "GHS (GH₵) - Ghanaian Cedi" },
   { code: "CAD", symbol: "CA$", label: "CAD ($) - Canadian Dollar" },
   { code: "AUD", symbol: "AU$", label: "AUD ($) - Australian Dollar" },
   { code: "INR", symbol: "₹", label: "INR (₹) - Indian Rupee" },
@@ -99,6 +100,10 @@ const getInitials = (name: string) => {
     : trimmed.slice(0, 2).toUpperCase();
 };
 
+/** Pending invoices past their due date count as overdue. */
+const statusOf = (inv: Invoice): Invoice["status"] =>
+  inv.status === "pending" && inv.dueDate < new Date().toISOString().split("T")[0] ? "overdue" : inv.status;
+
 const TABS: { id: "all" | "paid" | "pending" | "overdue"; label: string }[] = [
   { id: "all", label: "All" },
   { id: "paid", label: "Paid" },
@@ -136,10 +141,11 @@ export default function Invoices() {
   const [emailBody, setEmailBody] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  // Form State for Invoice Creation
-  const [companyName, setCompanyName] = useState(user?.displayName ? `${user.displayName} Business` : "My Business");
-  const [companyAddress, setCompanyAddress] = useState("100 Corporate Parkway, Suite 400");
-  const [companyTaxId, setCompanyTaxId] = useState("TAX-9948102");
+  // Your business details carry over from the last invoice you made.
+  const lastInvoice = invoices[0];
+  const [companyName, setCompanyName] = useState(lastInvoice?.companyName ?? user?.displayName ?? "");
+  const [companyAddress, setCompanyAddress] = useState(lastInvoice?.companyAddress ?? "");
+  const [companyTaxId, setCompanyTaxId] = useState(lastInvoice?.companyTaxId ?? "");
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
   const [clientName, setClientName] = useState("");
@@ -149,13 +155,22 @@ export default function Invoices() {
   const [dueDate, setDueDate] = useState(
     new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
-  const [taxRate, setTaxRate] = useState<number>(5);
+  const [taxRate, setTaxRate] = useState<number>(0);
   const [discount, setDiscount] = useState<number>(0);
-  const [notes, setNotes] = useState("Thank you for choosing Endorse. Please remit payment by the due date.");
+  const [notes, setNotes] = useState(lastInvoice?.notes ?? "");
 
   const [formItems, setFormItems] = useState<InvoiceItem[]>([
-    { id: "1", description: "Professional Services & Consultation", quantity: 1, unitPrice: 500, amount: 500 },
+    { id: "1", description: "", quantity: 1, unitPrice: 0, amount: 0 },
   ]);
+
+  useEffect(() => {
+    if (!showCreateModal && !sendEmailModalInvoice) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showCreateModal, sendEmailModalInvoice]);
 
   const currentCurrency = CURRENCIES.find((c) => c.code === currencyCode) || CURRENCIES[0];
 
@@ -198,27 +213,25 @@ export default function Invoices() {
     );
   };
 
-  // Logo upload simulator
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setCompanyLogo(reader.result as string);
-        toast.success("Company logo uploaded!");
+        toast.success("Logo added.");
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Create Invoice Action
   const handleSaveInvoice = (status: "pending" | "draft" = "pending") => {
     if (!clientName.trim() || !clientEmail.trim()) {
-      toast.error("Please enter client name and client email.");
+      toast.error("Add the client's name and email.");
       return;
     }
     if (formItems.some((item) => !item.description.trim())) {
-      toast.error("Please fill out all line item descriptions.");
+      toast.error("Each line item needs a description.");
       return;
     }
 
@@ -250,33 +263,30 @@ export default function Invoices() {
     setInvoices([newInvoice, ...invoices]);
     setShowCreateModal(false);
     resetForm();
-    toast.success(`Invoice ${nextNum} created successfully!`);
+    toast.success(`Invoice ${nextNum} saved.`);
   };
 
   const resetForm = () => {
     setClientName("");
     setClientEmail("");
     setClientAddress("");
-    setTaxRate(5);
+    setTaxRate(0);
     setDiscount(0);
-    setNotes("Thank you for choosing Endorse. Please remit payment by the due date.");
-    setFormItems([
-      { id: "1", description: "Professional Services & Consultation", quantity: 1, unitPrice: 500, amount: 500 },
-    ]);
+    setFormItems([{ id: "1", description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
   };
 
   const handleClearInvoices = () => {
+    if (!window.confirm(`Delete all ${invoices.length} invoices? This can't be undone.`)) return;
     setInvoices([]);
     localStorage.removeItem("endorse_user_invoices");
-    toast.info("Invoice dataset reset to 0.");
+    toast.info("All invoices deleted.");
   };
 
-  // Status Toggles
   const handleMarkAsPaid = (id: string) => {
     setInvoices(
       invoices.map((inv) => (inv.id === id ? { ...inv, status: "paid" } : inv))
     );
-    toast.success("Invoice marked as Paid!");
+    toast.success("Marked as paid.");
   };
 
   const handleDeleteInvoice = (id: string) => {
@@ -284,7 +294,6 @@ export default function Invoices() {
     toast.success("Invoice deleted.");
   };
 
-  // Email Modal Trigger
   const handleOpenEmailModal = (inv: Invoice) => {
     setSendEmailModalInvoice(inv);
     setEmailSubject(`Invoice ${inv.number} from ${inv.companyName || "Endorse"}`);
@@ -295,27 +304,32 @@ export default function Invoices() {
 
   const handleExecuteSendEmail = async () => {
     if (!sendEmailModalInvoice) return;
+    const inv = sendEmailModalInvoice;
     setIsSendingEmail(true);
 
     try {
-      // Try Cloud Function trigger if available
+      // The email function only accepts a plain "data:application/pdf;base64," URI.
+      const base64 = buildInvoicePdf(inv).output("datauristring").split(",")[1];
       const sendFn = httpsCallable(functions, "sendDocument");
       await sendFn({
-        recipientEmail: sendEmailModalInvoice.clientEmail,
+        recipientEmail: inv.clientEmail,
+        pdfBase64: `data:application/pdf;base64,${base64}`,
+        documentName: `Invoice ${inv.number}`,
+        kind: "invoice",
         subject: emailSubject,
-        body: emailBody,
-        documentType: "invoice",
-        invoiceNumber: sendEmailModalInvoice.number,
-      }).catch((e) => {
-        console.warn("Cloud function fallback to direct mailto", e);
+        message: emailBody,
       });
-
-      toast.success(`Invoice ${sendEmailModalInvoice.number} sent to ${sendEmailModalInvoice.clientEmail}!`);
-    } catch {
-      toast.success(`Invoice notification dispatched to ${sendEmailModalInvoice.clientEmail}!`);
+      toast.success(`Invoice ${inv.number} sent to ${inv.clientEmail}.`);
+      setSendEmailModalInvoice(null);
+    } catch (e: any) {
+      console.error("Invoice email failed", e);
+      toast.error(
+        e?.message
+          ? `Couldn't send the invoice: ${e.message}`
+          : "Couldn't send the invoice. Download the PDF and attach it to an email instead."
+      );
     } finally {
       setIsSendingEmail(false);
-      setSendEmailModalInvoice(null);
     }
   };
 
@@ -328,11 +342,13 @@ export default function Invoices() {
     window.location.href = `mailto:${inv.clientEmail}?subject=${subject}&body=${body}`;
   };
 
-  // Download Executive PDF via jsPDF — brand blue (#2A6DF4) matches the app's
-  // --primary token, helvetica for a clean modern look instead of a Word-doc serif.
-  const handleDownloadPDF = (inv: Invoice) => {
+  // Brand blue (#2A6DF4), Helvetica throughout.
+  const buildInvoicePdf = (inv: Invoice) => {
     const doc = new jsPDF();
-    const sym = inv.currencySymbol || "$";
+    // jsPDF's built-in Helvetica only has Western European characters, so symbols like ₦, GH₵ and ₹
+    // would print as garbage; use the currency code ("NGN 1,000.00") for those instead.
+    const rawSym = inv.currencySymbol || "$";
+    const sym = /^[\x20-\x7E£€]+$/.test(rawSym) ? rawSym : `${inv.currency || rawSym} `;
     const BRAND = [42, 109, 244] as const;
 
     // Top Header Banner
@@ -342,11 +358,11 @@ export default function Invoices() {
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
-    doc.text(inv.companyName ? inv.companyName.toUpperCase() : "ENDORSE", 15, 22);
+    doc.text(inv.companyName ? inv.companyName.toUpperCase() : "INVOICE", 15, 22);
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
-    doc.text("OFFICIAL INVOICE", 195, 22, { align: "right" });
+    doc.text("INVOICE", 195, 22, { align: "right" });
 
     // Company & Client Details Section
     doc.setTextColor(30, 41, 59);
@@ -356,7 +372,7 @@ export default function Invoices() {
     doc.setFont("helvetica", "bold");
     doc.text("FROM:", 15, 48);
     doc.setFont("helvetica", "normal");
-    doc.text(inv.companyName || "Endorse Business", 15, 54);
+    if (inv.companyName) doc.text(inv.companyName, 15, 54);
     if (inv.companyAddress) doc.text(inv.companyAddress, 15, 60);
     if (inv.companyTaxId) doc.text(`Tax ID: ${inv.companyTaxId}`, 15, 66);
 
@@ -367,7 +383,7 @@ export default function Invoices() {
     doc.text(`Invoice #: ${inv.number}`, 125, 54);
     doc.text(`Issue Date: ${inv.issueDate}`, 125, 60);
     doc.text(`Due Date: ${inv.dueDate}`, 125, 66);
-    doc.text(`Status: ${inv.status.toUpperCase()}`, 125, 72);
+    doc.text(`Status: ${STATUS_META[statusOf(inv)].label}`, 125, 72);
 
     doc.setFont("helvetica", "bold");
     doc.text("BILLED TO:", 125, 82);
@@ -436,26 +452,20 @@ export default function Invoices() {
       doc.text(inv.notes, 15, y + 5);
     }
 
-    // Professional Footer Badge — "Generated with Endorse"
-    doc.setDrawColor(241, 245, 249);
-    doc.line(15, 275, 195, 275);
-
     doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...BRAND);
-    doc.text("Generated with Endorse", 105, 282, { align: "center" });
-
     doc.setFont("helvetica", "normal");
     doc.setTextColor(148, 163, 184);
-    doc.text("The professional way to issue invoices and manage digital agreements online.", 105, 287, { align: "center" });
+    doc.text("Made with Endorse · e-ndorse.online", 105, 287, { align: "center" });
 
-    doc.save(`${inv.number}.pdf`);
-    toast.success(`Downloaded ${inv.number}.pdf`);
+    return doc;
   };
 
-  // Filtered List
+  const handleDownloadPDF = (inv: Invoice) => {
+    buildInvoicePdf(inv).save(`${inv.number}.pdf`);
+  };
+
   const filteredInvoices = invoices.filter((inv) => {
-    const matchesTab = activeTab === "all" || inv.status === activeTab;
+    const matchesTab = activeTab === "all" || statusOf(inv) === activeTab;
     const matchesSearch =
       inv.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       inv.clientEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -463,58 +473,57 @@ export default function Invoices() {
     return matchesTab && matchesSearch;
   });
 
-  // Aggregate Metrics
-  const totalInvoiced = invoices.reduce((acc, inv) => acc + inv.total, 0);
-  const totalPaid = invoices.filter((inv) => inv.status === "paid").reduce((acc, inv) => acc + inv.total, 0);
-  const totalPending = invoices.filter((inv) => inv.status === "pending").reduce((acc, inv) => acc + inv.total, 0);
-  const totalOverdue = invoices.filter((inv) => inv.status === "overdue").reduce((acc, inv) => acc + inv.total, 0);
+  // Invoices can be in different currencies, so each currency is totalled separately
+  // (e.g. "₦250,000.00 · $120.00") rather than added together.
+  const totalsBy = (list: Invoice[]) => {
+    const sums = new Map<string, number>();
+    for (const inv of list) {
+      const sym = inv.currencySymbol || "$";
+      sums.set(sym, (sums.get(sym) || 0) + inv.total);
+    }
+    return sums;
+  };
+  const totalInvoiced = totalsBy(invoices);
+  const countOf = (status: Invoice["status"]) => invoices.filter((inv) => statusOf(inv) === status);
+  const totalPaid = totalsBy(countOf("paid"));
+  const totalPending = totalsBy(countOf("pending"));
+  const totalOverdue = totalsBy(countOf("overdue"));
 
   const money = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatTotals = (sums: Map<string, number>) =>
+    sums.size === 0 ? money(0) : [...sums].map(([sym, n]) => `${sym}${money(n)}`).join(" · ");
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AppHeader />
 
-      {/* Main Content Area */}
       <main className="flex-1 container mx-auto max-w-7xl px-4 md:px-6 py-8 space-y-8">
 
-        {/* Hero / Page Title */}
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-card">
-                    <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#0A66C2]/10 blur-3xl pointer-events-none" />
-          <div className="absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-[#FFC83D]/20 blur-3xl pointer-events-none" />
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">Invoices</h1>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Create an invoice, email it to your client as a PDF, and mark it paid when the money arrives.
+              Invoices are saved in this browser, so download a PDF of anything you need to keep.
+            </p>
+          </div>
 
-          <div className="relative flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FFC83D]/60 bg-[#FFC83D]/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-slate-800">
-                <Sparkles className="h-3 w-3" />
-                Billing Studio
-              </span>
-              <h1 className="mt-3 font-display text-[28px] leading-tight font-bold text-foreground sm:text-4xl">
-                Invoices, <span className="text-[#0A66C2]">handled beautifully</span>
-              </h1>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Create polished invoices, keep tabs on every payment, and get paid faster — all from one place.
-              </p>
-            </div>
-
-            <div className="flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:gap-4">
-              {invoices.length > 0 && (
-                <button
-                  onClick={handleClearInvoices}
-                  className="min-h-[40px] px-2 text-sm font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  Reset to 0
-                </button>
-              )}
-              <Button size="lg" className="h-12 w-full rounded-xl font-bold sm:w-auto bg-[#0A66C2] hover:bg-[#08519c] text-white shadow-sm" onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4" />
-                New Invoice
-              </Button>
-            </div>
+          <div className="flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:gap-4">
+            {invoices.length > 0 && (
+              <button
+                onClick={handleClearInvoices}
+                className="min-h-[40px] px-2 text-sm font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Delete all
+              </button>
+            )}
+            <Button size="lg" className="h-12 w-full rounded-xl font-bold sm:w-auto bg-[#0A66C2] hover:bg-[#08519c] text-white shadow-sm" onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4" />
+              New Invoice
+            </Button>
           </div>
         </div>
 
-        {/* Summary Strip */}
         <Card className="overflow-hidden border-border/70">
           <CardContent className="p-0">
             <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:[&>*:nth-child(2)]:border-t-0 lg:grid-cols-4 lg:divide-y-0 lg:divide-x">
@@ -524,7 +533,7 @@ export default function Invoices() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Invoiced</p>
-                  <h3 className="mt-0.5 truncate font-display text-xl font-bold text-foreground sm:text-2xl">${money(totalInvoiced)}</h3>
+                  <h3 className="mt-0.5 truncate font-display text-xl font-bold text-foreground sm:text-2xl" title={formatTotals(totalInvoiced)}>{formatTotals(totalInvoiced)}</h3>
                   <p className="mt-0.5 text-xs text-muted-foreground">{invoices.length} total invoices</p>
                 </div>
               </div>
@@ -535,8 +544,8 @@ export default function Invoices() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Paid</p>
-                  <h3 className="mt-0.5 truncate font-display text-xl font-bold text-foreground sm:text-2xl">${money(totalPaid)}</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{invoices.filter((i) => i.status === "paid").length} paid receipts</p>
+                  <h3 className="mt-0.5 truncate font-display text-xl font-bold text-foreground sm:text-2xl" title={formatTotals(totalPaid)}>{formatTotals(totalPaid)}</h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{countOf("paid").length} paid</p>
                 </div>
               </div>
 
@@ -546,8 +555,8 @@ export default function Invoices() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending</p>
-                  <h3 className="mt-0.5 truncate font-display text-xl font-bold text-foreground sm:text-2xl">${money(totalPending)}</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{invoices.filter((i) => i.status === "pending").length} awaiting payment</p>
+                  <h3 className="mt-0.5 truncate font-display text-xl font-bold text-foreground sm:text-2xl" title={formatTotals(totalPending)}>{formatTotals(totalPending)}</h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{countOf("pending").length} awaiting payment</p>
                 </div>
               </div>
 
@@ -557,15 +566,14 @@ export default function Invoices() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overdue</p>
-                  <h3 className="mt-0.5 truncate font-display text-xl font-bold text-foreground sm:text-2xl">${money(totalOverdue)}</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{invoices.filter((i) => i.status === "overdue").length} past due date</p>
+                  <h3 className="mt-0.5 truncate font-display text-xl font-bold text-foreground sm:text-2xl" title={formatTotals(totalOverdue)}>{formatTotals(totalOverdue)}</h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{countOf("overdue").length} past due date</p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Filter Controls & Search */}
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-2.5 md:flex-row md:items-center md:justify-between">
           <div className="flex w-full items-center gap-1 rounded-xl bg-muted/60 p-1 md:w-auto">
             {TABS.map((tab) => (
@@ -596,15 +604,11 @@ export default function Invoices() {
           </div>
         </div>
 
-        {/* Invoice List / Empty State */}
         {filteredInvoices.length === 0 ? (
           <div className="relative overflow-hidden rounded-3xl border border-dashed border-border bg-card px-4 py-16 text-center">
-                        <div className="relative mx-auto flex max-w-md flex-col items-center gap-4">
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-[#0A66C2] text-white shadow-md">
-                <Receipt className="h-8 w-8" />
-                <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#FFC83D] text-slate-900 shadow-sm ring-2 ring-card">
-                  <Sparkles className="h-3 w-3" />
-                </span>
+            <div className="relative mx-auto flex max-w-md flex-col items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0A66C2]/10 text-[#0A66C2]">
+                <Receipt className="h-7 w-7" />
               </div>
               <div className="space-y-1">
                 <h3 className="font-display text-base font-semibold text-foreground">
@@ -612,13 +616,13 @@ export default function Invoices() {
                 </h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {invoices.length === 0
-                    ? "Create your first professional invoice to start billing clients and tracking payments."
-                    : "Try a different search term or switch tabs to see more results."}
+                    ? "Your invoices will show up here, with what's been paid and what's still owed."
+                    : "Try a different search or another tab."}
                 </p>
               </div>
               <div className="flex w-full flex-col items-stretch justify-center gap-3 pt-1 sm:w-auto sm:flex-row sm:items-center">
                 <Button className="h-11 rounded-xl font-bold bg-[#0A66C2] hover:bg-[#08519c] text-white shadow-sm" onClick={() => setShowCreateModal(true)}>
-                  <Plus className="h-4 w-4" /> Create Your First Invoice
+                  <Plus className="h-4 w-4" /> New invoice
                 </Button>
               </div>
             </div>
@@ -626,7 +630,7 @@ export default function Invoices() {
         ) : (
           <div className="space-y-3">
             {filteredInvoices.map((inv) => {
-              const meta = STATUS_META[inv.status];
+              const meta = STATUS_META[statusOf(inv)];
               const StatusIcon = meta.icon;
               return (
                 <div
@@ -647,9 +651,7 @@ export default function Invoices() {
                           {meta.label}
                         </Badge>
                       </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {inv.number} · From {inv.companyName || "Endorse User"}
-                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{inv.number}</p>
                     </div>
                   </div>
 
@@ -676,7 +678,7 @@ export default function Invoices() {
                         <button
                           onClick={() => handleMarkAsPaid(inv.id)}
                           className="flex h-10 w-10 items-center justify-center rounded-lg text-success transition-colors hover:bg-success/10"
-                          title="Mark as Paid"
+                          title="Mark as paid"
                         >
                           <Check className="h-4 w-4" />
                         </button>
@@ -684,7 +686,7 @@ export default function Invoices() {
                       <button
                         onClick={() => handleOpenEmailModal(inv)}
                         className="flex h-10 w-10 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary/10"
-                        title="Send Invoice Email"
+                        title="Email invoice"
                       >
                         <Send className="h-4 w-4" />
                       </button>
@@ -698,7 +700,7 @@ export default function Invoices() {
                       <button
                         onClick={() => handleDeleteInvoice(inv.id)}
                         className="flex h-10 w-10 items-center justify-center rounded-lg text-destructive transition-colors hover:bg-destructive/10"
-                        title="Delete Invoice"
+                        title="Delete invoice"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -711,14 +713,12 @@ export default function Invoices() {
         )}
       </main>
 
-      {/* Create New Invoice Modal */}
+      {/* New invoice */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-foreground/40 p-0 sm:p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-0 sm:p-4 backdrop-blur-sm">
           <div className="flex h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[92vh] w-full max-w-5xl animate-in zoom-in-95 flex-col overflow-hidden rounded-none sm:rounded-3xl border border-border bg-card shadow-2xl lg:flex-row">
 
-            {/* Left: Form */}
-            <div className="flex min-w-0 flex-1 flex-col">
-              {/* Modal Header */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0A66C2] text-white">
@@ -726,7 +726,6 @@ export default function Invoices() {
                   </div>
                   <div>
                     <h3 className="font-display text-base font-semibold text-foreground">New Invoice</h3>
-                    <p className="text-xs text-muted-foreground">Fill in the details below</p>
                   </div>
                 </div>
                 <button onClick={() => setShowCreateModal(false)} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
@@ -734,10 +733,8 @@ export default function Invoices() {
                 </button>
               </div>
 
-              {/* Modal Form Content */}
-              <div className="flex-1 space-y-7 overflow-y-auto p-4 sm:p-6 text-sm">
+              <div className="min-h-0 flex-1 space-y-7 overflow-y-auto overscroll-contain p-4 sm:p-6 text-sm">
 
-                {/* Section 1: Your Business */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0A66C2]/10 text-xs font-bold text-[#0A66C2]">1</span>
@@ -751,20 +748,18 @@ export default function Invoices() {
                     <div>
                       <label className="font-semibold text-foreground mb-1 block text-xs">Company Name</label>
                       <Input
-                        placeholder="My Enterprise Ltd"
+                        placeholder="Your business name"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        className="text-sm"
                       />
                     </div>
 
                     <div>
                       <label className="font-semibold text-foreground mb-1 block text-xs">Tax ID / VAT #</label>
                       <Input
-                        placeholder="VAT-994810"
+                        placeholder="Optional"
                         value={companyTaxId}
                         onChange={(e) => setCompanyTaxId(e.target.value)}
-                        className="text-sm"
                       />
                     </div>
 
@@ -781,17 +776,15 @@ export default function Invoices() {
                   <div>
                     <label className="font-semibold text-foreground mb-1 block text-xs">Company Address</label>
                     <Input
-                      placeholder="100 Corporate Parkway, Suite 400, NY"
+                      placeholder="Street, city"
                       value={companyAddress}
                       onChange={(e) => setCompanyAddress(e.target.value)}
-                      className="text-sm"
                     />
                   </div>
                 </div>
 
                 <Separator />
 
-                {/* Section 2: Bill To */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0A66C2]/10 text-xs font-bold text-[#0A66C2]">2</span>
@@ -802,10 +795,9 @@ export default function Invoices() {
                     <div>
                       <label className="font-semibold text-foreground mb-1.5 block text-xs">Client Name *</label>
                       <Input
-                        placeholder="Acme Corp"
+                        placeholder="Who you're billing"
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
-                        className="text-sm"
                       />
                     </div>
 
@@ -813,20 +805,18 @@ export default function Invoices() {
                       <label className="font-semibold text-foreground mb-1.5 block text-xs">Client Email *</label>
                       <Input
                         type="email"
-                        placeholder="billing@acme.com"
+                        placeholder="client@example.com"
                         value={clientEmail}
                         onChange={(e) => setClientEmail(e.target.value)}
-                        className="text-sm"
                       />
                     </div>
 
                     <div>
                       <label className="font-semibold text-foreground mb-1.5 block text-xs">Client Billing Address</label>
                       <Input
-                        placeholder="12 Client Way, London, UK"
+                        placeholder="Optional"
                         value={clientAddress}
                         onChange={(e) => setClientAddress(e.target.value)}
-                        className="text-sm"
                       />
                     </div>
 
@@ -836,7 +826,6 @@ export default function Invoices() {
                         type="date"
                         value={dueDate}
                         onChange={(e) => setDueDate(e.target.value)}
-                        className="text-sm"
                       />
                     </div>
                   </div>
@@ -859,7 +848,6 @@ export default function Invoices() {
 
                 <Separator />
 
-                {/* Section 3: Line Items */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -879,34 +867,38 @@ export default function Invoices() {
                       <div key={item.id} className="grid grid-cols-12 gap-2 items-center bg-muted/40 p-2.5 rounded-xl border border-border">
                         <div className="col-span-12 sm:col-span-6">
                           <Input
-                            placeholder="Item description..."
+                            placeholder="What you're charging for"
                             value={item.description}
                             onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
-                            className="text-sm bg-background"
+                            className="bg-background"
                           />
                         </div>
-                        <div className="col-span-4 sm:col-span-2">
+                        <div className="col-span-3 sm:col-span-2">
+                          <label className="mb-1 block text-[11px] font-semibold text-muted-foreground sm:sr-only">Qty</label>
                           <Input
+                            inputMode="numeric"
                             type="number"
                             min="1"
                             placeholder="Qty"
                             value={item.quantity}
                             onChange={(e) => handleItemChange(item.id, "quantity", Number(e.target.value))}
-                            className="text-sm bg-background"
+                            className="bg-background"
                           />
                         </div>
-                        <div className="col-span-4 sm:col-span-2">
+                        <div className="col-span-5 sm:col-span-2">
+                          <label className="mb-1 block text-[11px] font-semibold text-muted-foreground sm:sr-only">Price</label>
                           <Input
+                            inputMode="decimal"
                             type="number"
                             min="0"
                             placeholder="Price"
                             value={item.unitPrice}
                             onChange={(e) => handleItemChange(item.id, "unitPrice", Number(e.target.value))}
-                            className="text-sm bg-background"
+                            className="bg-background"
                           />
                         </div>
-                        <div className="col-span-4 sm:col-span-2 flex items-center justify-between gap-1 pl-1">
-                          <span className="font-semibold text-foreground">
+                        <div className="col-span-4 sm:col-span-2 flex min-w-0 items-center justify-between gap-1 self-end pl-1 sm:self-center">
+                          <span className="min-w-0 truncate font-semibold text-foreground">
                             {currentCurrency.symbol}{item.amount.toFixed(2)}
                           </span>
                           <button onClick={() => handleRemoveItem(item.id)} aria-label="Remove item" className="flex h-10 w-10 items-center justify-center text-destructive hover:text-destructive/80">
@@ -920,7 +912,6 @@ export default function Invoices() {
 
                 <Separator />
 
-                {/* Section 4: Notes & Totals */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
@@ -931,8 +922,8 @@ export default function Invoices() {
                       rows={5}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="w-full p-3 text-sm rounded-xl border border-input bg-background text-foreground"
-                      placeholder="Payment instructions, thank-you note, terms..."
+                      className="w-full p-3 text-base md:text-sm rounded-xl border border-input bg-background text-foreground"
+                      placeholder="Bank details or how to pay you"
                     />
                   </div>
 
@@ -950,7 +941,8 @@ export default function Invoices() {
                         type="number"
                         value={taxRate}
                         onChange={(e) => setTaxRate(Number(e.target.value))}
-                        className="w-20 text-sm text-right h-8 bg-background"
+                        inputMode="decimal"
+                        className="w-24 text-right h-10 bg-background"
                       />
                     </div>
 
@@ -960,7 +952,8 @@ export default function Invoices() {
                         type="number"
                         value={discount}
                         onChange={(e) => setDiscount(Number(e.target.value))}
-                        className="w-20 text-sm text-right h-8 bg-background"
+                        inputMode="decimal"
+                        className="w-24 text-right h-10 bg-background"
                       />
                     </div>
 
@@ -977,20 +970,19 @@ export default function Invoices() {
 
               </div>
 
-              {/* Modal Footer Actions */}
-              <div className="p-4 bg-muted/30 border-t border-border flex items-center justify-end gap-3">
+              <div className="shrink-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-muted/30 border-t border-border flex items-center justify-end gap-3">
                 <Button variant="outline" className="h-11 rounded-xl" onClick={() => setShowCreateModal(false)}>
                   Cancel
                 </Button>
                 <Button className="h-11 rounded-xl font-bold bg-[#0A66C2] hover:bg-[#08519c] text-white shadow-sm" onClick={() => handleSaveInvoice("pending")}>
-                  Save &amp; Issue Invoice
+                  Save invoice
                 </Button>
               </div>
             </div>
 
-            {/* Right: Live Preview */}
+            {/* Preview */}
             <div className="hidden w-[340px] shrink-0 flex-col border-l border-border bg-muted/30 p-6 lg:flex">
-              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Live Preview</p>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Preview</p>
               <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-white text-[11px] shadow-xl">
                 <div className="bg-[#0A66C2] p-5 text-white">
                   <div className="flex items-center justify-between">
@@ -1066,10 +1058,10 @@ export default function Invoices() {
         </div>
       )}
 
-      {/* Send Invoice Email Dialog */}
+      {/* Email an invoice */}
       {sendEmailModalInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg animate-in zoom-in-95 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-foreground/40 p-4 backdrop-blur-sm">
+          <div className="my-auto w-full max-w-lg animate-in zoom-in-95 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between bg-[#0A66C2] px-4 py-4 sm:px-6 text-white">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
@@ -1090,12 +1082,12 @@ export default function Invoices() {
                 <label className="font-semibold text-foreground mb-1 flex items-center gap-1.5 text-xs">
                   <Mail className="h-3 w-3 text-primary" /> To
                 </label>
-                <Input value={sendEmailModalInvoice.clientEmail} readOnly className="bg-muted/50 font-medium text-sm" />
+                <Input value={sendEmailModalInvoice.clientEmail} readOnly className="bg-muted/50 font-medium" />
               </div>
 
               <div>
                 <label className="font-semibold text-foreground mb-1 block text-xs">Subject</label>
-                <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="text-sm font-medium" />
+                <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="font-medium" />
               </div>
 
               <div>
@@ -1104,17 +1096,17 @@ export default function Invoices() {
                   rows={6}
                   value={emailBody}
                   onChange={(e) => setEmailBody(e.target.value)}
-                  className="w-full p-3 text-sm rounded-xl border border-input bg-background text-foreground leading-relaxed"
+                  className="w-full p-3 text-base md:text-sm rounded-xl border border-input bg-background text-foreground leading-relaxed"
                 />
               </div>
 
               <div className="p-3 bg-primary/5 rounded-xl border border-primary/20 text-xs text-primary flex items-center justify-between">
-                <span>Or send via your email client</span>
+                <span>Or send it from your own email</span>
                 <button
                   onClick={() => handleOpenMailto(sendEmailModalInvoice)}
                   className="min-h-[40px] px-2 font-semibold underline hover:no-underline"
                 >
-                  Open Mail App
+                  Open mail app
                 </button>
               </div>
             </div>
@@ -1124,7 +1116,7 @@ export default function Invoices() {
                 Cancel
               </Button>
               <Button className="h-11 rounded-xl font-bold bg-[#0A66C2] hover:bg-[#08519c] text-white shadow-sm" onClick={handleExecuteSendEmail} disabled={isSendingEmail}>
-                {isSendingEmail ? "Sending..." : "Send Email Now"}
+                {isSendingEmail ? "Sending..." : "Send"}
               </Button>
             </div>
           </div>

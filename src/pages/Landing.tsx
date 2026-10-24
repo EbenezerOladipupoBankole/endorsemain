@@ -6,23 +6,21 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
 import { useAuth } from "@/components/AuthContext";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "@/components/client";
-import { toast } from "sonner";
 import {
   UploadCloud,
   Send,
   ShieldCheck,
-  Sparkles,
   CheckCircle2,
   Cpu,
   HelpCircle,
   Search,
   MessageCircle,
-  ChevronDown,
   PenTool,
-
-
+  Receipt,
+  Layers,
+  FileCode,
+  Users,
+  ArrowRight,
   Bot,
   X,
   Eye,
@@ -43,8 +41,8 @@ const tiers = [
   {
     name: 'Free',
     price: '$0',
-    frequency: '/month',
-    features: ['Unlimited documents', 'Basic signatures'],
+    frequency: '',
+    features: ['3 free documents', 'Draw, type or upload signatures', 'Templates and invoices'],
     color: 'text-[#0A66C2]',
     buttonColor: 'bg-white text-[#0A66C2] ring-1 ring-inset ring-[#0A66C2] hover:bg-[#0A66C2]/5 focus-visible:outline-[#0A66C2]',
     highlight: false,
@@ -52,8 +50,8 @@ const tiers = [
   {
     name: 'Pro',
     price: '$8',
-    frequency: '/month',
-    features: ['Unlimited documents', 'Invite signers', 'Audit trails'],
+    frequency: '/30 days',
+    features: ['Unlimited signing and sending', 'Email and WhatsApp signers', 'Signing status tracking'],
     color: 'text-[#0A66C2]',
     buttonColor: 'bg-[#0A66C2] text-white hover:bg-[#08519c] focus-visible:outline-[#0A66C2]',
     highlight: true,
@@ -61,12 +59,22 @@ const tiers = [
   {
     name: 'Business',
     price: '$15',
-    frequency: '/month',
+    frequency: '/30 days',
     features: ['Everything in Pro', 'Team management', 'Custom branding'],
     color: 'text-slate-900',
     buttonColor: 'bg-[#FFC83D] text-slate-900 hover:bg-[#e6b435] focus-visible:outline-[#FFC83D]',
     highlight: false,
   },
+];
+
+const CUSTOMERS = [
+  "Pioneer Artificial Intelligence Academy",
+  "Dera Everight Ltd",
+  "Macddy Tech Solution",
+  "Ike Ake & Associates",
+  "BlaqLink",
+  "ViteHire",
+  "CC Tech Solutions",
 ];
 
 const Landing = () => {
@@ -83,12 +91,10 @@ const Landing = () => {
     return () => clearTimeout(timer);
   }, [location.hash]);
   const [showCookieConsent, setShowCookieConsent] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [showVideoModal, setShowVideoModal] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([
-    { text: "Hello! 👋 Thanks for visiting Endorse. How can we help you streamline your agreements today?", isUser: false, time: "Just now" }
+    { text: "Hi! I can answer quick questions about pricing, signing and security. For anything else, email support@endorse.online.", isUser: false, time: "Just now" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
@@ -101,20 +107,6 @@ const Landing = () => {
     }, 6000);
     return () => clearInterval(timer);
   }, [isStepAutoplay]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setShowVideoModal(false);
-      }
-    };
-    if (showVideoModal) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [showVideoModal]);
 
   const [faqCategory, setFaqCategory] = useState("All");
   const [faqSearch, setFaqSearch] = useState("");
@@ -143,18 +135,18 @@ const Landing = () => {
   const getBotResponse = (text: string) => {
     const lower = text.toLowerCase();
     if (lower.includes("price") || lower.includes("cost") || lower.includes("plan") || lower.includes("free")) {
-      return "Endorse is completely free right now! Enjoy unlimited documents, e-signatures, audit trails, and all premium features without any charge.";
+      return "Your first 3 documents are free. After that, Pro is $8 and Business is $15 for 30 days of unlimited signing and sending. Each payment covers 30 days and nothing renews automatically.";
     }
     if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
       return "Hi there! Ready to sign some documents? 📄 How can I help you today?";
     }
     if (lower.includes("security") || lower.includes("safe") || lower.includes("legal") || lower.includes("binding")) {
-      return "Yes! Endorse is ESIGN compliant and uses 256-bit SSL encryption to keep your data secure and legally binding.";
+      return "Endorse provides simple electronic signatures of the kind recognised under the US ESIGN Act and the EU's eIDAS regulation. Files are encrypted in transit and at rest.";
     }
     if (lower.includes("support") || lower.includes("help")) {
-      return "You can reach our support team at support@endorse.com or browse our Help Center resources.";
+      return "Email us at support@endorse.online, or have a look at the Help Center.";
     }
-    return "Thanks for the message! A support agent will be with you shortly. In the meantime, feel free to browse our features.";
+    return "I can only answer a few common questions here. For anything else, email support@endorse.online and we'll get back to you.";
   };
 
   const sendMessage = (text: string) => {
@@ -169,9 +161,7 @@ const Landing = () => {
       setIsTyping(false);
       const response = getBotResponse(text);
       setChatMessages((prev) => [...prev, { text: response, isUser: false, time: "Just now" }]);
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
-      audio.play().catch((e) => console.error("Audio play failed:", e));
-    }, 1500);
+    }, 600);
   };
 
   const handleChatSubmit = (e: React.FormEvent) => {
@@ -185,226 +175,110 @@ const Landing = () => {
     <div className="min-h-screen bg-background">
       <SiteHeader />
 
-      {/* Redesigned Hero Section */}
-      <section className="pt-8 pb-10 md:pt-12 md:pb-14 px-4 md:px-6 bg-white dark:bg-slate-950 relative overflow-hidden">
+      {/* Hero */}
+      <section className="pt-10 pb-12 md:pt-16 md:pb-20 px-4 md:px-6 bg-white dark:bg-slate-950 relative overflow-hidden">
+        <div className="container mx-auto max-w-6xl px-0 sm:px-8 grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
+          <div className="text-center lg:text-left animate-fade-up">
+            <h1 className="font-display text-[2.1rem] sm:text-5xl md:text-[3.4rem] font-extrabold text-slate-900 dark:text-white leading-[1.08] tracking-tight">
+              Get documents signed and invoices out, <span className="text-[#0A66C2]">without the paperwork.</span>
+            </h1>
+            <p className="mt-5 text-base md:text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
+              Sign PDFs and Word files yourself, send them to others by email or WhatsApp, reuse your
+              agreements as templates, and bill clients in Naira, Cedis, Shillings, Rand or Dollars.
+            </p>
+            <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+              <Button asChild size="lg" className="h-12 rounded-full px-7 text-base font-extrabold bg-[#FFC83D] text-black hover:bg-[#e6b435]">
+                <Link to="/auth?mode=signup">Start free — 3 documents on us</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="h-12 rounded-full px-7 text-base font-bold border-slate-300 dark:border-slate-700">
+                <a href="#pricing">See pricing</a>
+              </Button>
+            </div>
+            <p className="mt-4 text-sm text-slate-500">No card needed. Signers don't pay anything.</p>
+          </div>
 
-        <div className="container mx-auto max-w-7xl px-0 sm:px-8 relative flex flex-col items-center text-center">
-          {/* Headline */}
-          <h1 className="font-display text-2xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-3 leading-[1.1] tracking-tight max-w-3xl animate-fade-up">
-            Document Management Software & <br className="hidden md:inline" /> Secure File Portal
-          </h1>
-
-          {/* Subheadline */}
-          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-6 md:mb-4 leading-relaxed animate-fade-up-delay-1">
-            Boost business efficiency with a dynamic document management solution. Endorse is the easiest and most secure way to optimize how you, your staff, and your clients gather, store, share, and eSign documents in the cloud.
-          </p>
-
-          {/* Visual Showcase Composition */}
-          <div className="w-full flex justify-center animate-scale-in px-0 sm:px-0">
-            <div className="relative w-full max-w-4xl md:aspect-[16/10]">
-
-              {/* Background Vault/Arch - Blue Dome Circle */}
-              <div className="hidden md:block absolute right-[8%] top-0 w-[36%] aspect-square bg-[#0A66C2] dark:bg-[#0052a3] rounded-full -z-10 shadow-2xl shadow-blue-500/20 opacity-95 animate-pulse-glow" />
-
-              {/* Main Browser Window (Left/Center) */}
-              <div className="relative md:absolute md:left-0 md:top-[2%] w-full md:w-[72%] bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col text-left sm:aspect-[4/3.1]">
-                {/* Title Bar */}
-                <div className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center gap-3 shrink-0">
-                  {/* Window Controls */}
-                  <div className="flex gap-1.5 shrink-0">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57] border border-[#E0443E]" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E] border border-[#D89E24]" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#28C840] border border-[#1AAB29]" />
-                  </div>
-                  {/* Address Bar */}
-                  <div className="flex-1 flex justify-center">
-                    <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-lg px-4 py-1 text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 w-full max-w-[220px] justify-center shadow-inner font-mono truncate">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full shrink-0" />
-                      <span className="opacity-80">endorse.com/files</span>
+          {/* Product snapshot: what a workspace looks like once you've sent a few things */}
+          <div className="relative mx-auto w-full max-w-[520px] animate-scale-in">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_30px_60px_-30px_rgba(10,102,194,0.35)] overflow-hidden text-left">
+              <div className="flex gap-1 border-b border-slate-100 dark:border-slate-800 px-3 pt-3 text-[11px] font-bold text-slate-500 overflow-hidden">
+                {["Dashboard", "Send for Signature", "Invoices", "File Converter"].map((tab) => (
+                  <span
+                    key={tab}
+                    className={`shrink-0 whitespace-nowrap rounded-t-lg px-3 py-2 ${tab === "Send for Signature" ? "bg-[#0A66C2]/10 text-[#0A66C2] dark:text-[#7cb7f0]" : ""}`}
+                  >
+                    {tab}
+                  </span>
+                ))}
+              </div>
+              <div className="p-4 sm:p-5">
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {[
+                    { label: "Sent", value: 14, tone: "text-slate-900 dark:text-white" },
+                    { label: "Awaiting", value: 3, tone: "text-amber-600" },
+                    { label: "Signed", value: 11, tone: "text-emerald-600" },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-xl border border-slate-100 dark:border-slate-800 px-3 py-2">
+                      <p className={`text-lg font-extrabold ${s.tone}`}>{s.value}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{s.label}</p>
                     </div>
-                  </div>
-                  <div className="w-10 shrink-0" />
+                  ))}
                 </div>
-
-                {/* Browser Content */}
-                <div className="flex-1 flex min-h-0 bg-white dark:bg-slate-950">
-                  {/* Sidebar (left) */}
-                  <div className="hidden sm:flex w-[30%] border-r border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 flex-col justify-between py-5 px-3 shrink-0">
-                    <div className="space-y-5">
-                      {/* Sidebar Brand Heading */}
-                      <div className="flex items-center gap-2 px-2 text-[#0A66C2] dark:text-[#FFC83D] font-bold text-xs uppercase tracking-wider">
-                        <div className="w-5 h-5 rounded-md bg-[#0A66C2] flex items-center justify-center text-white text-[10px] font-black shadow-sm shadow-blue-500/20">E</div>
-                        <span className="font-display">Endorse</span>
+                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {[
+                    { doc: "Offer letter", who: "Amaka Obi", via: "Email", signed: "Signed 22 Oct" },
+                    { doc: "Tenancy agreement", who: "Kofi Mensah", via: "WhatsApp", signed: null },
+                    { doc: "Service agreement", who: "Kibet & Sons Ltd", via: "Email", signed: "Signed 20 Oct" },
+                  ].map((row) => (
+                    <li key={row.doc} className="flex items-center justify-between gap-3 py-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-bold text-slate-800 dark:text-slate-100">{row.doc}</p>
+                          <p className="truncate text-[11px] text-slate-500">{row.who} · {row.via}</p>
+                        </div>
                       </div>
-
-                      {/* Navigation Menu Links */}
-                      <div className="space-y-1">
-                        {[
-                          { name: "Home", active: false },
-                          { name: "View Files and Folders", active: true },
-                          { name: "Bulk Send Files", active: false },
-                          { name: "Request Docs", active: false },
-                          { name: "Client Management", active: false },
-                          { name: "Manage Employees", active: false }
-                        ].map((item, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-[10px] font-bold transition-all ${item.active
-                              ? "bg-[#0A66C2]/8 text-[#0A66C2] dark:bg-[#FFC83D]/10 dark:text-[#FFC83D] shadow-sm"
-                              : "text-slate-500 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-900/50"
-                              }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.active ? "bg-[#0A66C2] dark:bg-[#FFC83D]" : "bg-transparent"}`} />
-                            <span className="truncate">{item.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Curly-haired woman avatar profile */}
-                    <div className="px-2 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 shrink-0">
-                      <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-200 shadow-sm">
-                        <img src="https://images.unsplash.com/photo-1507152832244-10d45c7eda57?auto=format&fit=crop&crop=faces&q=80&w=100&h=100" alt="Sarah J." className="w-full h-full object-cover" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-slate-800 dark:text-slate-200 truncate">Sarah J.</p>
-                        <p className="text-[7.5px] text-slate-400 truncate">Workspace Owner</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Main File Table Panel */}
-                  <div className="flex-1 flex flex-col min-h-0 p-4 sm:p-5 bg-white dark:bg-slate-950 overflow-hidden">
-                    {/* Panel Header */}
-                    <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-900 shrink-0">
-                      <div>
-                        <h3 className="text-xs font-bold text-slate-800 dark:text-slate-250">View Files and Folders</h3>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-550 mt-0.5">Work faster by adding shortcuts to your favorite folders here</p>
-                      </div>
-                      <span aria-hidden="true" className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:text-slate-350 shadow-sm shrink-0">
-                        + Add shortcuts
-                      </span>
-                    </div>
-
-                    {/* Table Data */}
-                    <div className="flex-1 overflow-y-auto no-scrollbar pt-3">
-                      <table className="w-full text-left text-[10px]">
-                        <thead>
-                          <tr className="text-slate-400 font-bold border-b border-slate-100 dark:border-slate-900 pb-2">
-                            <th className="pb-2 w-6"><span aria-hidden="true" className="block w-3 h-3 rounded-[3px] border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /></th>
-                            <th className="pb-2 font-extrabold flex items-center gap-0.5">Name <ChevronDown className="w-2.5 h-2.5 inline rotate-180 text-slate-400" /></th>
-                            <th className="pb-2 font-extrabold">Last Modified</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50 dark:divide-slate-900/50">
-                          {[
-                            { name: "Johnston, Randy", date: "Aug 20, 2021" },
-                            { name: "Jon Bransen, LLC", date: "Jan 17, 2022" },
-                            { name: "Jones, Mack", date: "Jan 12, 2022" },
-                            { name: "Julie Brooks", date: "Jan 12, 2022" },
-                            { name: "Kennedy, Renee", date: "Jan 12, 2022" },
-                            { name: "levi enterprises", date: "Jan 12, 2022" },
-                            { name: "Lady, Carmen", date: "Jan 12, 2022" }
-                          ].map((folder, i) => (
-                            <tr key={i} className={`${i >= 4 ? "hidden sm:table-row " : ""}hover:bg-slate-50/50 dark:hover:bg-slate-900/30 text-slate-650 dark:text-slate-400 transition-colors`}>
-                              <td className="py-2.5"><span aria-hidden="true" className="block w-3 h-3 rounded-[3px] border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /></td>
-                              <td className="py-2.5 font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                <span className="text-amber-500 text-[11px]">📁</span>
-                                <span className="truncate">{folder.name}</span>
-                              </td>
-                              <td className="py-2.5 text-slate-400 dark:text-slate-500">{folder.date}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
+                      {row.signed ? (
+                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3 w-3" /> {row.signed}
+                        </span>
+                      ) : (
+                        <span className="shrink-0 rounded-full bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                          Awaiting signature
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
+            </div>
 
-              {/* Second Overlapping Card (Detail Explorer, Bottom Right) */}
-              <div className="hidden md:flex absolute right-[2%] bottom-[8%] w-[46%] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] overflow-hidden flex-col p-[18px] text-left aspect-[4/3.1] z-10 animate-float">
-                {/* Breadcrumbs */}
-                <div className="text-[10px] text-slate-400 font-bold truncate flex items-center gap-1">
-                  <span>Clients</span> <span className="text-slate-300">&gt;</span>
-                  <span>I-L</span> <span className="text-slate-300">&gt;</span>
-                  <span className="text-slate-600 dark:text-slate-300 font-extrabold">Jones, Mack</span> <span className="text-slate-300">&gt;</span>
-                  <span className="text-[#0A66C2] dark:text-[#FFC83D] font-extrabold">Quotes</span>
-                </div>
-
-                {/* Sub-search inside detail card */}
-                <div className="mt-3 relative">
-                  <div aria-hidden="true" className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-[10px] text-slate-400 w-full">
-                    Search for a file...
-                  </div>
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                </div>
-
-                {/* Sub-explorer Data Table */}
-                <table className="w-full text-left text-[10px] mt-4">
-                  <thead>
-                    <tr className="text-slate-400 font-bold border-b border-slate-100 dark:border-slate-900 pb-2">
-                      <th className="pb-1.5 w-6"></th>
-                      <th className="pb-1.5 font-extrabold flex items-center gap-0.5">Name <ChevronDown className="w-2.5 h-2.5 inline rotate-180 text-slate-400" /></th>
-                      <th className="pb-1.5 font-extrabold">Last Modified</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="text-slate-600 dark:text-slate-300">
-                      <td className="py-2.5"><span aria-hidden="true" className="block w-3 h-3 rounded-[3px] border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /></td>
-                      <td className="py-2.5 font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                        <span className="text-red-500 text-[12px]">📄</span>
-                        <span className="truncate">Form 8879 - Mack Jones.pdf</span>
-                      </td>
-                      <td className="py-2.5 text-slate-450 dark:text-slate-500">Jan 12, 2022</td>
-                    </tr>
-                  </tbody>
-                </table>
+            {/* Invoice card overlapping the corner */}
+            <div className="relative z-10 -mt-6 ml-auto mr-2 sm:-mr-6 w-[230px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xl text-left">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                  <Receipt className="h-3.5 w-3.5 text-[#0A66C2]" /> INV-0007
+                </span>
+                <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Paid</span>
               </div>
-
-              {/* Golden Badge floating over overlap line */}
-              <div className="hidden md:flex absolute right-[33%] top-[24%] bg-[#E88E2D] hover:bg-[#d07e25] text-white px-5 py-3 rounded-xl shadow-lg shadow-orange-500/10 border border-orange-400/20 text-[10px] font-black tracking-wide z-20 items-center justify-center cursor-pointer select-none max-w-[210px] text-center transform hover:scale-105 transition-all">
-                Access folders and files from a web browser
-              </div>
-
-              {/* Blonde Woman Avatar (Right Circle Overlay) */}
-              <div className="hidden md:block absolute right-[10%] bottom-[16%] w-[88px] h-[88px] rounded-full overflow-hidden border-[4px] border-white dark:border-slate-900 shadow-2xl z-20 hover:scale-105 transition-transform duration-300">
-                <img src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&crop=faces&q=80&w=200&h=200" alt="Smiling Endorse customer" className="w-full h-full object-cover" />
-              </div>
-
-              {/* Curly Hair Woman Avatar (Bottom Left Overlay) */}
-              <div className="hidden md:block absolute left-[15%] bottom-[5%] w-[72px] h-[72px] rounded-full overflow-hidden border-[4px] border-white dark:border-slate-900 shadow-2xl z-20 hover:scale-105 transition-transform duration-300">
-                <img src="https://images.unsplash.com/photo-1531384441138-2736e62e0919?auto=format&fit=crop&crop=faces&q=80&w=200&h=200" alt="Endorse team member" className="w-full h-full object-cover" />
-              </div>
-
-              {/* Floating Green Color Palette Action Button (Bottom Left) */}
-              <div aria-hidden="true" className="hidden md:flex absolute left-4 bottom-4 w-9 h-9 rounded-full bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 items-center justify-center shadow-lg cursor-pointer transform hover:scale-110 transition-all z-20">
-                <span className="text-base select-none">🎨</span>
-              </div>
-
-              {/* Floating Chat Action Button (Bottom Right) */}
-              <button type="button" aria-label="Open chat" onClick={() => setShowChat(true)} className="hidden md:flex absolute right-4 bottom-4 w-11 h-11 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-950 dark:hover:bg-blue-900 text-[#0A66C2] dark:text-blue-300 items-center justify-center shadow-lg cursor-pointer transform hover:scale-110 transition-all z-30">
-                <span className="text-base select-none" aria-hidden="true">💬</span>
-              </button>
+              <p className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">₦450,000.00</p>
+              <p className="text-[11px] text-slate-500">Brand design · Adeola Studio</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works Section (Enterprise Simulator Showcase) */}
+      {/* How It Works */}
       <section className="py-20 md:py-28 bg-white border-y border-slate-100 relative overflow-hidden">
 
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 relative z-10">
           {/* Section Header */}
           <div className="text-center max-w-2xl mx-auto mb-10 md:mb-20">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-3">
-              <Sparkles className="w-3.5 h-3.5" /> How It Works
-            </span>
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2] mb-3">How it works</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">
-              Signed in three simple steps
+              From upload to signed copy in three steps
             </h2>
             <p className="text-slate-500 text-base md:text-lg leading-relaxed">
-              Experience the fast, intuitive eSignature platform built for modern corporate teams and legal departments.
+              Your signer gets a link, signs on whatever device they have, and you get the signed PDF back by email.
             </p>
           </div>
 
@@ -418,8 +292,8 @@ const Landing = () => {
                   id: 0,
                   step: "01",
                   title: "Upload Document",
-                  subtitle: "Sleek document ingestion",
-                  desc: "Upload contract files (PDF, Word, or images) instantly. Our system parses layout margins and prepares the canvas for role placing.",
+                  subtitle: "PDF or Word",
+                  desc: "Upload a PDF or Word file from your computer or phone, or start from one of your saved templates.",
                   icon: UploadCloud,
                   activeColor: "border-primary text-primary"
                 },
@@ -427,8 +301,8 @@ const Landing = () => {
                   id: 1,
                   step: "02",
                   title: "Add Signers & Prepare",
-                  subtitle: "Drag & drop builder",
-                  desc: "Add name and email addresses for signers. Seamlessly place required fields (signatures, initials, texts, or dates) on the page in seconds.",
+                  subtitle: "Place the fields",
+                  desc: "Add each signer's name and email or WhatsApp number, then drag signature, initials, date and text fields to where they belong.",
                   icon: MousePointerClick,
                   activeColor: "border-emerald-500 text-emerald-600"
                 },
@@ -436,8 +310,8 @@ const Landing = () => {
                   id: 2,
                   step: "03",
                   title: "Track & Complete",
-                  subtitle: "Real-time auditing",
-                  desc: "Send unique secure links. Monitor document state transitions live from your activity log, and download fully certified, legal audit trails.",
+                  subtitle: "Know where it stands",
+                  desc: "Send secure signing links by email or WhatsApp. See each document move from awaiting signature to signed, and download the signed copy.",
                   icon: ShieldCheck,
                   activeColor: "border-[#FFC83D] text-[#D89E24]"
                 }
@@ -643,7 +517,7 @@ const Landing = () => {
                           <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold font-mono text-[10px] border border-blue-100 z-10">1</div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-slate-800 truncate">Document created by Dr. Williams</p>
-                            <p className="text-[10px] text-slate-400">Aug 25, 11:15 AM • IP: 192.168.1.88</p>
+                            <p className="text-[10px] text-slate-400">Aug 25, 11:15 AM</p>
                           </div>
                         </div>
 
@@ -659,7 +533,7 @@ const Landing = () => {
                           <div className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 font-bold font-mono text-[10px] border border-emerald-100 z-10">3</div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-slate-800 truncate">Sarah Okafor signed the contract</p>
-                            <p className="text-[10px] text-slate-400">Aug 25, 11:32 AM • Verified Audit Certificate</p>
+                            <p className="text-[10px] text-slate-400">Aug 25, 11:32 AM • Signed &amp; emailed to you</p>
                           </div>
                         </div>
                       </div>
@@ -667,7 +541,7 @@ const Landing = () => {
                       {/* Download Signed File button */}
                       <div className="pt-2">
                         <button className="w-full bg-[#FFC83D] hover:bg-[#FFC83D]/90 text-black font-extrabold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm">
-                          <Download className="w-3.5 h-3.5" /> Download Certified PDF & Audit Log
+                          <Download className="w-3.5 h-3.5" /> Download Signed PDF
                         </button>
                       </div>
                     </div>
@@ -684,10 +558,38 @@ const Landing = () => {
       <section id="features" className="scroll-mt-20 py-16 md:py-24 px-4 md:px-6 overflow-hidden">
         <div className="container mx-auto max-w-6xl px-0 sm:px-8">
           <div className="text-center mb-12 md:mb-16">
-            <p className="text-base font-semibold text-primary uppercase tracking-wider mb-3">Features</p>
+            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">What's in Endorse</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Everything you need to manage signatures
+              More than a signature pad
             </h2>
+            <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
+              The paperwork around a deal or a hire, in one account.
+            </p>
+          </div>
+
+          {/* Product tour: each card links to its product page */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16 md:mb-24">
+            {[
+              { icon: PenTool, title: "Sign documents", text: "Sign a PDF or Word file yourself and download the signed copy.", to: "/product/esign" },
+              { icon: Send, title: "Send for signature", text: "Send to one or more people by email or WhatsApp and see who has signed.", to: "/product/send-for-signature" },
+              { icon: Layers, title: "Templates", text: "Save an agreement once and reuse it — each signer's details fill in for you.", to: "/product/templates" },
+              { icon: Receipt, title: "Invoices", text: "Itemised invoices with tax and discounts in 10 currencies, emailed as a PDF.", to: "/product/invoices" },
+              { icon: FileCode, title: "File conversion", text: "Word to PDF, PDF to Word, images to PDF and back, merging and password-protecting PDFs.", to: "/conversion" },
+              { icon: Users, title: "Teams", text: "Invite teammates on the Business plan and share templates.", to: "/#pricing" },
+            ].map((p) => (
+              <Link
+                key={p.title}
+                to={p.to}
+                className="group rounded-2xl border border-border bg-card p-5 sm:p-6 transition-colors hover:border-[#0A66C2]/40"
+              >
+                <p.icon className="h-6 w-6 text-[#0A66C2]" />
+                <h3 className="mt-4 text-lg font-bold text-foreground">{p.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{p.text}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#0A66C2]">
+                  Learn more <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            ))}
           </div>
 
           {/* Feature 1: Signing Experience */}
@@ -724,16 +626,12 @@ const Landing = () => {
               </div>
             </div>
             <div className="w-full md:w-1/2 order-1 md:order-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFC83D]/15 text-[#8a6500] text-sm font-medium mb-4">
-
-                Intuitive Signing
-              </div>
-              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Sign documents anywhere, on any device.</h3>
+              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Sign on a laptop or a phone.</h3>
               <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
-                Experience a signing process that feels natural. Whether you're on a desktop in the office or a mobile phone on the go, Endorse adapts to your screen.
+                Draw your signature with a finger, type it in a handwriting style, or upload a photo of it. Signers don't need to install anything.
               </p>
               <ul className="space-y-3">
-                {["Draw, type, or upload signatures", "Mobile-responsive interface", "No account required for signers"].map((item, i) => (
+                {["Draw, type, or upload a signature", "Initials, dates, names and text fields too", "No account needed for WhatsApp signers"].map((item, i) => (
                   <li key={i} className="flex items-center gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-[#0A66C2] shrink-0" />
                     <span className="text-foreground text-sm font-medium">{item}</span>
@@ -746,17 +644,13 @@ const Landing = () => {
           {/* Feature 2: Tracking */}
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-16 md:mb-24">
             <div className="w-full md:w-1/2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-sm font-medium mb-4">
-
-                Real-time Tracking
-              </div>
-              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Never wonder about status again.</h3>
+              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">See who has signed and who hasn't.</h3>
               <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
-                Stay in the loop with instant notifications. Know exactly when your document is opened, viewed, and signed.
+                Each document you send shows when it went out and when it was signed. You're emailed the signed copy as soon as it's done, and you can resend the link to anyone who's slow.
               </p>
-              <Link to="/auth" className="inline-flex">
+              <Link to="/product/send-for-signature" className="inline-flex">
                 <Button variant="outline" className="group h-11 px-5">
-                  Explore Features
+                  How sending works
                 </Button>
               </Link>
             </div>
@@ -892,35 +786,32 @@ const Landing = () => {
           {/* Feature 3: Security */}
           <div className="py-12 border-t border-slate-100">
             <div className="max-w-3xl mx-auto text-center mb-10 md:mb-16">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-600 text-sm font-medium mb-4">
-                Secure & Reliable
-              </div>
-              <h3 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-slate-900 dark:text-white">Secure, private, and legally binding.</h3>
+              <h3 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-slate-900 dark:text-white">The right person, on the record.</h3>
               <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                We take security seriously. Your documents are protected by industry-standard encryption, strict compliance frameworks, and secure cloud infrastructure.
+                What Endorse does to check who signed and keep your documents private.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 max-w-5xl mx-auto">
               {[
                 {
-                  title: "Cryptographic Tamper-Evident Seals",
-                  desc: "Every document signed on Endorse is hashed using the industry-standard SHA-256 algorithm. Any attempt to modify the document will immediately invalidate the signatures.",
-                  badge: "SHA-256 Checksum"
+                  title: "Verified Signers",
+                  desc: "Email signers sign in with the exact address you sent to, and WhatsApp signers confirm a one-time code sent to their phone — so you know the right person signed.",
+                  badge: "Identity Checks"
                 },
                 {
                   title: "Legal Compliance Standards",
-                  desc: "Fully compliant with the US ESIGN Act, Uniform Electronic Transactions Act (UETA), European Union eIDAS regulations, and the Nigeria Data Protection Act (NDPA) enforced by the NDPC. Signatures are legally binding and admissible in court.",
+                  desc: "Endorse provides simple electronic signatures of the kind recognised under the US ESIGN Act and UETA and the EU's eIDAS regulation, and handles personal data in line with the Nigeria Data Protection Act (NDPA). Signers adopt their signature with an explicit agreement before signing.",
                   badge: "ESIGN, eIDAS & NDPA Compliant"
                 },
                 {
-                  title: "Comprehensive Audit Trails",
-                  desc: "Track every step of the signing process. We generate a secure, timestamped audit certificate recording IP addresses, email verifications, and event histories.",
-                  badge: "Admissible Evidence"
+                  title: "A Record of Every Signature",
+                  desc: "Each signed document keeps who signed, where every field was placed and exactly when it was signed — and you're emailed a link to the signed copy the moment it's done.",
+                  badge: "Timestamped"
                 },
                 {
-                  title: "Bank-Grade Data Encryption",
-                  desc: "Your files are encrypted in transit using 256-bit SSL/TLS protocols and at rest using AES-256 encryption, hosted on highly secure, certified cloud infrastructure.",
+                  title: "Encrypted storage",
+                  desc: "Your files are encrypted in transit with TLS and at rest with AES-256 on Google Cloud, and only you and the people you invite can open your documents.",
                   badge: "AES-256 Standards"
                 }
               ].map((item, i) => (
@@ -1005,7 +896,7 @@ const Landing = () => {
       <section className="py-14 border-y border-border/40 bg-slate-50/70 dark:bg-slate-900/40 overflow-hidden relative">
         <div className="container mx-auto px-4 sm:px-6 mb-8 text-center">
           <p className="text-sm md:text-base font-extrabold uppercase tracking-widest text-slate-800 dark:text-slate-200">
-            Trusted by teams at forward-thinking companies
+            Already using Endorse
           </p>
         </div>
 
@@ -1016,30 +907,15 @@ const Landing = () => {
         {/* Scrolling Ticker */}
         <div className="overflow-hidden flex w-full">
           <div className="animate-marquee flex items-center gap-14 md:gap-20 py-3">
-            {[
-              { name: "Pioneer Artificial Intelligence Academy", icon: "🎓 Pioneer Artificial Intelligence Academy" },
-              { name: "Dera Everight Ltd", icon: "❖ Dera Everight Ltd" },
-              { name: "Macddy Tech Solution", icon: "⚡ Macddy Tech Solution" },
-              { name: "Ike Ake & Associates", icon: "⚖ Ike Ake & Associates" },
-              { name: "BlaqLink", icon: "◈ BlaqLink" },
-              { name: "ViteHire", icon: "▲ ViteHire" },
-              { name: "CC Tech Solutions", icon: "⚙ CC Tech Solutions" },
-
-              /* Repeated set for infinite scroll loop */
-              { name: "Pioneer Artificial Intelligence Academy", icon: "🎓 Pioneer Artificial Intelligence Academy" },
-              { name: "Dera Everight Ltd", icon: "❖ Dera Everight Ltd" },
-              { name: "Macddy Tech Solution", icon: "⚡ Macddy Tech Solution" },
-              { name: "Ike Ake & Associates", icon: "⚖ Ike Ake & Associates" },
-              { name: "BlaqLink", icon: "◈ BlaqLink" },
-              { name: "ViteHire", icon: "▲ ViteHire" },
-              { name: "CC Tech Solutions", icon: "⚙ CC Tech Solutions" }
-            ].map((company, index) => (
-              <div
+            {/* The list is repeated once so the marquee loops without a gap */}
+            {[...CUSTOMERS, ...CUSTOMERS].map((name, index) => (
+              <span
                 key={index}
-                className="flex items-center gap-3 text-slate-800 dark:text-slate-100 hover:text-[#0A66C2] transition-all duration-300 font-display font-black text-2xl md:text-3xl tracking-tight select-none cursor-pointer whitespace-nowrap px-6 opacity-95 hover:opacity-100 hover:scale-105 transform"
+                aria-hidden={index >= CUSTOMERS.length}
+                className="text-slate-500 dark:text-slate-400 font-display font-bold text-xl md:text-2xl tracking-tight select-none whitespace-nowrap px-6"
               >
-                <span>{company.icon}</span>
-              </div>
+                {name}
+              </span>
             ))}
           </div>
         </div>
@@ -1052,13 +928,13 @@ const Landing = () => {
           <div className="text-center mb-10 md:mb-12">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] dark:text-[#FFC83D] text-xs font-bold uppercase tracking-wider mb-4 border border-[#0A66C2]/20 dark:border-white/10">
               <HelpCircle className="w-3.5 h-3.5" />
-              <span>Got Questions?</span>
+              <span>FAQ</span>
             </div>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
-              Frequently Asked Questions
+              Questions people ask us
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-              Everything you need to know about legally binding signatures, data security, and subscription plans.
+              Whether signatures hold up, how your files are protected, and what you pay.
             </p>
           </div>
 
@@ -1100,50 +976,50 @@ const Landing = () => {
                 {
                   id: "faq-1",
                   category: "Legal & Security",
-                  q: "Is Endorse legally binding and compliant?",
-                  a: "Yes. Signatures created with Endorse are 100% legally binding and enforceable in court worldwide. Endorse complies fully with the US ESIGN Act of 2000, UETA, and European eIDAS (910/2014) regulations."
+                  q: "Are signatures made with Endorse legally binding?",
+                  a: "For most everyday agreements, yes. Endorse provides simple electronic signatures of the kind recognised under the US ESIGN Act and UETA and the EU's eIDAS regulation. Some documents, such as wills or land transfers in certain countries, still need a handwritten signature or a notary, so check if you're unsure."
                 },
                 {
                   id: "faq-2",
                   category: "Legal & Security",
                   q: "How is my document data secured?",
-                  a: "We utilize bank-grade SSL/TLS 256-bit encryption for all document transfers and storage. Every signed document is sealed with an SHA-256 cryptographic hash and tamper-evident digital audit trail."
+                  a: "Documents are encrypted in transit with TLS and at rest with AES-256 on Google Cloud. Only you and the people you send a document to can open it, and signers verify who they are before signing."
                 },
                 {
                   id: "faq-3",
                   category: "Signing & Docs",
                   q: "Can I sign documents on my smartphone or tablet?",
-                  a: "Yes! Endorse is fully mobile-responsive and works seamlessly on any browser, iOS, or Android device. You can draw your signature with your finger or stylus, or type to generate one."
+                  a: "Yes. Endorse works in the browser on iPhone and Android, so there's no app to install. Draw your signature with your finger, type it, or upload a photo of it."
                 },
                 {
                   id: "faq-4",
                   category: "Signing & Docs",
                   q: "Do my recipients need an account to sign?",
-                  a: "No. Signers can open, review, and execute agreements sent to them without creating an Endorse account or downloading any application."
+                  a: "WhatsApp signers don't — they confirm a one-time code sent to their phone and sign straight away. Email signers sign in or create a free account with the address you sent to, so you know the right person signed. Nobody needs to download an app."
                 },
                 {
                   id: "faq-5",
                   category: "Pricing & Billing",
-                  q: "What happens after the free trial or free tier?",
-                  a: "Your free account lets you start signing documents immediately. You can upgrade anytime to Pro or Business for unlimited documents, team collaboration, and custom company branding."
+                  q: "What happens after my free documents?",
+                  a: "Every account gets 3 free documents — signing and downloading your own, or sending one for signature. After that, upgrade to Pro or Business for unlimited signing and sending. Your existing documents stay available either way, and signing documents other people send you is always free."
                 },
                 {
                   id: "faq-6",
                   category: "Pricing & Billing",
-                  q: "Can I cancel or change my subscription anytime?",
-                  a: "Yes, you can upgrade, downgrade, or cancel your subscription at any time directly from your account dashboard with zero cancellation fees."
+                  q: "Will I be charged automatically?",
+                  a: "No. Each payment covers 30 days and nothing renews automatically. We email you a few days before your plan ends, and you can renew whenever you like — there's nothing to cancel."
                 },
                 {
                   id: "faq-7",
                   category: "Signing & Docs",
                   q: "What document file formats are supported?",
-                  a: "Endorse supports PDF files (.pdf) and Microsoft Word documents (.docx). All completed agreements are compiled into standardized, tamper-proof PDF/A files."
+                  a: "Endorse supports PDF files (.pdf) and Microsoft Word documents (.doc, .docx). Word files are converted to PDF for signing; the conversion keeps the text but not the original layout, so for exact formatting upload a PDF."
                 },
                 {
                   id: "faq-8",
                   category: "Legal & Security",
-                  q: "What is included in the digital audit trail?",
-                  a: "Every completed agreement includes a legal Certificate of Completion capturing timestamps, signer IP addresses, email verification IDs, and SHA-256 document checksums."
+                  q: "What record is kept of each signature?",
+                  a: "Each signed document stores the signature, where every field was placed and the date and time it was signed. You can see when a document was sent, delivered and signed, and you're emailed a link to the signed copy as soon as it's done."
                 }
               ]
                 .filter((item) => {
@@ -1181,16 +1057,16 @@ const Landing = () => {
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-base">Still have questions?</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">Can't find the answer you're looking for? Please reach out to our team.</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">Email us and a person will reply.</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowChat(true)}
+            <a
+              href="mailto:support@endorse.online"
               className="min-h-[44px] w-full sm:w-auto justify-center bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>Chat with Support</span>
-            </button>
+              <span>support@endorse.online</span>
+            </a>
           </div>
         </div>
       </section>
@@ -1207,10 +1083,10 @@ const Landing = () => {
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
             <div className="relative z-10">
               <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-                Ready to streamline your signing?
+                Send your next document today.
               </h2>
               <p className="text-white/85 text-lg md:text-xl mb-8 max-w-xl mx-auto">
-                Join thousands of professionals who save hours every week with Endorse.
+                Your first 3 documents are free. No card needed.
               </p>
               <Link to="/auth?mode=signup" className="inline-flex w-full sm:w-auto">
                 <Button size="lg" className="w-full sm:w-auto bg-[#FFC83D] text-black hover:bg-[#e6b435] font-semibold text-lg md:text-xl h-14 px-8">
@@ -1250,107 +1126,13 @@ const Landing = () => {
         </div>
       )}
 
-      {/* Contact Sales Modal */}
-      {showContactModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowContactModal(false)} />
-          <div className="relative z-50 w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl p-6 animate-in fade-in zoom-in-95 duration-200">
-            <button
-              onClick={() => setShowContactModal(false)}
-              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              aria-label="Close"
-            >
-
-              <span className="sr-only">Close</span>
-            </button>
-            <div className="flex flex-col space-y-1.5 text-center sm:text-left mb-6">
-              <h2 className="text-lg font-semibold leading-none tracking-tight">Contact Sales</h2>
-              <p className="text-sm text-muted-foreground">
-                Get a custom quote for your team. We'll get back to you within 24 hours.
-              </p>
-            </div>
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setShowContactModal(false); }}>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="first-name" className="text-sm font-medium leading-none">First name</label>
-                  <Input id="first-name" placeholder="John" required />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="last-name" className="text-sm font-medium leading-none">Last name</label>
-                  <Input id="last-name" placeholder="Doe" required />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium leading-none">Work Email</label>
-                <Input id="email" type="email" placeholder="john@company.com" required />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="company" className="text-sm font-medium leading-none">Company Name</label>
-                <Input id="company" placeholder="Acme Inc." required />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="message" className="text-sm font-medium leading-none">Message</label>
-                <textarea
-                  id="message"
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Tell us about your needs..."
-                />
-              </div>
-              <div className="pt-4 flex justify-end gap-3">
-                <Button variant="outline" type="button" onClick={() => setShowContactModal(false)}>Cancel</Button>
-                <Button type="submit" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90">Send Request</Button>
-              </div>
-            </form>
-            <div className="mt-6 pt-6 border-t border-border flex justify-center">
-              <a href="https://www.linkedin.com/company/e-ndorse/" target="_blank" rel="noopener noreferrer" className="w-full">
-                <Button variant="outline" className="w-full gap-2 text-muted-foreground hover:text-[#0A66C2] hover:border-[#0A66C2]/30">
-
-                  Follow us on LinkedIn
-                </Button>
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Video Modal */}
-      {showVideoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div
-            className="absolute inset-0"
-            onClick={() => setShowVideoModal(false)}
-            role="presentation"
-            aria-hidden="true"
-          />
-          <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl shadow-2xl overflow-hidden border border-border/50 animate-in zoom-in-95 duration-200">
-            <button
-              onClick={() => setShowVideoModal(false)}
-              className="absolute right-4 top-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
-              aria-label="Close video"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://www.youtube.com/embed/STt-r1SlO74?autoplay=1"
-              title="Product Demo"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full"
-            ></iframe>
-          </div>
-        </div>
-      )}
-
       {/* Live Chat Widget */}
       <div className={`fixed right-4 md:right-6 z-50 flex flex-col items-end gap-4 transition-[bottom] duration-300 ${showCookieConsent ? "bottom-[84px] md:bottom-[88px]" : "bottom-4 md:bottom-6"}`}>
         {showChat && (
           <div className="bg-card border border-border rounded-xl shadow-2xl w-[calc(100vw-2rem)] sm:w-96 overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
             <div className="bg-[#FFC83D] p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
-                <span className="font-bold text-black">Endorse Support</span>
+                <span className="font-bold text-black">Quick answers</span>
               </div>
               <button onClick={() => setShowChat(false)} className="-m-2 w-10 h-10 flex items-center justify-center rounded-full text-black/80 hover:text-black hover:bg-black/5 transition-colors" aria-label="Close chat">
                 <X className="w-5 h-5" />

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "./components/AuthContext";
-import { doc, setDoc } from "firebase/firestore";
-import { db, functions } from "./components/client";
+import { functions } from "./components/client";
+import { FREE_LIMIT_ENFORCED } from "./lib/plan";
 import { httpsCallable } from "firebase/functions";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Building2, Check, CheckCircle2, Loader2, Lock, ShieldCheck, Zap } from "lucide-react";
+import { ArrowLeft, Building2, Check, CheckCircle2, Loader2, Lock, Zap } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Logo } from "./components/Logo";
 
@@ -14,8 +14,10 @@ const PLANS = [
     id: "pro",
     name: "Pro Plan",
     price: "8",
+    // Must match PLAN_PRICES_USD × NGN_PER_USD in functions/src/index.ts.
+    priceNgn: "12,800",
     description: "Perfect for individuals and professionals",
-    features: ["Unlimited documents", "Invite up to 5 signers", "Audit trails", "Priority support"],
+    features: ["Unlimited signing and sending", "Templates and invoices", "Signing status tracking", "Priority support"],
     color: "from-blue-500 to-indigo-600",
     icon: Zap,
   },
@@ -23,8 +25,9 @@ const PLANS = [
     id: "business",
     name: "Business Plan",
     price: "15",
+    priceNgn: "24,000",
     description: "Advanced features for teams and companies",
-    features: ["Everything in Pro", "Unlimited signers", "Team management", "Custom branding", "24/7 Support"],
+    features: ["Everything in Pro", "Team management", "Custom branding", "24/7 Support"],
     color: "from-purple-500 to-pink-600",
     icon: Building2,
   }
@@ -36,13 +39,12 @@ const Payment = () => {
   const [searchParams] = useSearchParams();
   const [selectedPlan, setSelectedPlan] = useState(PLANS[0]);
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentMethod] = useState<'stripe' | 'paystack'>('paystack');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  const isProduction = window.location.hostname !== "localhost";
-
+  // Checkout only opens once paid plans are switched on (see FREE_LIMIT_ENFORCED).
   useEffect(() => {
-    toast.info("All features are currently free! No payment is required.");
+    if (FREE_LIMIT_ENFORCED) return;
+    toast.info("Paid plans are coming soon. Everything is free for now.");
     navigate("/dashboard", { replace: true });
   }, [navigate]);
 
@@ -53,34 +55,19 @@ const Payment = () => {
     } else if (planFromUrl === "pro") {
       setSelectedPlan(PLANS[0]);
     }
+    // Paystack/Stripe send the buyer back here; the plan itself is switched on by the payment webhook.
+    if (searchParams.get("payment") === "success") setPaymentSuccess(true);
   }, [searchParams]);
-
-  const updatePlanInFirestore = async (planId: string) => {
-    if (!user) return;
-    try {
-      await setDoc(doc(db, "users", user.uid), {
-        plan: planId,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
-      return true;
-    } catch (error) {
-      console.error("Error updating plan:", error);
-      toast.error("Failed to update your plan in our database. Please contact support.");
-      return false;
-    }
-  };
 
   const handlePaystackPayment = async () => {
     setIsLoading(true);
     try {
       const initializePaystack = httpsCallable(functions, 'initializePaystackPayment');
+      // The server sets the price and payment mode; only the plan is sent from here.
       const { data }: any = await initializePaystack({
-        email: user?.email,
         planId: selectedPlan.id,
-        amount: selectedPlan.price,
         // Using window.location.href to handle GitHub Pages subpaths and routing
-        callbackUrl: window.location.href.split('?')[0] + "?payment=success",
-        mode: isProduction ? 'live' : 'test' // Tell the backend which mode to use
+        callbackUrl: `${window.location.href.split('?')[0]}?plan=${selectedPlan.id}&payment=success`,
       });
 
       if (data?.authorization_url) {
@@ -102,9 +89,8 @@ const Payment = () => {
       const initializeStripeSession = httpsCallable(functions, 'initializeStripeSession');
       const { data }: any = await initializeStripeSession({
         planId: selectedPlan.id,
-        amount: selectedPlan.price,
-        successUrl: window.location.origin + "/payment?payment=success",
-        cancelUrl: window.location.origin + "/payment?payment=cancel",
+        successUrl: `${window.location.origin}/payment?plan=${selectedPlan.id}&payment=success`,
+        cancelUrl: `${window.location.origin}/payment?plan=${selectedPlan.id}&payment=cancel`,
       });
 
       // initializeStripeSession returns { sessionId, url }. stripe.redirectToCheckout()
@@ -130,10 +116,14 @@ const Payment = () => {
             <CheckCircle2 className="w-10 h-10 text-green-600" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-4">Welcome to {selectedPlan.name}!</h1>
-          <p className="text-slate-600 mb-8">Your account has been upgraded successfully. You now have access to all {selectedPlan.id} features.</p>
+          <p className="text-slate-600 mb-8">
+            Payment received. Your {selectedPlan.name} is active for the next 30 days — it can take a minute to show on
+            your dashboard. Nothing renews automatically; we'll email you before it ends.
+          </p>
           <Button
-            className="w-full h-12 text-lg rounded-xl bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => navigate("/dashboard")}
+            className="w-full h-12 text-lg rounded-xl bg-[#0A66C2] hover:bg-[#08519c]"
+            // A full reload so the dashboard picks up the new plan from the user's profile.
+            onClick={() => window.location.assign("/dashboard")}
           >
             Go to Dashboard
           </Button>
@@ -162,7 +152,7 @@ const Payment = () => {
               <span className="text-slate-300">|</span>
               <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Checkout</span>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Subscribe to {selectedPlan.name}</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Get {selectedPlan.name}</h2>
             <p className="text-slate-500 mt-1">Unlock the full potential of digital agreements.</p>
           </div>
 
@@ -189,7 +179,7 @@ const Payment = () => {
                   </div>
                   <div className="text-right">
                     <p className={`font-bold ${selectedPlan.id === plan.id ? "text-slate-900" : "text-slate-600"}`}>${plan.price}</p>
-                    <p className="text-[10px] text-slate-400">/mo</p>
+                    <p className="text-[10px] text-slate-400">/30 days</p>
                   </div>
                 </div>
 
@@ -218,7 +208,7 @@ const Payment = () => {
               <span className="text-slate-900 font-bold">Total due today</span>
               <div className="text-right">
                 <span className="text-2xl font-bold text-slate-900">${selectedPlan.price}</span>
-                <span className="text-xs text-slate-400 block font-normal">USD</span>
+                <span className="text-xs text-slate-400 block font-normal">Covers 30 days · no auto-renewal</span>
               </div>
             </div>
           </div>
@@ -229,34 +219,41 @@ const Payment = () => {
           <div className="max-w-md mx-auto w-full">
             <h3 className="text-xl font-bold text-slate-900 mb-6">Payment Details</h3>
 
-            {/* Payment Method Switcher Hidden */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 text-sm">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                <span className="font-medium">Secure local payment via Paystack</span>
+            {/* Two ways to pay: Paystack for African customers, Stripe for cards anywhere else. */}
+            <div className="mb-6 space-y-4 animate-in fade-in slide-in-from-bottom-2">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                <p className="font-semibold text-slate-900">In Africa</p>
+                <p className="text-sm text-slate-600 mt-1 mb-4">
+                  Card, bank transfer or USSD through Paystack. Charged as ₦{selectedPlan.priceNgn}.
+                </p>
+                <Button
+                  onClick={handlePaystackPayment}
+                  className="w-full bg-[#0BA4DB] hover:bg-[#0BA4DB]/90 text-white h-12 text-base font-semibold shadow-md shadow-blue-500/10"
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Pay with Paystack"}
+                </Button>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                <p className="font-semibold text-slate-900">Anywhere else</p>
+                <p className="text-sm text-slate-600 mt-1 mb-4">
+                  Any debit or credit card through Stripe. Charged as ${selectedPlan.price} (USD).
+                </p>
+                <Button
+                  onClick={handleStripePayment}
+                  variant="outline"
+                  className="w-full h-12 text-base font-semibold border-slate-300"
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Pay with card (USD)"}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                <Lock className="w-3 h-3" /> Payments are processed securely by Paystack and Stripe
               </div>
             </div>
-
-            {/* Stripe Section Hidden */}
-
-            {/* Paystack Section */}
-            {paymentMethod === 'paystack' && (
-              <div className="mb-6 animate-in fade-in slide-in-from-bottom-2">
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center mb-4">
-                  <p className="text-sm text-slate-600 mb-4">Pay securely with your local card, Bank Transfer, or USSD.</p>
-                  <Button
-                    onClick={handlePaystackPayment}
-                    className="w-full bg-[#0BA4DB] hover:bg-[#0BA4DB]/90 text-white h-12 text-base font-semibold shadow-md shadow-blue-500/10"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Pay with Paystack"}
-                  </Button>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-                  <Lock className="w-3 h-3" /> Secured by Paystack
-                </div>
-              </div>
-            )}
 
             <div className="text-center text-[10px] text-slate-400 mt-6">
               By confirming, you agree to our <a href="/terms" className="underline hover:text-slate-600">Terms of Service</a>.

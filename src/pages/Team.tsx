@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/components/client";
@@ -39,7 +39,6 @@ interface TeamMember {
 
 const Team = () => {
   const { user, userProfile } = useAuth();
-  const navigate = useNavigate();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>("member");
@@ -48,7 +47,6 @@ const Team = () => {
   const [teamName, setTeamName] = useState("");
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
 
-  // ---- Agreement Workspace State inside Team Management ----
   const [activeTeamTab, setActiveTeamTab] = useState<'agreements' | 'templates' | 'members'>('agreements');
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedTemplateForDispatch, setSelectedTemplateForDispatch] = useState<AgreementTemplate | null>(null);
@@ -126,7 +124,7 @@ const Team = () => {
     try {
       const createTeamFn = httpsCallable(functions, 'createTeam');
       await createTeamFn({ teamName });
-      toast.success(`Team "${teamName}" created successfully! Reloading...`);
+      toast.success(`Team "${teamName}" created.`);
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -139,7 +137,7 @@ const Team = () => {
   };
 
   const handleRemoveMember = async (member: TeamMember) => {
-    if (window.confirm(`Are you sure you want to remove ${member.email}?`)) {
+    if (window.confirm(`Remove ${member.email} from the team?`)) {
       const toastId = toast.loading("Removing member...");
       try {
         if (member.role === 'pending') {
@@ -155,10 +153,6 @@ const Team = () => {
       }
     }
   };
-
-  const activeSeats = teamMembers.length;
-  const maxSeats = userProfile?.plan === "business" ? 15 : 10;
-  const seatsPercentage = Math.min((activeSeats / maxSeats) * 100, 100);
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950/20 font-sans flex flex-col">
@@ -190,7 +184,6 @@ const Team = () => {
           </Button>
         </div>
 
-        {/* Navigation Tabs for Organization Management */}
         <div role="tablist" aria-label="Send for signature sections" className="bg-white dark:bg-slate-900 p-1 sm:p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm grid grid-cols-3 gap-1 sm:gap-2 mb-6">
           {([
             { id: 'agreements', icon: Send, label: 'Sent for signature', short: 'Sent' },
@@ -216,7 +209,6 @@ const Team = () => {
         </div>
 
         <div className="space-y-6">
-          {/* TAB CONTENT: SENT FOR SIGNATURE */}
           {activeTeamTab === 'agreements' && (
             <AgreementsList
               onOpenTemplateStudio={() => setActiveTeamTab('templates')}
@@ -227,7 +219,6 @@ const Team = () => {
             />
           )}
 
-          {/* TAB CONTENT: TEMPLATE STUDIO */}
           {activeTeamTab === 'templates' && (
             <TemplateStudio
               onSelectTemplateToDispatch={(tpl) => {
@@ -237,14 +228,13 @@ const Team = () => {
             />
           )}
 
-          {/* TAB CONTENT: TEAM MEMBERS */}
           {activeTeamTab === 'members' && (
             <div className="space-y-6">
               {!userProfile?.teamId ? (
                 <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Create Workspace Team</CardTitle>
-                    <CardDescription className="text-sm">You are currently in an individual workspace. Setup a team workspace to invite collaborators.</CardDescription>
+                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Create a team</CardTitle>
+                    <CardDescription className="text-sm">Give your team a name, then invite the people you work with.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleCreateTeam} className="flex flex-col sm:flex-row items-center gap-4">
@@ -253,7 +243,7 @@ const Team = () => {
                         <Input
                           id="team-name"
                           type="text"
-                          placeholder="Enter team name (e.g. Acme Inc.)"
+                          placeholder="Team or company name"
                           value={teamName}
                           onChange={(e) => setTeamName(e.target.value)}
                           required
@@ -268,42 +258,15 @@ const Team = () => {
                 </Card>
               ) : (
                 <div className="space-y-6">
-                  {/* Seats Allocation Progress Track */}
-              <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden p-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                  <div className="space-y-1 text-left">
-                    <span className="text-xs uppercase font-extrabold tracking-wider text-slate-500">Workspace Capacity</span>
-                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                      {activeSeats} of {maxSeats} Active Seats Occupied
-                    </h3>
-                  </div>
-                  <Button variant="outline" className="h-10 rounded-xl font-bold border-slate-200 dark:border-slate-800 shrink-0 self-stretch sm:self-center" onClick={() => navigate('/settings?tab=branding')}>
-                    Manage Seats
-                  </Button>
-                </div>
-                {/* Progress track */}
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden mb-2">
-                  <div 
-                    style={{ width: `${seatsPercentage}%` }}
-                    className="bg-[#0A66C2] h-full rounded-full transition-all duration-500" 
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground font-medium">
-                  <span>{maxSeats - activeSeats} seats remaining</span>
-                  <span>{Math.round(seatsPercentage)}% capacity</span>
-                </div>
-              </Card>
-
-              {/* Invite Members form */}
               <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Invite New Teammate</CardTitle>
-                  <CardDescription className="text-sm">Add collaborators to share template layouts and audit sign logs.</CardDescription>
+                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Invite a teammate</CardTitle>
+                  <CardDescription className="text-sm">We'll email them an invitation to join your team.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleInviteMember} className="flex flex-col md:flex-row items-stretch md:items-end gap-4">
                     <div className="flex-1 space-y-2 text-left">
-                      <Label htmlFor="invite-email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Teammate Email Address</Label>
+                      <Label htmlFor="invite-email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Email</Label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
@@ -318,35 +281,36 @@ const Team = () => {
                       </div>
                     </div>
                     <div className="w-full md:w-44 space-y-2 text-left">
-                      <Label htmlFor="invite-role" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Workspace Role</Label>
+                      <Label htmlFor="invite-role" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Role</Label>
                       <select
                         id="invite-role"
                         value={inviteRole}
                         onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member')}
                         className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
                       >
-                        <option value="member">Workspace Member</option>
-                        <option value="admin">Workspace Admin</option>
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
                       </select>
                     </div>
                     <Button type="submit" disabled={isInviting} className="rounded-xl font-bold h-11 px-6 shrink-0 shadow-md bg-[#0A66C2] hover:bg-[#08519c] text-white">
-                      {isInviting ? "Inviting..." : "Send Invitation"}
+                      {isInviting ? "Sending..." : "Send invite"}
                     </Button>
                   </form>
                 </CardContent>
               </Card>
 
-              {/* Team Members List */}
               <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Workspace Teammates List</CardTitle>
-                  <CardDescription className="text-sm">Active members and pending user invitation lists in your organization.</CardDescription>
+                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
+                    Teammates {!loadingMembers && <span className="font-medium text-muted-foreground">({teamMembers.length})</span>}
+                  </CardTitle>
+                  <CardDescription className="text-sm">Everyone on the team, plus invitations that haven't been accepted yet.</CardDescription>
                 </CardHeader>
                 <CardContent className="px-0 sm:px-6">
                   {loadingMembers ? (
                     <div className="flex flex-col items-center justify-center h-32 gap-2">
                       <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-                      <p className="text-xs text-muted-foreground font-semibold">Updating teammate list...</p>
+                      <p className="text-xs text-muted-foreground font-semibold">Loading teammates...</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -365,14 +329,13 @@ const Team = () => {
                               </div>
                               <div className="min-w-0">
                                 <p className="font-bold text-slate-900 dark:text-white truncate text-sm">
-                                  {isPending ? "Pending Invitation" : member.name}
+                                  {isPending ? "Invited" : member.name}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate font-mono mt-0.5">{member.email}</p>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">{member.email}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
-                              {/* Role badge styling */}
-                              <span className={`px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border flex items-center gap-1 ${
+                              <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border flex items-center gap-1 ${
                                 isAdminRole 
                                   ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50' 
                                   : isPending 
@@ -380,10 +343,9 @@ const Team = () => {
                                   : 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800'
                               }`}>
                                 {isPending ? <Clock className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
-                                {member.role}
+                                {isPending ? "Pending" : isAdminRole ? "Admin" : "Member"}
                               </span>
 
-                              {/* Remove button */}
                               {user?.email !== member.email && (
                                 <Button 
                                   variant="ghost" 

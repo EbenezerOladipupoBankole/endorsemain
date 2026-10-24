@@ -27,15 +27,20 @@ service cloud.firestore {
     // Fields that must never be settable directly by a client — they are only
     // ever written by trusted server code (Cloud Functions using the Admin SDK,
     // which bypasses these rules entirely).
+    // Plan and free-document usage are only ever written by Cloud Functions.
+    function protectedUserFields() {
+      return ['plan', 'stripeCustomerId', 'teamId', 'planExpiresAt', 'planReminderSent', 'freeDocsUsed'];
+    }
+
     function touchesProtectedUserFields() {
       return request.resource.data.diff(resource.data).affectedKeys()
-        .hasAny(['plan', 'stripeCustomerId', 'teamId']);
+        .hasAny(protectedUserFields());
     }
 
     match /users/{userId} {
       allow read: if isSelf(userId) || isAdmin();
       allow create: if isSelf(userId) &&
-        !request.resource.data.keys().hasAny(['plan', 'stripeCustomerId', 'teamId']);
+        !request.resource.data.keys().hasAny(protectedUserFields());
       allow update: if isAdmin() || (isSelf(userId) && !touchesProtectedUserFields());
       allow delete: if false;
     }
@@ -47,20 +52,29 @@ service cloud.firestore {
         request.auth.token.email == resource.data.recipientEmail;
     }
 
+    // A sent document starts with creditOk == false; claimDocumentCredit flips it to true once it
+    // has been counted against the sender's plan. Older documents have no creditOk at all.
+    function isCounted() {
+      return resource.data.get('creditOk', true) != false;
+    }
+
     match /documents/{docId} {
       allow read: if isSignedIn() &&
         (isAdmin() || isWhatsAppSigner(docId) || request.auth.token.email == resource.data.ownerEmail || isRecipient());
       allow update: if isSignedIn() &&
-        (isAdmin() || request.auth.token.email == resource.data.ownerEmail);
+        (isAdmin() || (request.auth.token.email == resource.data.ownerEmail &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['creditOk'])));
       // Recipients (by email, or by verified WhatsApp code) may only record their
       // signature on a pending document — nothing else.
       allow update: if (isRecipient() || isWhatsAppSigner(docId)) &&
+        isCounted() &&
         resource.data.status == 'pending' &&
         request.resource.data.status == 'signed' &&
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['status', 'signature_data', 'signature_positions', 'signedAt']);
       allow create: if isSignedIn() &&
-        request.auth.token.email == request.resource.data.ownerEmail;
+        request.auth.token.email == request.resource.data.ownerEmail &&
+        request.resource.data.get('creditOk', null) == false;
       allow delete: if isSignedIn() &&
         (isAdmin() || request.auth.token.email == resource.data.ownerEmail);
 

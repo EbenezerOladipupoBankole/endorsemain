@@ -9,7 +9,6 @@ import { db, functions } from '@/components/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/components/AuthContext';
 import { PDFUploader } from '@/components/esign/PDFUploader';
-import { AuditTrail } from '@/components/AuditTrail';
 import SignatureModal from '@/components/SignatureModal';
 import { SendAgreementModal } from '@/components/agreements/SendAgreementModal';
 import type { AgreementTemplate } from '@/components/agreements/TemplateStudio';
@@ -17,6 +16,8 @@ import { Logo } from '@/components/Logo';
 import { APP_NAV, initialsOf } from '@/components/AppHeader';
 import { DocumentTools } from '@/components/esign/DocumentTools';
 import { useViewerState, useDocumentComments } from '@/components/esign/viewerTools';
+import { UpgradeDialog } from '@/components/UpgradeDialog';
+import { FREE_DOCUMENT_LIMIT, FREE_LIMIT_ENFORCED, tryClaimDocumentCredit, isOutOfFreeDocuments, planStatus } from '@/lib/plan';
 import {
   Menu,
   Settings,
@@ -88,10 +89,11 @@ const convertWordToPDF = async (file: File): Promise<Blob> => {
         const base64 = (reader.result as string).split(',')[1];
         const convertDocument = httpsCallable(functions, 'convertDocument');
 
+        // Same payload shape the File Conversion page uses; the function expects a `files` array.
         const result = await convertDocument({
-          file: base64,
-          filename: file.name,
-          mimeType: file.type
+          files: [{ base64, name: file.name, type: file.type }],
+          targetFormat: 'pdf',
+          toolId: 'word-to-pdf',
         });
 
         const data = result.data as { pdfBase64: string };
@@ -115,6 +117,47 @@ const Dashboard = () => {
   const [searchParams] = useSearchParams();
   const { user, userProfile, isAdmin, loading: authLoading, signOut } = useAuth();
 
+  // The profile is only loaded once, so keep the free-document count fresh after each claim.
+  const [freeUsed, setFreeUsed] = useState<number | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const plan = planStatus(userProfile, isAdmin);
+  const freeDocsUsed = Math.min(freeUsed ?? plan.freeUsed, FREE_DOCUMENT_LIMIT);
+
+  const renderPlanCard = (className = '') => (
+    <Card className={className}>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Award className="h-4 w-4 text-black" />
+          {plan.paid ? `${plan.name} plan` : 'Free plan'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-4 pt-2">
+        {!FREE_LIMIT_ENFORCED && !plan.paid ? (
+          <p className="text-xs text-muted-foreground">Unlimited signing and sending, free for now.</p>
+        ) : plan.paid ? (
+          <p className="text-xs text-muted-foreground">
+            Unlimited signing and sending
+            {plan.endsAt ? ` until ${plan.endsAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}.` : '.'}
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              {freeDocsUsed} of {FREE_DOCUMENT_LIMIT} free documents used
+            </p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin={0} aria-valuemax={FREE_DOCUMENT_LIMIT} aria-valuenow={freeDocsUsed}>
+              <div
+                className={`h-full rounded-full ${freeDocsUsed >= FREE_DOCUMENT_LIMIT ? 'bg-[#FFC83D]' : 'bg-[#0A66C2]'}`}
+                style={{ width: `${(freeDocsUsed / FREE_DOCUMENT_LIMIT) * 100}%` }}
+              />
+            </div>
+            <Button asChild size="sm" className="mt-3 w-full bg-[#FFC83D] font-bold text-black hover:bg-[#e6b435]">
+              <Link to="/payment?plan=pro">Upgrade</Link>
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
@@ -240,16 +283,7 @@ const Dashboard = () => {
   };
 
   const handleFileSelect = async (file: File) => {
-    // Check limits for free plan (Bypassed: product is free for now)
-    const isPro = true;
-    const documentsSigned = userProfile?.documentsSigned || 0;
-
-    if (!isPro && documentsSigned >= 3) {
-      toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
-      navigate('/settings?tab=billing');
-      return;
-    }
-
+    // Free documents are counted when a signed copy is downloaded, not on upload.
     const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     const isWord = file.name.match(/\.(doc|docx)$/i) ||
       file.type === 'application/msword' ||
@@ -328,16 +362,6 @@ const Dashboard = () => {
       return;
     }
 
-    // Check limits for free plan (Bypassed: product is free for now)
-    const isPro = true;
-    const documentsSigned = userProfile?.documentsSigned || 0;
-
-    if (!isPro && documentsSigned >= 3) {
-      toast.error("You have reached the limit of 3 free documents. Redirecting to upgrade...");
-      navigate('/settings?tab=billing');
-      return;
-    }
-
     setIsDownloading(true);
     try {
       // Dynamically import PDF utils only when the user clicks download
@@ -346,8 +370,15 @@ const Dashboard = () => {
       const signedPdfBytes = await embedItemsInPDF(pdfFile, placedItems);
 
       if (signedPdfBytes) {
+        // Counts against the free documents (a no-op on paid plans); refused once they're used up.
+        const credit = FREE_LIMIT_ENFORCED ? await tryClaimDocumentCredit('download') : null;
+        if (credit && !credit.paid) setFreeUsed(credit.freeUsed);
         downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
-        toast.success('Signed document downloaded!');
+        toast.success(
+          !credit || credit.paid ? 'Signed document downloaded!'
+            : credit.remaining === 0 ? "Signed document downloaded! That was your last free document."
+            : `Signed document downloaded! ${credit.remaining} free document${credit.remaining === 1 ? '' : 's'} left.`
+        );
       }
 
       // Increment document count
@@ -357,8 +388,13 @@ const Dashboard = () => {
         });
       }
     } catch (error) {
-      console.error('Error downloading PDF:', error);
-      toast.error('Failed to download signed document. Please try again.');
+      if (isOutOfFreeDocuments(error)) {
+        setFreeUsed(FREE_DOCUMENT_LIMIT);
+        setShowUpgrade(true);
+      } else {
+        console.error('Error downloading PDF:', error);
+        toast.error('Failed to download signed document. Please try again.');
+      }
     }
     setIsDownloading(false);
   };
@@ -475,10 +511,10 @@ const Dashboard = () => {
         {/* Top Bar - Brand Color #0A66C2 */}
         <header className="h-14 bg-[#0A66C2] text-white flex items-center justify-between gap-2 px-3 sm:px-6 shrink-0 z-50 shadow-md">
           <div className="flex min-w-0 items-center gap-4">
-            <span className="text-base font-extrabold tracking-wide text-[#FFC83D] flex items-center gap-2">
-              <span className="w-7 h-7 rounded-md bg-[#FFC83D] text-black font-black flex items-center justify-center text-xs shadow-sm">E</span>
-              <span className="hidden sm:inline">Endorse</span>
-            </span>
+            {/* The logo's blue lettering needs a light backing on the blue bar. */}
+            <Link to="/" aria-label="Endorse home" className="flex h-9 items-center rounded-lg bg-white px-2 shadow-sm">
+              <Logo className="h-7" />
+            </Link>
           </div>
           <div className="flex shrink-0 items-center gap-1 sm:gap-3">
             <button
@@ -734,7 +770,7 @@ const Dashboard = () => {
         {/* Bottom Footer */}
         <footer className="hidden h-8 bg-white border-t border-gray-200 md:flex items-center justify-between px-6 text-[10px] text-gray-500 shrink-0">
           <div className="font-medium">
-            Powered by <span className="font-bold text-blue-600">Endorse</span>
+            <span className="flex items-center gap-1.5">Powered by <Logo className="h-4" /></span>
           </div>
           <div className="flex gap-4 items-center">
             <span className="cursor-pointer hover:text-gray-700">English (US) ▾</span>
@@ -799,6 +835,8 @@ const Dashboard = () => {
             onSuccess={() => setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }))}
           />
         )}
+
+        <UpgradeDialog open={showUpgrade} onClose={() => setShowUpgrade(false)} />
 
         {/* Signature Modal */}
         {showSignatureModal && (
@@ -988,19 +1026,7 @@ const Dashboard = () => {
             </div>
             {renderAppNav(() => setIsMobileMenuOpen(false))}
             <div className="mt-auto pt-8">
-              <Card>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Award className="h-4 w-4 text-black" />
-                    {isAdmin ? 'Business' : userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Tier (Unlimited)'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-2">
-                  <p className="text-xs text-muted-foreground mb-3">
-                    All features are free! Enjoy unlimited documents.
-                  </p>
-                </CardContent>
-              </Card>
+              {renderPlanCard()}
             </div>
           </div>
         </div>
@@ -1012,19 +1038,7 @@ const Dashboard = () => {
         <aside className="hidden lg:block w-64 shrink-0 space-y-6 sticky top-24 text-sm">
           {renderAppNav()}
 
-          <Card className="bg-white shadow-sm border-gray-200">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Award className="h-4 w-4 text-black" />
-                {isAdmin ? 'Business' : userProfile?.plan === 'business' ? 'Business' : userProfile?.plan === 'pro' ? 'Pro Plan' : 'Free Tier (Unlimited)'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-2">
-              <p className="text-xs text-muted-foreground mb-3">
-                All features are free! Enjoy unlimited documents.
-              </p>
-            </CardContent>
-          </Card>
+          {renderPlanCard('bg-white shadow-sm border-gray-200')}
         </aside>
 
         <main className="flex-1 min-w-0">
@@ -1175,7 +1189,8 @@ const Dashboard = () => {
                           size="icon"
                           className="w-8 h-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
                           onClick={(e) => { e.stopPropagation(); setSelectedDocForAudit(doc.id); }}
-                          title="View Audit Trail"
+                          title="Document details"
+                          aria-label="Document details"
                         >
                           <Activity className="w-4 h-4 text-black" />
                         </Button>
@@ -1242,13 +1257,33 @@ const Dashboard = () => {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedDocForAudit(null)}>
           <div className="w-full max-w-lg bg-background rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold">Document Audit Trail</h3>
+              <h3 className="font-bold">Document details</h3>
               <Button variant="ghost" size="icon" onClick={() => setSelectedDocForAudit(null)}>
                 <X className="w-4 h-4 text-black" />
               </Button>
             </div>
             <div className="p-6">
-              <AuditTrail documentId={selectedDocForAudit} />
+              {(() => {
+                const doc = recentDocs.find((d) => d.id === selectedDocForAudit);
+                if (!doc) return <p className="text-sm text-slate-500">This document is no longer available.</p>;
+                return (
+                  <dl className="space-y-3 text-sm">
+                    {[
+                      ['Name', doc.name],
+                      ['Created', doc.createdAt ? new Date(doc.createdAt).toLocaleString() : 'Unknown'],
+                      ['Status', doc.status || 'draft'],
+                    ].map(([k, v]) => (
+                      <div key={k} className="flex justify-between gap-4 border-b border-slate-100 pb-2">
+                        <dt className="text-slate-500">{k}</dt>
+                        <dd className="truncate text-right font-medium capitalize text-slate-900">{v}</dd>
+                      </div>
+                    ))}
+                    <p className="pt-1 text-xs text-slate-500">
+                      For documents you've sent to others, see who signed and when under Send for Signature.
+                    </p>
+                  </dl>
+                );
+              })()}
             </div>
           </div>
         </div>

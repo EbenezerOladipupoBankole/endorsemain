@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { collection, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, writeBatch, doc, deleteDoc } from 'firebase/firestore';
+import { UpgradeDialog } from '@/components/UpgradeDialog';
+import { FREE_LIMIT_ENFORCED, tryClaimDocumentCredit, isOutOfFreeDocuments } from '@/lib/plan';
 import type { DocComment } from '@/components/esign/viewerTools';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/components/client';
@@ -82,6 +84,7 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
   const [recipients, setRecipients] = useState<Recipient[]>([emptyRecipient()]);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [sent, setSent] = useState<SentRecipient[] | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -148,9 +151,10 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
       const pdfBase64 = source === 'upload' && pdfFile ? await fileToDataUrl(pdfFile) : null;
       const sendEmailInvite = httpsCallable(functions, 'sendAgreementInvite');
       const sendWhatsAppInvite = httpsCallable(functions, 'sendWhatsAppInvite');
-      const results: SentRecipient[] = [];
+      const created: { r: Recipient; name: string; contact: string; id: string }[] = [];
 
       // Each recipient gets their own copy so signatures and status are tracked per person.
+      // Copies start uncounted (creditOk: false); nothing is sent until the server has counted them.
       for (const r of filled) {
         const name = r.name.trim();
         const email = r.email.trim().toLowerCase();
@@ -183,6 +187,8 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
           ownerEmail: user.email,
           ownerUid: user.uid,
           senderName,
+          // Only marked uncounted once the limit is switched on; see FREE_LIMIT_ENFORCED.
+          ...(FREE_LIMIT_ENFORCED ? { creditOk: false } : {}),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -207,14 +213,36 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
           }
         }
 
+        created.push({ r, name, contact, id: ref.id });
+      }
+
+      // One send counts as one document, however many people sign it.
+      if (FREE_LIMIT_ENFORCED) try {
+        const credit = await tryClaimDocumentCredit('send', created.map((c) => c.id));
+        if (credit && !credit.paid && credit.remaining !== null && credit.remaining <= 1) {
+          toast.info(credit.remaining === 0
+            ? 'That was your last free document.'
+            : 'You have 1 free document left.');
+        }
+      } catch (err) {
+        await Promise.all(created.map((c) => deleteDoc(doc(db, 'documents', c.id)).catch(() => undefined)));
+        if (isOutOfFreeDocuments(err)) {
+          setShowUpgrade(true);
+          return;
+        }
+        throw err;
+      }
+
+      const results: SentRecipient[] = [];
+      for (const { r, name, contact, id } of created) {
         let delivered = true;
         try {
-          await (r.channel === 'email' ? sendEmailInvite : sendWhatsAppInvite)({ documentId: ref.id });
+          await (r.channel === 'email' ? sendEmailInvite : sendWhatsAppInvite)({ documentId: id });
         } catch (err) {
           console.warn(`${r.channel} invite failed:`, err);
           delivered = false;
         }
-        results.push({ name, channel: r.channel, contact, documentId: ref.id, delivered });
+        results.push({ name, channel: r.channel, contact, documentId: id, delivered });
       }
 
       const failed = results.filter((r) => !r.delivered).length;
@@ -538,6 +566,7 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
           </form>
         )}
       </div>
+      <UpgradeDialog open={showUpgrade} onClose={() => setShowUpgrade(false)} />
     </div>
   );
 };
