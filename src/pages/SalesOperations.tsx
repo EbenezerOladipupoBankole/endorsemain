@@ -155,7 +155,7 @@ function StuckRevenueCalculator() {
       <div className="flex flex-col justify-between rounded-2xl bg-[#0A66C2] p-6 text-white sm:p-8">
         <div>
           <p className="text-sm text-white/70">Revenue waiting on a signature at any moment</p>
-          <p className="mt-1 font-['Playfair_Display',Georgia,serif] text-4xl font-semibold tabular-nums sm:text-5xl">{usd(stuckNow)}</p>
+          <p className="mt-1 font-display text-4xl font-semibold tabular-nums sm:text-5xl">{usd(stuckNow)}</p>
         </div>
         <div className="mt-8 border-t border-white/20 pt-5">
           <p className="text-sm text-white/70">If contracts closed within a day</p>
@@ -188,7 +188,7 @@ export default function SalesOperations() {
           <div className="grid items-end gap-8 lg:grid-cols-[1.4fr_1fr]">
             <div>
               <p className="text-sm font-semibold text-[#0A66C2]">Endorse for Sales</p>
-              <h1 className="mt-3 font-['Playfair_Display',Georgia,serif] text-[2.6rem] font-medium leading-[1.08] text-slate-900 sm:text-5xl md:text-6xl dark:text-white">
+              <h1 className="mt-3 font-display text-[2.6rem] font-medium leading-[1.08] text-slate-900 sm:text-5xl md:text-6xl dark:text-white">
                 The contract shouldn't be the <em className="text-[#0A66C2]">slowest</em> part of the sale.
               </h1>
             </div>
@@ -217,7 +217,7 @@ export default function SalesOperations() {
       {/* Old way vs Endorse */}
       <section className="border-y border-slate-200 bg-white px-4 py-20 md:px-8 dark:border-slate-800 dark:bg-slate-900">
         <div className="container mx-auto max-w-6xl">
-          <h2 className="max-w-xl font-['Playfair_Display',Georgia,serif] text-3xl font-medium text-slate-900 sm:text-4xl dark:text-white">
+          <h2 className="max-w-xl font-display text-3xl font-medium text-slate-900 sm:text-4xl dark:text-white">
             Where deals go quiet.
           </h2>
           <p className="mt-3 max-w-xl text-slate-600 dark:text-slate-400">
@@ -280,7 +280,7 @@ export default function SalesOperations() {
           ].map((f) => (
             <div key={f.title} className="border-t-[3px] border-[#FFC83D] pt-5">
               <f.icon className="h-5 w-5 text-[#0A66C2]" />
-              <h3 className="mt-4 font-['Playfair_Display',Georgia,serif] text-xl font-medium text-slate-900 dark:text-white">{f.title}</h3>
+              <h3 className="mt-4 font-display text-xl font-medium text-slate-900 dark:text-white">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{f.desc}</p>
             </div>
           ))}
@@ -290,7 +290,7 @@ export default function SalesOperations() {
       {/* Calculator */}
       <section id="calculator" className="scroll-mt-20 px-4 pb-24 md:px-8">
         <div className="container mx-auto max-w-6xl">
-          <h2 className="font-['Playfair_Display',Georgia,serif] text-3xl font-medium text-slate-900 sm:text-4xl dark:text-white">
+          <h2 className="font-display text-3xl font-medium text-slate-900 sm:text-4xl dark:text-white">
             What's stuck in your pipeline?
           </h2>
           <p className="mb-10 mt-3 max-w-xl text-slate-600 dark:text-slate-400">
@@ -304,7 +304,7 @@ export default function SalesOperations() {
       <section className="border-t-4 border-[#FFC83D] bg-[#0A66C2] px-4 py-14 md:px-8">
         <div className="container mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <h2 className="font-['Playfair_Display',Georgia,serif] text-2xl font-medium text-white sm:text-3xl">Send one contract. Time it.</h2>
+            <h2 className="font-display text-2xl font-medium text-white sm:text-3xl">Send one contract. Time it.</h2>
             <p className="mt-2 text-white/75">Free to start — no card, no sales call.</p>
           </div>
           <Button asChild className="h-12 rounded-lg bg-[#FFC83D] px-7 font-bold text-slate-900 hover:bg-[#e6b435]">

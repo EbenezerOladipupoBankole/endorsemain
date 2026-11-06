@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthContext";
 import { Check } from "lucide-react";
 
-const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
+const serif = { fontFamily: "Gilroy, Inter, system-ui, sans-serif" };
 
 const TIMELINE = [
   { time: "9:02", who: "hr", text: "You approve the offer. Endorse texts Jordan a link." },

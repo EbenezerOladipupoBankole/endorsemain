@@ -1,5 +1,42 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
 
+/* Gilroy: site-wide typeface (one family, real weights). */
+@font-face {
+  font-family: "Gilroy";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: local("Gilroy-Light"), url("https://fonts.cdnfonts.com/s/16219/Gilroy-Light.woff") format("woff");
+}
+@font-face {
+  font-family: "Gilroy";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("Gilroy-Regular"), url("https://fonts.cdnfonts.com/s/16219/Gilroy-Regular.woff") format("woff");
+}
+@font-face {
+  font-family: "Gilroy";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local("Gilroy-Medium"), url("https://fonts.cdnfonts.com/s/16219/Gilroy-Medium.woff") format("woff");
+}
+@font-face {
+  font-family: "Gilroy";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local("Gilroy-Bold"), url("https://fonts.cdnfonts.com/s/16219/Gilroy-Bold.woff") format("woff");
+}
+@font-face {
+  font-family: "Gilroy";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: local("Gilroy-Heavy"), url("https://fonts.cdnfonts.com/s/16219/Gilroy-Heavy.woff") format("woff");
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -288,10 +325,6 @@
 
 /* Small h1–h3 (card titles, stat labels) read better in the sans-serif body face. */
 :is(h1, h2, h3):is(.text-xs, .text-sm, .text-base) {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Gilroy", "Inter", system-ui, sans-serif;
 }
 
-/* Playfair Display is a display serif: cap the heaviest weights so headings stay elegant. */
-:is(h1, h2, h3, .font-display):is(.font-extrabold, .font-black) {
-  font-weight: 700;
-}

@@ -7,7 +7,7 @@ import { useAuth } from "@/components/AuthContext";
 import { CheckCircle2, Mail, MessageCircle } from "lucide-react";
 import type { ReactNode } from "react";
 
-const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
+const serif = { fontFamily: "Gilroy, Inter, system-ui, sans-serif" };
 
 // Mirrors what Endorse stores for a signed document (see SignDocument / AgreementsList).
 const RECORD = [

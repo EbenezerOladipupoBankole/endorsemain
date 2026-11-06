@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthContext";
 import type { LucideIcon } from "lucide-react";
 
-export const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
+export const serif = { fontFamily: "Gilroy, Inter, system-ui, sans-serif" };
 
 export interface FeatureStep {
   title: string;

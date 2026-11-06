@@ -23,7 +23,7 @@ export function UpgradeDialog({ open, onClose }: UpgradeDialogProps) {
       {/* Above the z-[70] send modal it can open from. */}
       <DialogContent className="z-[80] max-w-md rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+          <DialogTitle className="text-2xl" style={{ fontFamily: "Gilroy, Inter, system-ui, sans-serif" }}>
             You've used your {FREE_DOCUMENT_LIMIT} free documents
           </DialogTitle>
           <DialogDescription className="text-[15px] leading-relaxed">
