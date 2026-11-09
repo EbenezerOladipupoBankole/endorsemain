@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,

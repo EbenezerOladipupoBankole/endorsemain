@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/lib/callable';
 import { toast } from 'sonner';
 import {
   Sparkles, Search, File as FileIcon, MessageSquare, ZoomIn, ZoomOut, X, Loader2, Trash2, Plus, AlertTriangle,

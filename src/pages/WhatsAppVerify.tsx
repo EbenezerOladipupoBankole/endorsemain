@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { functions } from "@/components/client";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import { getAuth, signInWithCustomToken } from "firebase/auth";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";

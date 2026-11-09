@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import { db, functions } from "@/components/client";
 import { collection, onSnapshot, doc, deleteDoc, query, where } from "firebase/firestore";
 

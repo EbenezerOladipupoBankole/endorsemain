@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import Cropper from "react-easy-crop";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import { functions, auth } from "@/components/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

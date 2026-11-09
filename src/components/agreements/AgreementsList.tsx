@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/lib/callable';
 import { db, functions } from '@/components/client';
 import { useAuth } from '@/components/AuthContext';
 import jsPDF from 'jspdf';

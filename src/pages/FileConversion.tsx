@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ArrowLeft, ArrowRight, CheckCircle2, Combine, Download, FileImage, FileText, FileType, ImagePlus, Loader2, Lock, ShieldCheck, Sparkles, Upload, X, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import { functions } from "@/components/client";
 
 const tools = [

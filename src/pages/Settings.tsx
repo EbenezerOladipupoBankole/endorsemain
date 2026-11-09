@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, multiFactor, TotpMultiFactorGenerator, TotpSecret } from "firebase/auth";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import { functions, auth, db, storage } from "@/components/client";
 import { setDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
