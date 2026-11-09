@@ -28,7 +28,8 @@
         "*.local",
         "api",
         "server",
-        "vercel.json"
+        "vercel.json",
+        "public"
       ],
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run build"
