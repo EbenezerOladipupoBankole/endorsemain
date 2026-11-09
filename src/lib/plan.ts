@@ -1,4 +1,4 @@
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import { functions } from "@/components/client";
 
 /** Must match FREE_DOCUMENT_LIMIT in functions/src/index.ts. */

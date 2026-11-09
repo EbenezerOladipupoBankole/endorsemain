@@ -13,3 +13,5 @@ node_modules/
 .env
 .env.*
 .secret.local
+# Firebase service account key (used by server/ for local runs)
+service-account.json

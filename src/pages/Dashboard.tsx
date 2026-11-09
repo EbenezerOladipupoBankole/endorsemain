@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/lib/callable';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, addDoc, serverTimestamp } from 'firebase/firestore';

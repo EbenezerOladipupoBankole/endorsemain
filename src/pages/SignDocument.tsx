@@ -189,7 +189,7 @@ const SignDocument = () => {
 
       // Email the signer a confirmation and let the sender know it's done
       try {
-        const { httpsCallable } = await import('firebase/functions');
+        const { httpsCallable } = await import('@/lib/callable');
         const { functions } = await import('@/components/client');
         const notifyFn = httpsCallable(functions, 'notifyAgreementSigned');
         await notifyFn({ documentId: id });

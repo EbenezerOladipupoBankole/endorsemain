@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./components/AuthContext";
 import { functions } from "./components/client";
 import { FREE_LIMIT_ENFORCED } from "./lib/plan";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Building2, Check, CheckCircle2, Loader2, Lock, Zap } from "lucide-react";

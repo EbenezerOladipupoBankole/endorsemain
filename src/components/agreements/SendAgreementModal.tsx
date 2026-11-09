@@ -7,7 +7,7 @@ import { collection, addDoc, serverTimestamp, writeBatch, doc, deleteDoc } from 
 import { UpgradeDialog } from '@/components/UpgradeDialog';
 import { FREE_LIMIT_ENFORCED, tryClaimDocumentCredit, isOutOfFreeDocuments } from '@/lib/plan';
 import type { DocComment } from '@/components/esign/viewerTools';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable } from '@/lib/callable';
 import { db, functions } from '@/components/client';
 import { useAuth } from '@/components/AuthContext';
 import { AgreementTemplate, DEFAULT_TEMPLATES } from './TemplateStudio';

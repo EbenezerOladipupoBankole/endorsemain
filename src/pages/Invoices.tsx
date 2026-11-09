@@ -9,7 +9,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "@/lib/callable";
 import { functions } from "@/components/client";
 import {
   Receipt,

@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run vercel-build",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
+  "functions": {
+    "api/index.js": { "maxDuration": 300, "memory": 1024 }
+  },
+  "crons": [{ "path": "/cron/remindPlanExpiry", "schedule": "0 8 * * *" }]
+}
