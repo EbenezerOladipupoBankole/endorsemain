@@ -168,7 +168,7 @@ const Team = () => {
             </Link>
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Send for Signature</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Send documents for signature, track who has signed, and manage your teammates.</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Your full sending workspace: send from a template or upload, manage everything you've sent, and invite teammates.</p>
             </div>
           </div>
 

@@ -12,6 +12,19 @@ import { PDFUploader } from '@/components/esign/PDFUploader';
 import SignatureModal from '@/components/SignatureModal';
 import { SendAgreementModal } from '@/components/agreements/SendAgreementModal';
 import type { AgreementTemplate } from '@/components/agreements/TemplateStudio';
+import {
+  type SignatureRecord,
+  isSigned,
+  displayName,
+  isWhatsApp,
+  formatDate,
+  useSignatureDocuments,
+  sendReminder,
+  SigningProgress,
+  SigningRecord,
+} from '@/components/agreements/documentTracking';
+import { signingLink } from '@/components/agreements/signingUtils';
+import { AuditTrail } from '@/components/agreements/AuditTrail';
 import { Logo } from '@/components/Logo';
 import { APP_NAV, initialsOf } from '@/components/AppHeader';
 import { DocumentTools } from '@/components/esign/DocumentTools';
@@ -60,6 +73,11 @@ import {
   Award,
   Moon,
   Sun,
+  Send,
+  Copy,
+  ArrowRight,
+  CheckCircle2,
+  MessageCircle,
 } from 'lucide-react';
 
 import {
@@ -165,10 +183,16 @@ const Dashboard = () => {
   const [activeStampType, setActiveStampType] = useState<string | null>(null);
   const [isPlacingSignature, setIsPlacingSignature] = useState(false);
   const [placedItems, setPlacedItems] = useState<any[]>([]);
-  const [recentDocs, setRecentDocs] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [stats, setStats] = useState({ total: 0, signed: 0, pending: 0 });
-  const [loadingDocs, setLoadingDocs] = useState(true);
+  // Same live source as the Send for Signature page, so the counts and the list always match.
+  const { sent, received, loading: loadingDocs } = useSignatureDocuments(user?.email);
+  const recentDocs = sent.slice(0, 5);
+  const stats = {
+    waitingOnYou: received.length,
+    awaiting: sent.filter((r) => !isSigned(r)).length,
+    completed: sent.filter(isSigned).length,
+    total: sent.length,
+  };
   const [isDownloading, setIsDownloading] = useState(false);
   const [showFinishChoice, setShowFinishChoice] = useState(false);
   const [inviteDocument, setInviteDocument] = useState<AgreementTemplate | null>(null);
@@ -183,7 +207,12 @@ const Dashboard = () => {
   }, [pdfFile, resetViewer, clearComments]);
   const [showSignatureModal, setShowSignatureModal] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedDocForAudit, setSelectedDocForAudit] = useState<string | null>(null);
+  const [trackingId, setTrackingId] = useState<string | null>(null);
+  const [showAudit, setShowAudit] = useState(false);
+  const openTracking = (id: string, audit = false) => {
+    setTrackingId(id);
+    setShowAudit(audit);
+  };
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
@@ -210,39 +239,6 @@ const Dashboard = () => {
       toast.success("Payment successful! Your plan has been updated.");
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    const fetchRecentDocs = async () => {
-      if (!user?.email) return;
-
-      try {
-        const getStatsFn = httpsCallable(functions, 'getUserStats');
-        const getDocsFn = httpsCallable(functions, 'getUserDocuments');
-
-        const [statsResult, docsResult] = await Promise.all([
-          getStatsFn(),
-          getDocsFn()
-        ]);
-
-        const statsData = statsResult.data as any;
-        const docsData = docsResult.data as any;
-
-        setStats({
-          total: statsData.total || 0,
-          signed: statsData.signed || 0,
-          pending: statsData.pending || 0
-        });
-        setRecentDocs((docsData.documents || []).slice(0, 5));
-      } catch (error) {
-        console.error("Error fetching data from Postgres:", error);
-        // Fallback to Firestore during transition if needed
-      } finally {
-        setLoadingDocs(false);
-      }
-    };
-
-    fetchRecentDocs();
-  }, [user]);
 
   // Fetch Notifications
   useEffect(() => {
@@ -437,39 +433,16 @@ const Dashboard = () => {
   };
 
 
-  const handleDeleteDoc = async (e: React.MouseEvent, docId: string) => {
+  const handleDeleteDoc = async (e: React.MouseEvent, r: SignatureRecord) => {
     e.stopPropagation();
-    
-    if (!window.confirm("Are you sure you want to delete this document?")) {
-      return;
-    }
-
-    const toastId = toast.loading("Deleting document...");
+    if (!window.confirm(`Delete "${r.name}"? The signing link will stop working.`)) return;
     try {
-      // 1. Delete from Postgres via Cloud Function
-      const deleteDocFn = httpsCallable(functions, 'deleteDocument');
-      await deleteDocFn({ documentId: docId });
-
-      // 2. Also try to delete from Firestore if it exists there (legacy support)
-      try {
-        await deleteDoc(doc(db, "documents", docId));
-      } catch (fErr) {
-        // Silently fail if not in Firestore, as Postgres is the primary source now
-      }
-
-      // 3. Update local state
-      setRecentDocs((prev) => prev.filter((d) => d.id !== docId));
-      
-      // 4. Update stats
-      setStats(prev => ({
-        ...prev,
-        total: Math.max(0, prev.total - 1)
-      }));
-
-      toast.success("Document deleted successfully", { id: toastId });
+      await deleteDoc(doc(db, 'documents', r.id));
+      if (trackingId === r.id) setTrackingId(null);
+      toast.success('Document deleted');
     } catch (error: any) {
-      console.error("Error deleting document:", error);
-      toast.error(`Failed to delete document: ${error.message || "Unknown error"}`, { id: toastId });
+      console.error('Error deleting document:', error);
+      toast.error(`Failed to delete document: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -782,45 +755,39 @@ const Dashboard = () => {
           </div>
         </footer>
 
-        {/* Finish: download, or invite others to sign */}
+        {/* Finish: download, or send to others to sign */}
         {showFinishChoice && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" onClick={() => setShowFinishChoice(false)}>
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">You're done signing</h3>
-                  <p className="mt-1 text-sm text-slate-500">Does anyone else need to sign {pdfFile.name}?</p>
-                </div>
-                <button onClick={() => setShowFinishChoice(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100" aria-label="Close">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="mt-5 grid gap-3">
-                <button
-                  onClick={handleInviteOthers}
-                  disabled={isPreparingInvite}
-                  className="flex items-start gap-3 rounded-xl border-2 border-[#0A66C2] bg-blue-50/50 p-4 text-left transition-colors hover:bg-blue-50 disabled:opacity-60"
-                >
-                  <Users className="mt-0.5 h-5 w-5 shrink-0 text-[#0A66C2]" />
-                  <span>
-                    <span className="block text-sm font-bold text-slate-900">{isPreparingInvite ? 'Preparing…' : 'Invite others to sign'}</span>
-                    <span className="block text-xs text-slate-600">Send it by email or WhatsApp. They sign on Endorse and you get the completed copy.</span>
-                  </span>
-                </button>
-                <button
+          <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/40 sm:items-center sm:p-4" onClick={() => setShowFinishChoice(false)}>
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="finish-title"
+              className="w-full max-w-md rounded-t-xl bg-white p-5 shadow-xl sm:rounded-xl sm:p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 id="finish-title" className="text-lg font-semibold text-slate-900">Does anyone else need to sign?</h2>
+              <p className="mt-1.5 text-sm text-slate-600">
+                You can send <span className="font-medium text-slate-900">{pdfFile.name}</span> to others to sign, or download your signed copy now.
+              </p>
+              <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  className="h-10 text-sm"
+                  disabled={isDownloading}
                   onClick={() => {
                     setShowFinishChoice(false);
                     handleDownload();
                   }}
-                  disabled={isDownloading}
-                  className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 text-left transition-colors hover:bg-slate-50 disabled:opacity-60"
                 >
-                  <Download className="mt-0.5 h-5 w-5 shrink-0 text-slate-700" />
-                  <span>
-                    <span className="block text-sm font-bold text-slate-900">Just download the signed PDF</span>
-                    <span className="block text-xs text-slate-600">No one else needs to sign.</span>
-                  </span>
-                </button>
+                  No, just download
+                </Button>
+                <Button
+                  className="h-10 bg-[#0A66C2] text-sm font-medium text-white hover:bg-[#08519c]"
+                  disabled={isPreparingInvite}
+                  onClick={handleInviteOthers}
+                >
+                  {isPreparingInvite ? 'Preparing…' : 'Yes, send to others'}
+                </Button>
               </div>
             </div>
           </div>
@@ -832,7 +799,7 @@ const Dashboard = () => {
             lockDocument
             comments={comments}
             onClose={() => setInviteDocument(null)}
-            onSuccess={() => setStats(prev => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }))}
+            onSuccess={() => toast.success('Sent! Follow its progress under Recent documents on your dashboard.')}
           />
         )}
 
@@ -1047,7 +1014,7 @@ const Dashboard = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
               <div>
                 <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-                <p className="text-sm text-gray-500">Manage your documents and signatures.</p>
+                <p className="text-sm text-gray-500">Sign a document, invite others to sign, and follow each one until it's done.</p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="h-10 bg-white text-sm font-semibold" aria-label="Settings" onClick={() => navigate('/settings')}>
@@ -1064,38 +1031,49 @@ const Dashboard = () => {
               </div>
             </div>
 
+            {/* Waiting for the user's own signature */}
+            {received.length > 0 && (
+              <div className="rounded-xl border border-[#FFC83D] bg-[#FFF8E1] p-4 md:p-5">
+                <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <PenTool className="h-4 w-4 text-[#0A66C2]" /> Waiting for your signature
+                </h2>
+                <ul className="mt-2 divide-y divide-[#FFE7A3]">
+                  {received.slice(0, 3).map((r) => (
+                    <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{r.name}</p>
+                        <p className="truncate text-xs text-slate-600">From {r.senderName || r.adminName || r.ownerEmail}</p>
+                      </div>
+                      <Button asChild size="sm" className="h-9 shrink-0 bg-[#0A66C2] text-xs text-white hover:bg-[#08519c]">
+                        <Link to={`/sign/${r.id}`}>
+                          Review &amp; sign <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Stats Overview */}
-            <div className="grid grid-cols-3 gap-3 md:gap-4">
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium text-gray-600">Total</CardTitle>
-                  <FileText className="h-3 w-3 md:h-4 md:w-4 text-black" />
-                </CardHeader>
-                <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-                  <div className="text-xl md:text-2xl font-bold text-gray-900">{stats.total}</div>
-                  <p className="text-xs text-gray-500 mt-1 hidden md:block">All documents</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium text-gray-600">Signed</CardTitle>
-                  <FileSignature className="h-3 w-3 md:h-4 md:w-4 text-black" />
-                </CardHeader>
-                <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-                  <div className="text-xl md:text-2xl font-bold text-gray-900">{stats.signed}</div>
-                  <p className="text-xs text-gray-500 mt-1 hidden md:block">Completed</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white shadow-sm border-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-6 md:pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium text-gray-600">Pending</CardTitle>
-                  <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-black" />
-                </CardHeader>
-                <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-                  <div className="text-xl md:text-2xl font-bold text-gray-900">{stats.pending}</div>
-                  <p className="text-xs text-orange-600 font-medium mt-1 hidden md:block">Action required</p>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              {[
+                { label: 'Waiting on you', value: stats.waitingOnYou, note: 'Need your signature', icon: PenTool, tone: stats.waitingOnYou > 0 ? 'text-[#0A66C2]' : 'text-gray-900' },
+                { label: 'Waiting on others', value: stats.awaiting, note: 'Sent, not signed yet', icon: AlertCircle, tone: stats.awaiting > 0 ? 'text-orange-600' : 'text-gray-900' },
+                { label: 'Completed', value: stats.completed, note: 'Signed and done', icon: FileSignature, tone: 'text-gray-900' },
+                { label: 'Sent', value: stats.total, note: 'All documents sent', icon: Send, tone: 'text-gray-900' },
+              ].map(({ label, value, note, icon: Icon, tone }) => (
+                <Card key={label} className="bg-white shadow-sm border-gray-200">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3 md:p-5 md:pb-2">
+                    <CardTitle className="text-xs md:text-sm font-medium text-gray-600">{label}</CardTitle>
+                    <Icon className="h-3 w-3 md:h-4 md:w-4 text-black" />
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0 md:p-5 md:pt-0">
+                    <div className={`text-xl md:text-2xl font-bold ${tone}`}>{loadingDocs ? '–' : value}</div>
+                    <p className="text-xs text-gray-500 mt-1 hidden md:block">{note}</p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
             {/* Business Features Section */}
@@ -1143,12 +1121,17 @@ const Dashboard = () => {
 
             {/* Recent Documents Section */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-black" />
-                  Recent Documents
-                </h2>
-                <Button variant="ghost" size="sm" className="text-primary h-8 text-xs">View All</Button>
+              <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex justify-between items-center gap-3 bg-gray-50/50">
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-black" />
+                    Recent documents
+                  </h2>
+                  <p className="mt-0.5 text-xs text-gray-500">Documents you've sent for signature. Click one to see its full history.</p>
+                </div>
+                <Button asChild variant="ghost" size="sm" className="text-primary h-9 shrink-0 text-xs">
+                  <Link to="/team">View all</Link>
+                </Button>
               </div>
 
               <div className="divide-y divide-gray-100">
@@ -1157,49 +1140,56 @@ const Dashboard = () => {
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : recentDocs.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground animate-in fade-in">
+                  <div className="text-center py-12 px-4 text-muted-foreground animate-in fade-in">
                     <FileText className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                    <p>No recent documents found</p>
+                    <p className="font-medium text-gray-700">Nothing sent yet</p>
+                    <p className="mx-auto mt-1 max-w-sm text-xs">
+                      Upload a document, sign it, then choose <span className="font-semibold">Invite others to sign</span>. You'll see when they open and sign it right here.
+                    </p>
                   </div>
                 ) : (
-                  recentDocs.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between p-3 md:p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+                  recentDocs.map((r) => (
+                    <div
+                      key={r.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openTracking(r.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTracking(r.id); } }}
+                      className="flex items-center justify-between gap-2 p-3 md:p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <div className={`w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center shrink-0 ${isSigned(r) ? 'bg-emerald-50' : 'bg-blue-50'}`}>
+                          {isSigned(r)
+                            ? <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
+                            : <FileText className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-medium text-gray-900 truncate text-sm">{doc.name}</h3>
-                          <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
-                            <span>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : 'Unknown date'}</span>
-                            <span className="hidden sm:inline">•</span>
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                              doc.status === 'completed' ? 'bg-green-100 text-green-700' :
-                              doc.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                              'bg-gray-100 text-gray-600'
-                            }`}>
-                              {doc.status || 'draft'}
-                            </span>
-                          </div>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <h3 className="font-medium text-gray-900 truncate text-sm">{r.name}</h3>
+                          <p className="flex items-center gap-1 truncate text-xs text-gray-500">
+                            {isWhatsApp(r) && <MessageCircle className="h-3 w-3 shrink-0" />}
+                            To {displayName(r)} · {formatDate(r.createdAt)}
+                          </p>
+                          <SigningProgress record={r} />
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="w-8 h-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                          onClick={(e) => { e.stopPropagation(); setSelectedDocForAudit(doc.id); }}
-                          title="Document details"
-                          aria-label="Document details"
+                          className="w-9 h-9 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          onClick={(e) => { e.stopPropagation(); openTracking(r.id, true); }}
+                          title="View audit trail"
+                          aria-label={`View audit trail for ${r.name}`}
                         >
                           <Activity className="w-4 h-4 text-black" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="w-8 h-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                          onClick={(e) => handleDeleteDoc(e, doc.id)}
+                          className="w-9 h-9 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                          onClick={(e) => handleDeleteDoc(e, r)}
                           title="Delete document"
+                          aria-label={`Delete ${r.name}`}
                         >
                           <Trash2 className="w-4 h-4 text-black" />
                         </Button>
@@ -1253,41 +1243,68 @@ const Dashboard = () => {
         </div>
       )}
 
-      {selectedDocForAudit && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedDocForAudit(null)}>
-          <div className="w-full max-w-lg bg-background rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold">Document details</h3>
-              <Button variant="ghost" size="icon" onClick={() => setSelectedDocForAudit(null)}>
-                <X className="w-4 h-4 text-black" />
-              </Button>
-            </div>
-            <div className="p-6">
-              {(() => {
-                const doc = recentDocs.find((d) => d.id === selectedDocForAudit);
-                if (!doc) return <p className="text-sm text-slate-500">This document is no longer available.</p>;
-                return (
-                  <dl className="space-y-3 text-sm">
-                    {[
-                      ['Name', doc.name],
-                      ['Created', doc.createdAt ? new Date(doc.createdAt).toLocaleString() : 'Unknown'],
-                      ['Status', doc.status || 'draft'],
-                    ].map(([k, v]) => (
-                      <div key={k} className="flex justify-between gap-4 border-b border-slate-100 pb-2">
-                        <dt className="text-slate-500">{k}</dt>
-                        <dd className="truncate text-right font-medium capitalize text-slate-900">{v}</dd>
+      {trackingId && (() => {
+        const r = sent.find((d) => d.id === trackingId);
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setTrackingId(null)}>
+            <div className={`flex max-h-[90vh] w-full flex-col bg-background rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${showAudit ? 'max-w-2xl' : 'max-w-lg'}`} onClick={e => e.stopPropagation()}>
+              <div className="p-4 border-b flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate font-bold">{r?.name ?? 'Document'}</h3>
+                  {r && <p className="truncate text-xs text-slate-500">To {displayName(r)}{isSigned(r) ? ` · Signed ${formatDate(r.signedAt)}` : ' · Awaiting signature'}</p>}
+                </div>
+                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Close" onClick={() => setTrackingId(null)}>
+                  <X className="w-4 h-4 text-black" />
+                </Button>
+              </div>
+              {!r ? (
+                <p className="p-6 text-sm text-slate-500">This document is no longer available.</p>
+              ) : (
+                <>
+                  <div className="flex-1 space-y-4 overflow-y-auto p-5">
+                    <SigningProgress record={r} />
+                    {showAudit ? (
+                      <AuditTrail record={r} />
+                    ) : (
+                      <>
+                        <SigningRecord record={r} />
+                        <Button variant="outline" size="sm" className="h-9 text-sm" onClick={() => setShowAudit(true)}>
+                          View audit trail
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-slate-50 px-5 py-3">
+                    {!isSigned(r) ? (
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => sendReminder(r)}>
+                          <Send className="mr-1.5 h-3.5 w-3.5" /> Send reminder
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => {
+                            navigator.clipboard.writeText(signingLink(r.id, r.channel));
+                            toast.success('Signing link copied');
+                          }}
+                        >
+                          <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link
+                        </Button>
                       </div>
-                    ))}
-                    <p className="pt-1 text-xs text-slate-500">
-                      For documents you've sent to others, see who signed and when under Send for Signature.
-                    </p>
-                  </dl>
-                );
-              })()}
+                    ) : <span />}
+                    <Button asChild size="sm" className="bg-[#0A66C2] text-xs text-white hover:bg-[#08519c]">
+                      <Link to={`/team?doc=${r.id}`}>
+                        {isSigned(r) ? 'View & download' : 'Open full details'} <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

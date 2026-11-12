@@ -508,6 +508,181 @@ export const notifyAgreementSigned = onCall({ secrets: [gmailEmail, gmailPasswor
   }
 });
 
+// ---- Audit trail & document sealing ----
+//
+// Every event is written by the server into documents/{id}/audit, so the IP address,
+// user agent and user ID come from the actual request and can't be supplied by a client.
+// Signed documents are sealed with a SHA-256 hash of their signed content; anyone with
+// the hash can confirm the record on /verify/:hash.
+
+const VERIFY_URL = "https://www.e-ndorse.online/verify";
+
+function requestContext(raw: any): { ip: string; userAgent: string } {
+  const headers = raw?.headers || {};
+  const forwarded = String(headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = String(headers["x-real-ip"] || "").trim() || forwarded || raw?.ip || raw?.socket?.remoteAddress || "unknown";
+  const userAgent = String(headers["user-agent"] || "unknown").slice(0, 500);
+  return { ip, userAgent };
+}
+
+/** JSON with sorted keys and timestamps as milliseconds, so the same data always hashes the same. */
+function canonicalJson(value: any): string {
+  if (value === null || value === undefined) return "null";
+  if (value instanceof admin.firestore.Timestamp) return JSON.stringify(value.toMillis());
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value)
+      .filter((k) => value[k] !== undefined)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonicalJson(value[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** SHA-256 of the signed document: original file or text, signature, placements, signer and signing time. */
+function computeDocumentHash(documentId: string, d: admin.firestore.DocumentData): string {
+  const payload = canonicalJson({
+    v: 1,
+    id: documentId,
+    name: d.name ?? "",
+    content: d.pdfBase64 || d.renderedHtml || d.fileUrl || "",
+    signer: d.recipientEmail || d.recipientPhone || "",
+    signerUid: d.signerUid ?? "",
+    signatureData: d.signature_data ?? "",
+    signaturePositions: d.signature_positions ?? [],
+    signedAt: d.signedAt ?? null,
+  });
+  return crypto.createHash("sha256").update(payload).digest("hex");
+}
+
+type DocRole = "owner" | "signer" | "admin" | null;
+
+function roleFor(auth: any, documentId: string, d: admin.firestore.DocumentData): DocRole {
+  if (!auth) return null;
+  const email = auth.token?.email as string | undefined;
+  if (auth.uid === `whatsapp-signer-${documentId}`) return "signer";
+  if (email && auth.token?.email_verified && d.recipientEmail && email.toLowerCase() === d.recipientEmail) return "signer";
+  if (email && email === d.ownerEmail) return "owner";
+  if (isVerifiedAdmin(auth)) return "admin";
+  return null;
+}
+
+const auditEntry = (type: string, request: any, extra: Record<string, unknown> = {}) => {
+  const { ip, userAgent } = requestContext(request.rawRequest);
+  return {
+    type,
+    at: admin.firestore.FieldValue.serverTimestamp(),
+    ip,
+    userAgent,
+    uid: request.auth?.uid ?? null,
+    email: request.auth?.token?.email ?? null,
+    ...extra,
+  };
+};
+
+// Records "created" (by the sender) or "opened" (by the signer) on a document's audit trail.
+export const recordDocumentEvent = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "User must be logged in.");
+  const { documentId, type } = request.data as { documentId?: string; type?: string };
+  if (!documentId || (type !== "created" && type !== "opened")) {
+    throw new HttpsError("invalid-argument", "Expected a documentId and type 'created' or 'opened'.");
+  }
+
+  const ref = admin.firestore().collection("documents").doc(documentId);
+  const snap = await ref.get();
+  const d = snap.data();
+  if (!snap.exists || !d) throw new HttpsError("not-found", "Document not found.");
+  const role = roleFor(request.auth, documentId, d);
+  const audit = ref.collection("audit");
+
+  if (type === "created") {
+    if (role !== "owner" && role !== "admin") throw new HttpsError("permission-denied", "Only the sender can record this.");
+    const existing = await audit.where("type", "==", "created").limit(1).get();
+    if (existing.empty) await audit.add(auditEntry("created", request, { channel: d.channel === "whatsapp" ? "whatsapp" : "email" }));
+    return { success: true };
+  }
+
+  // Opens are logged for the signer only, at most once every 30 minutes per user.
+  if (role !== "signer") return { success: true, skipped: true };
+  const opens = await audit.where("type", "==", "opened").get();
+  const recent = opens.docs.some((o) => {
+    const at = o.get("at") as admin.firestore.Timestamp | undefined;
+    return o.get("uid") === request.auth!.uid && at && Date.now() - at.toMillis() < 30 * 60 * 1000;
+  });
+  if (!recent) await audit.add(auditEntry("opened", request));
+  if (!d.viewedAt) await ref.update({ viewedAt: admin.firestore.FieldValue.serverTimestamp() });
+  return { success: true };
+});
+
+// Seals a signed document: logs the signature with the signer's IP and user agent,
+// stores a SHA-256 hash of the signed content, and logs that too. Safe to call twice.
+export const sealSignedDocument = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "User must be logged in.");
+  const { documentId } = request.data as { documentId?: string };
+  if (!documentId) throw new HttpsError("invalid-argument", "Missing documentId.");
+
+  const ref = admin.firestore().collection("documents").doc(documentId);
+  return admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const d = snap.data();
+    if (!snap.exists || !d) throw new HttpsError("not-found", "Document not found.");
+    const role = roleFor(request.auth, documentId, d);
+    if (!role) throw new HttpsError("permission-denied", "Not a party to this document.");
+    if (d.status !== "signed" && d.status !== "completed") {
+      throw new HttpsError("failed-precondition", "This document hasn't been signed yet.");
+    }
+    if (d.documentHash) return { hash: d.documentHash as string, verifyUrl: `${VERIFY_URL}/${d.documentHash}` };
+
+    // When the signer seals, this request is the signing request, so its IP and user agent are the signer's.
+    // A sender sealing an older document afterwards can't know those, so they're left blank.
+    const signerUid = role === "signer" ? request.auth!.uid : d.recipientEmail || d.recipientPhone || "unknown";
+    const hash = computeDocumentHash(documentId, { ...d, signerUid });
+    const audit = ref.collection("audit");
+
+    tx.set(audit.doc(), role === "signer"
+      ? { ...auditEntry("signed", request), at: d.signedAt ?? admin.firestore.FieldValue.serverTimestamp() }
+      : { type: "signed", at: d.signedAt ?? null, ip: null, userAgent: null, uid: null, email: d.recipientEmail ?? null, note: "Recorded before audit logging; network details unavailable." });
+    tx.set(audit.doc(), { ...auditEntry("sealed", request), hash, algorithm: "SHA-256" });
+    tx.update(ref, { documentHash: hash, signerUid, sealedAt: admin.firestore.FieldValue.serverTimestamp() });
+    return { hash, verifyUrl: `${VERIFY_URL}/${hash}` };
+  });
+});
+
+const maskContact = (contact: string) => {
+  if (contact.includes("@")) {
+    const [user, domain] = contact.split("@");
+    return `${user.slice(0, 1)}${"*".repeat(Math.max(2, user.length - 1))}@${domain}`;
+  }
+  return contact.length > 4 ? `${"*".repeat(contact.length - 4)}${contact.slice(-4)}` : contact;
+};
+
+// Public: confirms a hash belongs to a sealed Endorse document and that it hasn't changed since.
+export const verifyDocument = onCall({ cors: true }, async (request) => {
+  const hash = String((request.data as { hash?: string })?.hash || "").toLowerCase().trim();
+  if (!/^[a-f0-9]{64}$/.test(hash)) throw new HttpsError("invalid-argument", "That isn't a valid document hash.");
+
+  const found = await admin.firestore().collection("documents").where("documentHash", "==", hash).limit(1).get();
+  if (found.empty) return { found: false };
+  const docSnap = found.docs[0];
+  const d = docSnap.data();
+  const iso = (ts: any) => (ts?.toDate ? ts.toDate().toISOString() : null);
+
+  return {
+    found: true,
+    intact: computeDocumentHash(docSnap.id, d) === hash,
+    documentId: docSnap.id,
+    name: d.name ?? "Untitled document",
+    senderName: d.senderName || d.adminName || null,
+    signerName: d.recipientName || d.studentName || null,
+    signerContact: maskContact(String(d.recipientEmail || d.recipientPhone || "")),
+    channel: d.channel === "whatsapp" ? "whatsapp" : "email",
+    sentAt: iso(d.createdAt),
+    signedAt: iso(d.signedAt),
+    sealedAt: iso(d.sealedAt),
+  };
+});
+
 // Function to convert documents between formats
 export const convertDocument = onCall({
   memory: "1GiB",
