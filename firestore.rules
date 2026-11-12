@@ -120,6 +120,20 @@ service cloud.firestore {
       }
     }
 
+    // Documents uploaded on the dashboard, saved so the owner can come back to them.
+    match /drafts/{draftId} {
+      allow read, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == request.auth.uid;
+
+      // The uploaded PDF, split into pieces.
+      match /chunks/{chunkId} {
+        allow read, write: if isSignedIn() &&
+          get(/databases/$(database)/documents/drafts/$(draftId)).data.ownerUid == request.auth.uid;
+      }
+    }
+
     match /notifications/{notifId} {
       allow read, update, delete: if isSignedIn() && request.auth.token.email == resource.data.recipientEmail;
       allow create: if isSignedIn();

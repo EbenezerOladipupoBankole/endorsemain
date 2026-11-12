@@ -102,3 +102,17 @@ export const fileToDataUrl = (file: File) =>
 
 // Firestore documents are capped at 1MB and base64 adds ~33%, so PDFs are stored inline only up to this size.
 export const MAX_PDF_BYTES = 600 * 1024;
+
+/**
+ * The document ID from a signing link's URL. Messaging apps like WhatsApp sometimes attach
+ * punctuation or invisible characters to a link; IDs are letters and numbers only, so keep that part.
+ */
+export const signingDocumentId = (raw?: string) => {
+  let decoded = raw ?? '';
+  try {
+    decoded = decodeURIComponent(decoded);
+  } catch {
+    /* keep it as it is */
+  }
+  return decoded.match(/[A-Za-z0-9]+/)?.[0] ?? '';
+};

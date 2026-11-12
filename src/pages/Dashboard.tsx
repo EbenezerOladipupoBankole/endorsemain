@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { httpsCallable } from '@/lib/callable';
@@ -25,6 +25,7 @@ import {
 } from '@/components/agreements/documentTracking';
 import { signingLink } from '@/components/agreements/signingUtils';
 import { AuditTrail } from '@/components/agreements/AuditTrail';
+import { type Draft, createDraft, saveDraftItems, loadDraftFile, deleteDraft, useDrafts, editedAgo, MAX_DRAFT_BYTES } from '@/lib/drafts';
 import { Logo } from '@/components/Logo';
 import { APP_NAV, initialsOf } from '@/components/AppHeader';
 import { DocumentTools } from '@/components/esign/DocumentTools';
@@ -183,6 +184,18 @@ const Dashboard = () => {
   const [activeStampType, setActiveStampType] = useState<string | null>(null);
   const [isPlacingSignature, setIsPlacingSignature] = useState(false);
   const [placedItems, setPlacedItems] = useState<any[]>([]);
+
+  // Drafts: every upload is saved, and the placed fields are saved as you work.
+  const drafts = useDrafts(user?.uid);
+  const draftIdRef = useRef<string | null>(null);
+  const [draftId, setDraftIdState] = useState<string | null>(null);
+  const setDraftId = (id: string | null) => {
+    draftIdRef.current = id;
+    setDraftIdState(id);
+  };
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [openingDraftId, setOpeningDraftId] = useState<string | null>(null);
+  const skipNextSaveRef = useRef(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   // Same live source as the Send for Signature page, so the counts and the list always match.
   const { sent, received, loading: loadingDocs } = useSignatureDocuments(user?.email);
@@ -289,6 +302,7 @@ const Dashboard = () => {
       setPdfFile(file);
       setSignature(null);
       setPlacedItems([]);
+      startDraft(file);
     } else if (isWord) {
       const toastId = toast.loading("Converting Word document to PDF...");
       try {
@@ -298,6 +312,7 @@ const Dashboard = () => {
         setPdfFile(convertedFile);
         setSignature(null);
         setPlacedItems([]);
+        startDraft(convertedFile);
         toast.success("Document converted successfully", { id: toastId });
       } catch (error) {
         console.error("Conversion error:", error);
@@ -305,6 +320,82 @@ const Dashboard = () => {
       }
     } else {
       toast.error("Unsupported file format. Please upload PDF or Word documents.");
+    }
+  };
+
+  const startDraft = async (file: File) => {
+    setDraftId(null);
+    if (!user?.uid) return;
+    if (file.size > MAX_DRAFT_BYTES) {
+      setSaveState('error');
+      toast.info("This file is too large to save as a draft. Finish it in one go, or use a smaller file.");
+      return;
+    }
+    setSaveState('saving');
+    try {
+      setDraftId(await createDraft(user.uid, file));
+      setSaveState('saved');
+    } catch (err) {
+      console.warn('Could not save draft:', err);
+      setSaveState('error');
+    }
+  };
+
+  // Autosave the placed fields shortly after each change.
+  useEffect(() => {
+    if (!draftId) return;
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    setSaveState('saving');
+    const timer = setTimeout(() => {
+      saveDraftItems(draftId, placedItems)
+        .then((ok) => setSaveState(ok ? 'saved' : 'error'))
+        .catch((err) => {
+          console.warn('Draft autosave failed:', err);
+          setSaveState('error');
+        });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [placedItems, draftId]);
+
+  /** The document is finished (downloaded or sent), so it's no longer a draft. */
+  const finishDraft = () => {
+    const id = draftIdRef.current;
+    if (!id) return;
+    setDraftId(null);
+    setSaveState('idle');
+    deleteDraft(id).catch((err) => console.warn('Could not remove finished draft:', err));
+  };
+
+  const openDraft = async (d: Draft) => {
+    setOpeningDraftId(d.id);
+    try {
+      const file = await loadDraftFile(d);
+      skipNextSaveRef.current = true;
+      setPdfFile(file);
+      setSignature(null);
+      setInitials(null);
+      setPlacedItems(d.placedItems ?? []);
+      setDraftId(d.id);
+      setSaveState('saved');
+    } catch (err) {
+      console.error('Could not open draft:', err);
+      toast.error("This draft couldn't be opened. It may be incomplete. You can delete it and upload the file again.");
+    } finally {
+      setOpeningDraftId(null);
+    }
+  };
+
+  const handleDeleteDraft = async (d: Draft) => {
+    if (!window.confirm(`Delete the draft "${d.name}"? This can't be undone.`)) return;
+    try {
+      await deleteDraft(d.id);
+      toast.success('Draft deleted');
+    } catch (err) {
+      console.error('Could not delete draft:', err);
+      toast.error('Could not delete the draft. Please try again.');
     }
   };
 
@@ -370,6 +461,7 @@ const Dashboard = () => {
         const credit = FREE_LIMIT_ENFORCED ? await tryClaimDocumentCredit('download') : null;
         if (credit && !credit.paid) setFreeUsed(credit.freeUsed);
         downloadPDF(signedPdfBytes, `signed_${pdfFile.name}`);
+        finishDraft();
         toast.success(
           !credit || credit.paid ? 'Signed document downloaded!'
             : credit.remaining === 0 ? "Signed document downloaded! That was your last free document."
@@ -415,6 +507,14 @@ const Dashboard = () => {
   };
 
   const handleReset = () => {
+    // Save the latest fields straight away rather than waiting for the autosave timer.
+    const id = draftIdRef.current;
+    if (id) {
+      saveDraftItems(id, placedItems).catch((err) => console.warn('Could not save draft on close:', err));
+      toast.success('Saved to your drafts. Continue any time from the dashboard.');
+    }
+    setDraftId(null);
+    setSaveState('idle');
     setPdfFile(null);
     setSignature(null);
     setInitials(null);
@@ -490,6 +590,11 @@ const Dashboard = () => {
             </Link>
           </div>
           <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+            {draftId && saveState !== 'idle' && (
+              <span className="hidden text-xs text-white/80 sm:inline" aria-live="polite">
+                {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Draft saved' : "Couldn't save draft"}
+              </span>
+            )}
             <button
               className={`min-h-[40px] whitespace-nowrap font-extrabold text-sm px-4 sm:px-5 rounded-full transition-all shadow-sm ${
                 placedItems.length > 0
@@ -799,7 +904,10 @@ const Dashboard = () => {
             lockDocument
             comments={comments}
             onClose={() => setInviteDocument(null)}
-            onSuccess={() => toast.success('Sent! Follow its progress under Recent documents on your dashboard.')}
+            onSuccess={() => {
+              finishDraft();
+              toast.success('Sent! Follow its progress under Recent documents on your dashboard.');
+            }}
           />
         )}
 
@@ -1118,6 +1226,48 @@ const Dashboard = () => {
                 <PDFUploader onFileSelect={handleFileSelect} currentFile={pdfFile} />
               </CardContent>
             </Card>
+
+            {/* Drafts */}
+            {drafts.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-4 md:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                  <h2 className="font-semibold text-gray-900">Drafts</h2>
+                  <p className="mt-0.5 text-xs text-gray-500">Documents you've started but not finished. Your fields are saved as you work.</p>
+                </div>
+                <ul className="divide-y divide-gray-100">
+                  {drafts.map((d) => (
+                    <li key={d.id} className="flex items-center justify-between gap-3 p-3 md:px-6 md:py-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-900">{d.name}</p>
+                        <p className="text-xs text-gray-500">
+                          Edited {editedAgo(d.updatedAt)}
+                          {d.placedItems?.length ? ` · ${d.placedItems.length} field${d.placedItems.length === 1 ? '' : 's'} placed` : ''}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 text-sm text-gray-600 hover:text-red-600"
+                          onClick={() => handleDeleteDraft(d)}
+                          aria-label={`Delete draft ${d.name}`}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-9 bg-[#0A66C2] text-sm text-white hover:bg-[#08519c]"
+                          onClick={() => openDraft(d)}
+                          disabled={openingDraftId === d.id}
+                        >
+                          {openingDraftId === d.id ? 'Opening…' : 'Continue'}
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Recent Documents Section */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
