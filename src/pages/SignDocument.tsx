@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { PDFViewer, PlacedItem } from '@/components/esign/PDFViewer';
 import SignatureModal from '@/components/SignatureModal';
 import { Logo } from '@/components/Logo';
-import { sanitizeHtml } from '@/components/agreements/signingUtils';
+import { sanitizeHtml, signingDocumentId } from '@/components/agreements/signingUtils';
 import { DocumentTools } from '@/components/esign/DocumentTools';
 import { useViewerState, useDocumentComments } from '@/components/esign/viewerTools';
 
@@ -22,7 +22,9 @@ import {
 } from 'lucide-react';
 
 const SignDocument = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: rawId } = useParams<{ id: string }>();
+  // Links pasted into messaging apps can pick up stray characters; document IDs are letters and numbers only.
+  const id = signingDocumentId(rawId) || undefined;
   const navigate = useNavigate();
   const { user, userProfile, loading: authLoading } = useAuth();
   const auth = getAuth();

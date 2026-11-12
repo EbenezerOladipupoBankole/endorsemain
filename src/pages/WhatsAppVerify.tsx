@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { functions } from "@/components/client";
 import { httpsCallable } from "@/lib/callable";
+import { signingDocumentId } from "@/components/agreements/signingUtils";
 import { getAuth, signInWithCustomToken } from "firebase/auth";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
@@ -20,12 +21,17 @@ interface SigningInfo {
 }
 
 const WhatsAppVerify = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: rawId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // Messaging apps sometimes glue punctuation or invisible characters onto a link.
+  // Document IDs are letters and numbers only, so keep just that part.
+  const id = signingDocumentId(rawId);
   const auth = getAuth();
 
   const [info, setInfo] = useState<SigningInfo | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [canRetry, setCanRetry] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(true);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -93,7 +99,19 @@ const WhatsAppVerify = () => {
 
   useEffect(() => {
     const load = async () => {
-      if (!id) return;
+      if (!id) {
+        setLoadError("This signing link is incomplete. Ask the sender to send it again.");
+        setLoading(false);
+        return;
+      }
+      // Tidy the address bar if the link arrived with extra characters; this runs again with the clean ID.
+      if (rawId !== id) {
+        navigate(`/sign/${id}/verify`, { replace: true });
+        return;
+      }
+      setLoading(true);
+      setLoadError("");
+      setCanRetry(false);
       // Already verified for this document in this browser — go straight to signing.
       if (auth.currentUser?.uid === `whatsapp-signer-${id}`) {
         navigate(`/sign/${id}`, { replace: true });
@@ -106,8 +124,15 @@ const WhatsAppVerify = () => {
           initialSendRef.current = true;
           await sendOtp();
         }
-      } catch {
-        setLoadError("This signing link is invalid or has been removed. Ask the sender to send it again.");
+      } catch (err: any) {
+        const code = String(err?.code || "");
+        console.error("Could not load the signing link:", code, err?.message);
+        if (code.endsWith("not-found") || code.endsWith("invalid-argument")) {
+          setLoadError("This signing link is invalid or has been removed. Ask the sender to send it again.");
+        } else {
+          setLoadError("We couldn't load this document. Check your internet connection and try again.");
+          setCanRetry(true);
+        }
       } finally {
         setLoading(false);
       }
@@ -117,7 +142,7 @@ const WhatsAppVerify = () => {
       if (resendTimerRef.current) clearInterval(resendTimerRef.current);
       if (expiryTimerRef.current) clearInterval(expiryTimerRef.current);
     };
-  }, [id, sendOtp, navigate, auth]);
+  }, [id, rawId, sendOtp, navigate, auth, attempt]);
 
   const handleVerify = async (code?: string) => {
     const finalCode = code || otp.join("");
@@ -191,7 +216,16 @@ const WhatsAppVerify = () => {
   }
 
   if (loadError || !info) {
-    return shell(<p className="max-w-sm text-center text-sm text-slate-600">{loadError || "Something went wrong."}</p>);
+    return shell(
+      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+        <p className="text-sm text-slate-600">{loadError || "Something went wrong."}</p>
+        {canRetry && (
+          <Button onClick={() => setAttempt((n) => n + 1)} className="h-10 bg-[#0A66C2] px-5 text-sm text-white hover:bg-[#08519c]">
+            Try again
+          </Button>
+        )}
+      </div>
+    );
   }
 
   if (info.status !== "pending") {
