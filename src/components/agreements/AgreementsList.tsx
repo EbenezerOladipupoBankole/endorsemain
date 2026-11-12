@@ -1,14 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
-import { httpsCallable } from '@/lib/callable';
-import { db, functions } from '@/components/client';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/components/client';
 import { useAuth } from '@/components/AuthContext';
 import jsPDF from 'jspdf';
 import { sanitizeHtml, shareByEmailHref, shareByWhatsAppHref, signingLink } from './signingUtils';
+import {
+  type SignatureRecord,
+  isSigned,
+  contactOf,
+  displayName,
+  isWhatsApp,
+  formatDate,
+  useSignatureDocuments,
+  sendReminder,
+  SigningProgress,
+  SigningRecord,
+} from './documentTracking';
+import { AuditTrail } from './AuditTrail';
 import {
   FileText,
   Search,
@@ -27,131 +39,35 @@ import {
   X,
 } from 'lucide-react';
 
-interface SignatureRecord {
-  id: string;
-  name: string;
-  category?: string;
-  recipientEmail?: string;
-  recipientPhone?: string;
-  channel?: string;
-  recipientName?: string;
-  studentName?: string;
-  senderName?: string;
-  adminName?: string;
-  ownerEmail?: string;
-  message?: string;
-  renderedHtml?: string;
-  pdfBase64?: string;
-  status: 'pending' | 'signed' | 'completed';
-  signedAt?: any;
-  createdAt?: any;
-  viewedAt?: any;
-  deliveryStatus?: string;
-  signature_data?: string;
-  signature_positions?: any[];
-}
-
 interface AgreementsListProps {
   onOpenTemplateStudio?: () => void;
   onOpenSendModal?: () => void;
 }
 
-const isSigned = (r: SignatureRecord) => r.status === 'signed' || r.status === 'completed';
-const contactOf = (r: SignatureRecord) => r.recipientEmail || r.recipientPhone || '';
-const displayName = (r: SignatureRecord) => r.recipientName || r.studentName || contactOf(r);
-const isWhatsApp = (r: SignatureRecord) => r.channel === 'whatsapp';
-const toMillis = (ts: any) => (ts?.toMillis ? ts.toMillis() : 0);
-const formatDate = (ts: any) => (ts?.toDate ? ts.toDate().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
-const formatDateTime = (ts: any) =>
-  ts?.toDate ? ts.toDate().toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
-
-const DELIVERY_LABEL: Record<string, string> = {
-  sent: 'WhatsApp message sent',
-  delivered: 'Delivered on WhatsApp',
-  read: 'Read on WhatsApp',
-  failed: "WhatsApp message couldn't be delivered",
-};
-
-/** What Endorse actually stores about a sent document, in order. */
-const SigningRecord = ({ record }: { record: SignatureRecord }) => {
-  const rows = [
-    { label: `Sent to ${displayName(record)} by ${isWhatsApp(record) ? 'WhatsApp' : 'email'}`, at: formatDateTime(record.createdAt) },
-    ...(isWhatsApp(record) && record.deliveryStatus && DELIVERY_LABEL[record.deliveryStatus]
-      ? [{ label: DELIVERY_LABEL[record.deliveryStatus], at: null }]
-      : []),
-    ...(record.viewedAt ? [{ label: 'Opened after verifying their WhatsApp code', at: formatDateTime(record.viewedAt) }] : []),
-    isSigned(record)
-      ? { label: `Signed by ${displayName(record)}`, at: formatDateTime(record.signedAt) }
-      : { label: 'Waiting for signature', at: null },
-  ];
-  return (
-    <ol className="space-y-2.5">
-      {rows.map((row, i) => (
-        <li key={i} className="flex items-start justify-between gap-3 text-xs">
-          <span className="flex items-center gap-2 text-slate-700">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${i === rows.length - 1 && isSigned(record) ? 'bg-emerald-500' : 'bg-[#0A66C2]'}`} />
-            {row.label}
-          </span>
-          {row.at && <span className="shrink-0 text-slate-400">{row.at}</span>}
-        </li>
-      ))}
-    </ol>
-  );
-};
-
 const safeFilename = (name: string) => `${name.replace(/[^a-zA-Z0-9-_ ]/g, '').trim() || 'document'}_signed.pdf`;
 
 export const AgreementsList: React.FC<AgreementsListProps> = ({ onOpenTemplateStudio, onOpenSendModal }) => {
   const { user, userProfile } = useAuth();
-  const [sent, setSent] = useState<SignatureRecord[]>([]);
-  const [received, setReceived] = useState<SignatureRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { sent, received, loading } = useSignatureDocuments(user?.email);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'signed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewing, setViewing] = useState<SignatureRecord | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const senderName = userProfile?.displayName || userProfile?.name || user?.displayName || user?.email?.split('@')[0];
 
+  // The dashboard links here with ?doc=<id> to open a document's full details.
+  const docParam = searchParams.get('doc');
   useEffect(() => {
-    if (!user?.email) {
-      setLoading(false);
-      return;
-    }
-    const email = user.email.toLowerCase();
+    if (!docParam || loading) return;
+    const match = sent.find((r) => r.id === docParam);
+    if (match) setViewing(match);
+    searchParams.delete('doc');
+    setSearchParams(searchParams, { replace: true });
+  }, [docParam, loading, sent, searchParams, setSearchParams]);
 
-    const unsubSent = onSnapshot(
-      query(collection(db, 'documents'), where('ownerEmail', '==', user.email)),
-      (snap) => {
-        const items = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }) as SignatureRecord)
-          .filter((d) => (d.recipientEmail && d.recipientEmail !== email) || (isWhatsApp(d) && d.recipientPhone))
-          .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-        setSent(items);
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Failed to load sent documents:', err);
-        setLoading(false);
-      }
-    );
-
-    const unsubReceived = onSnapshot(
-      query(collection(db, 'documents'), where('recipientEmail', '==', email)),
-      (snap) => {
-        const items = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }) as SignatureRecord)
-          .filter((d) => !isSigned(d))
-          .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-        setReceived(items);
-      },
-      (err) => console.warn('Failed to load documents awaiting signature:', err)
-    );
-
-    return () => {
-      unsubSent();
-      unsubReceived();
-    };
-  }, [user?.email]);
+  // Keep an open detail view in step with live updates (e.g. the recipient signs while it's open).
+  const viewingLive = viewing ? sent.find((r) => r.id === viewing.id) ?? viewing : null;
 
   const copyLink = (r: SignatureRecord) => {
     navigator.clipboard.writeText(signingLink(r.id, r.channel));
@@ -167,14 +83,7 @@ export const AgreementsList: React.FC<AgreementsListProps> = ({ onOpenTemplateSt
         }
       : { href: shareByEmailHref({ to: r.recipientEmail || '', recipientName: r.recipientName, documentName: r.name, documentId: r.id, senderName }) };
 
-  const resendInvite = async (r: SignatureRecord) => {
-    try {
-      await httpsCallable(functions, isWhatsApp(r) ? 'sendWhatsAppInvite' : 'sendAgreementInvite')({ documentId: r.id });
-      toast.success(`Reminder sent to ${contactOf(r)}`);
-    } catch {
-      toast.error('Could not send the reminder email. Try sharing the link instead.');
-    }
-  };
+  const resendInvite = sendReminder;
 
   const handleDelete = async (r: SignatureRecord) => {
     if (!confirm(`Delete "${r.name}" sent to ${contactOf(r)}? The signing link will stop working.`)) return;
@@ -425,6 +334,7 @@ export const AgreementsList: React.FC<AgreementsListProps> = ({ onOpenTemplateSt
                   </div>
                   <span className="shrink-0 text-xs text-slate-400">{formatDate(r.createdAt)}</span>
                 </div>
+                <SigningProgress record={r} />
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   {statusBadge(r)}
                   <div className="-mr-2 flex">{renderActions(r, 'h-10 w-10')}</div>
@@ -462,7 +372,12 @@ export const AgreementsList: React.FC<AgreementsListProps> = ({ onOpenTemplateSt
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3.5">{statusBadge(r)}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="space-y-1.5">
+                          {statusBadge(r)}
+                          <SigningProgress record={r} />
+                        </div>
+                      </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">{formatDate(r.createdAt)}</td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-right">{renderActions(r, 'h-8 w-8')}</td>
                     </tr>
@@ -476,14 +391,14 @@ export const AgreementsList: React.FC<AgreementsListProps> = ({ onOpenTemplateSt
       </div>
 
       {/* Detail modal */}
-      {viewing && (
+      {viewingLive && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div className="min-w-0">
-                <h3 className="truncate text-sm font-bold text-slate-900">{viewing.name}</h3>
+                <h3 className="truncate text-sm font-bold text-slate-900">{viewingLive.name}</h3>
                 <p className="truncate text-xs text-slate-500">
-                  {displayName(viewing)} · {isSigned(viewing) ? `Signed ${formatDate(viewing.signedAt)}` : 'Awaiting signature'}
+                  {displayName(viewingLive)} · {isSigned(viewingLive) ? `Signed ${formatDate(viewingLive.signedAt)}` : 'Awaiting signature'}
                 </p>
               </div>
               <button onClick={() => setViewing(null)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label="Close">
@@ -492,49 +407,48 @@ export const AgreementsList: React.FC<AgreementsListProps> = ({ onOpenTemplateSt
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto p-5">
-              {viewing.renderedHtml ? (
+              {viewingLive.renderedHtml ? (
                 <div
                   className="prose prose-sm max-w-none rounded-xl border border-slate-200 p-4 text-xs text-slate-800"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewing.renderedHtml) }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewingLive.renderedHtml) }}
                 />
               ) : (
                 <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-600">
                   <FileText className="h-5 w-5 text-[#0A66C2]" /> PDF document
-                  {isSigned(viewing) && ' — download it to see the placed signatures.'}
+                  {isSigned(viewingLive) && ' — download it to see the placed signatures.'}
                 </div>
               )}
 
-              {viewing.signature_data && (
+              {viewingLive.signature_data && (
                 <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                  <img src={viewing.signature_data} alt="Signature" className="h-12 object-contain" />
+                  <img src={viewingLive.signature_data} alt="Signature" className="h-12 object-contain" />
                   <div className="text-right text-xs text-slate-600">
-                    <p className="font-bold text-slate-800">Signed by {displayName(viewing)}</p>
-                    <p>{contactOf(viewing)}</p>
+                    <p className="font-bold text-slate-800">Signed by {displayName(viewingLive)}</p>
+                    <p>{contactOf(viewingLive)}</p>
                   </div>
                 </div>
               )}
 
-              <div className="border-t border-slate-100 pt-3">
-                <h4 className="mb-2 text-xs font-bold text-slate-700">Signing record</h4>
-                <SigningRecord record={viewing} />
+              <div className="border-t border-slate-100 pt-4">
+                <AuditTrail record={viewingLive} />
               </div>
             </div>
 
             <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
-              {!isSigned(viewing) ? (
+              {!isSigned(viewingLive) ? (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="text-xs" onClick={() => copyLink(viewing)}>
+                  <Button variant="outline" size="sm" className="text-xs" onClick={() => copyLink(viewingLive)}>
                     <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link
                   </Button>
                   <Button asChild variant="outline" size="sm" className="text-xs">
-                    <a {...shareProps(viewing)}>
-                      {isWhatsApp(viewing) ? <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> : <Mail className="mr-1.5 h-3.5 w-3.5" />}
-                      {isWhatsApp(viewing) ? 'Share on WhatsApp' : 'Share via email'}
+                    <a {...shareProps(viewingLive)}>
+                      {isWhatsApp(viewingLive) ? <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> : <Mail className="mr-1.5 h-3.5 w-3.5" />}
+                      {isWhatsApp(viewingLive) ? 'Share on WhatsApp' : 'Share via email'}
                     </a>
                   </Button>
                 </div>
               ) : (
-                <Button size="sm" className="bg-emerald-600 text-xs text-white hover:bg-emerald-700" onClick={() => downloadSigned(viewing)}>
+                <Button size="sm" className="bg-emerald-600 text-xs text-white hover:bg-emerald-700" onClick={() => downloadSigned(viewingLive)}>
                   <Download className="mr-1.5 h-3.5 w-3.5" /> Download signed PDF
                 </Button>
               )}

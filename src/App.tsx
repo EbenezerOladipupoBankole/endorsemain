@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SignDocument from "./pages/SignDocument";
 import WhatsAppVerify from "./pages/WhatsAppVerify";
+import VerifyDocument from "./pages/VerifyDocument";
 import Blog from "./pages/Blog";
 // About page is hidden for now; uncomment this and the /about route to bring it back.
 // import About from "./pages/About";
@@ -66,6 +67,8 @@ const App = () => (
           {/* Signing pages handle their own auth: email signers log in, WhatsApp signers verify a code. */}
           <Route path="/sign/:id" element={<SignDocument />} />
           <Route path="/sign/:id/verify" element={<WhatsAppVerify />} />
+          <Route path="/verify" element={<VerifyDocument />} />
+          <Route path="/verify/:hash" element={<VerifyDocument />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/invoices" element={<Invoices />} />

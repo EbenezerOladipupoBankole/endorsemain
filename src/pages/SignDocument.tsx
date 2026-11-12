@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { db } from '@/components/client';
+import { db, functions } from '@/components/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { PDFViewer, PlacedItem } from '@/components/esign/PDFViewer';
@@ -87,6 +87,11 @@ const SignDocument = () => {
             setLoading(false);
             return;
           }
+
+          // Audit trail: the server records the open with the signer's IP address and user agent.
+          import('@/lib/callable')
+            .then(({ httpsCallable }) => httpsCallable(functions, 'recordDocumentEvent')({ documentId: id, type: 'opened' }))
+            .catch((err) => console.warn('Could not record that the document was opened:', err));
 
           if (data.fileUrl) {
             const response = await fetch(data.fileUrl);
@@ -187,10 +192,17 @@ const SignDocument = () => {
         signedAt: serverTimestamp(),
       });
 
+      const { httpsCallable } = await import('@/lib/callable');
+
+      // Seal it: the server logs the signature (IP, user agent, signer) and stores a SHA-256 hash.
+      try {
+        await httpsCallable(functions, 'sealSignedDocument')({ documentId: id });
+      } catch (sealErr) {
+        console.warn("Could not seal the signed document:", sealErr);
+      }
+
       // Email the signer a confirmation and let the sender know it's done
       try {
-        const { httpsCallable } = await import('@/lib/callable');
-        const { functions } = await import('@/components/client');
         const notifyFn = httpsCallable(functions, 'notifyAgreementSigned');
         await notifyFn({ documentId: id });
       } catch (notifyErr) {

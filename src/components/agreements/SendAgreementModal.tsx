@@ -23,7 +23,7 @@ import {
   tagLabel,
   templateInputTags,
 } from './signingUtils';
-import { Send, X, Mail, FileText, Upload, Plus, Trash2, Copy, CheckCircle2, LayoutTemplate, MessageCircle, AlertCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface SendAgreementModalProps {
   template?: AgreementTemplate | null;
@@ -58,15 +58,6 @@ const emptyRecipient = (channel: Channel = 'email'): Recipient => ({ name: '', c
 
 // Optional tags: left blank, they fall back to a sensible default.
 const OPTIONAL_TAGS = ['ORGANIZATION_NAME'];
-
-const TAG_PLACEHOLDERS: Record<string, string> = {
-  ORGANIZATION_NAME: 'e.g. Northwind Ltd',
-  JOB_TITLE: 'e.g. Product Designer',
-  START_DATE: 'e.g. Monday 3 November 2026',
-  SALARY: 'e.g. ₦6,000,000 per year',
-  SCOPE_OF_WORK: 'e.g. Website redesign and three months of support',
-  FEE: 'e.g. $4,500, paid in two instalments',
-};
 
 export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template, lockDocument, onClose, onSuccess, comments = [] }) => {
   const { user, userProfile } = useAuth();
@@ -233,6 +224,14 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
         throw err;
       }
 
+      // Audit trail: the server records who created each copy, from which IP address and browser.
+      const recordEvent = httpsCallable(functions, 'recordDocumentEvent');
+      await Promise.all(
+        created.map((c) =>
+          recordEvent({ documentId: c.id, type: 'created' }).catch((err) => console.warn('Could not record document creation:', err))
+        )
+      );
+
       const results: SentRecipient[] = [];
       for (const { r, name, contact, id } of created) {
         let delivered = true;
@@ -266,136 +265,122 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
     toast.success('Signing link copied');
   };
 
+  const fieldLabel = 'mb-1.5 block text-sm font-medium text-slate-800';
+  const hint = 'mt-1 text-xs text-slate-500';
+
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">{sent ? 'Sent for signature' : locked ? 'Invite others to sign' : 'Send a document for signature'}</h3>
-            <p className="text-xs text-slate-500">
-              {sent
-                ? 'Each person has their own link to sign on Endorse.'
-                : 'Invite people by email or WhatsApp. They sign on Endorse and you get notified.'}
-            </p>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/40 sm:items-center sm:p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="send-dialog-title"
+        className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-xl bg-white shadow-xl sm:rounded-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-5 sm:px-6">
+          <h2 id="send-dialog-title" className="text-lg font-semibold text-slate-900">
+            {sent ? 'Sent' : locked ? 'Send to others to sign' : 'Send for signature'}
+          </h2>
+          <button onClick={onClose} className="-mr-2 rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {sent ? (
-          <div className="flex-1 space-y-4 overflow-y-auto p-6">
-            <p className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-900">{documentName}</span> is waiting for{' '}
-              {sent.length === 1 ? 'one signature' : `${sent.length} signatures`}. You can also share the link yourself:
-            </p>
-            <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-              {sent.map((r) => (
-                <li key={r.documentId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-900">{r.name || r.contact}</p>
-                    <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                      {r.delivered ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                      ) : (
-                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                      )}
-                      <span className="truncate">
+          <>
+            <div className="flex-1 overflow-y-auto px-5 pb-5 sm:px-6">
+              <p className="text-sm text-slate-600">
+                <span className="font-medium text-slate-900">{documentName}</span> is on its way. You'll get an email when{' '}
+                {sent.length === 1 ? 'it has been signed' : 'everyone has signed'}, and you can follow it from your dashboard.
+              </p>
+              <ul className="mt-4 divide-y divide-slate-200 border-y border-slate-200">
+                {sent.map((r) => (
+                  <li key={r.documentId} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900">{r.name || r.contact}</p>
+                      <p className={`truncate text-xs ${r.delivered ? 'text-slate-500' : 'text-amber-700'}`}>
                         {r.delivered
-                          ? `Invite sent by ${r.channel === 'email' ? 'email' : 'WhatsApp'} to ${r.contact}`
-                          : `Not sent automatically — share it with ${r.contact}`}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => copyLink(r)}>
-                      <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy link
-                    </Button>
-                    {r.channel === 'email' ? (
-                      <Button asChild size="sm" className="bg-[#0A66C2] text-xs text-white hover:bg-[#08519c]">
-                        <a href={shareByEmailHref({ to: r.contact, recipientName: r.name, documentName, documentId: r.documentId, senderName })}>
-                          <Mail className="mr-1.5 h-3.5 w-3.5" /> Share via email
-                        </a>
-                      </Button>
-                    ) : (
-                      <Button asChild size="sm" className="bg-[#0A66C2] text-xs text-white hover:bg-[#08519c]">
+                          ? `${r.channel === 'email' ? 'Emailed' : 'Sent on WhatsApp'} to ${r.contact}`
+                          : `Couldn't send automatically. Share the link with ${r.contact} yourself.`}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-4 text-sm">
+                      <button type="button" className="font-medium text-[#0A66C2] hover:underline" onClick={() => copyLink(r)}>
+                        Copy link
+                      </button>
+                      {r.channel === 'email' ? (
                         <a
+                          className="font-medium text-[#0A66C2] hover:underline"
+                          href={shareByEmailHref({ to: r.contact, recipientName: r.name, documentName, documentId: r.documentId, senderName })}
+                        >
+                          Share by email
+                        </a>
+                      ) : (
+                        <a
+                          className="font-medium text-[#0A66C2] hover:underline"
                           href={shareByWhatsAppHref({ phone: r.contact, recipientName: r.name, documentName, documentId: r.documentId, senderName })}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> Share on WhatsApp
+                          Share on WhatsApp
                         </a>
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="flex justify-end pt-2">
-              <Button onClick={onClose} className="bg-[#FFC83D] font-semibold text-slate-900 hover:bg-[#e6b435]">
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4 sm:px-6">
+              <Button onClick={onClose} className="h-10 bg-[#0A66C2] px-5 text-sm font-medium text-white hover:bg-[#08519c]">
                 Done
               </Button>
             </div>
-          </div>
+          </>
         ) : (
-          <form onSubmit={handleSend} className="flex-1 space-y-6 overflow-y-auto p-6">
-            {/* 1. Document */}
-            <section className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">1. Document</h4>
-
+          <form onSubmit={handleSend} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-5 sm:px-6">
               {locked && pdfFile ? (
-                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <FileText className="h-6 w-6 shrink-0 text-[#0A66C2]" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-900">{pdfFile.name}</p>
-                    <p className="text-xs text-slate-500">Includes your signature · {Math.round(pdfFile.size / 1024)} KB</p>
-                  </div>
-                </div>
+                <p className="text-sm text-slate-600">
+                  Your signed copy of <span className="font-medium text-slate-900">{pdfFile.name}</span> will be sent. Each person gets their own link to sign it.
+                </p>
               ) : (
-                <>
-                  <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+                <div>
+                  <span className={fieldLabel}>Document</span>
+                  <div className="mb-3 inline-flex rounded-md border border-slate-300 text-sm" role="radiogroup" aria-label="Document source">
                     {([
-                      { id: 'upload', label: 'Upload a PDF', icon: Upload },
-                      { id: 'template', label: 'Use a template', icon: LayoutTemplate },
-                    ] as const).map((opt) => (
+                      { id: 'upload', label: 'Upload a PDF' },
+                      { id: 'template', label: 'Use a template' },
+                    ] as const).map((opt, i) => (
                       <button
                         key={opt.id}
                         type="button"
+                        role="radio"
+                        aria-checked={source === opt.id}
                         onClick={() => setSource(opt.id)}
-                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-xs font-semibold transition-colors ${
-                          source === opt.id ? 'bg-white text-[#0A66C2] shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                        className={`px-3 py-1.5 ${i > 0 ? 'border-l border-slate-300' : ''} ${
+                          source === opt.id ? 'bg-slate-100 font-medium text-slate-900' : 'text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        <opt.icon className="h-3.5 w-3.5" /> {opt.label}
+                        {opt.label}
                       </button>
                     ))}
                   </div>
 
                   {source === 'upload' ? (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                    <div
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
                         e.preventDefault();
                         handlePickFile(e.dataTransfer.files?.[0]);
                       }}
-                      className="flex w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-200 px-4 py-7 text-center transition-colors hover:border-[#0A66C2] hover:bg-blue-50/40"
+                      className="flex items-center justify-between gap-3 rounded-md border border-slate-300 px-3 py-2.5"
                     >
-                      {pdfFile ? (
-                        <>
-                          <FileText className="h-6 w-6 text-[#0A66C2]" />
-                          <span className="text-sm font-semibold text-slate-900">{pdfFile.name}</span>
-                          <span className="text-xs text-slate-500">{Math.round(pdfFile.size / 1024)} KB · click to replace</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-6 w-6 text-slate-400" />
-                          <span className="text-sm font-semibold text-slate-700">Drop a PDF here or click to browse</span>
-                          <span className="text-xs text-slate-500">Up to 600 KB</span>
-                        </>
-                      )}
+                      <span className={`min-w-0 truncate text-sm ${pdfFile ? 'text-slate-900' : 'text-slate-500'}`}>
+                        {pdfFile ? `${pdfFile.name} (${Math.round(pdfFile.size / 1024)} KB)` : 'No file chosen'}
+                      </span>
+                      <Button type="button" variant="outline" size="sm" className="h-8 shrink-0" onClick={() => fileInputRef.current?.click()}>
+                        {pdfFile ? 'Change' : 'Choose PDF'}
+                      </Button>
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -406,10 +391,11 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
                           e.target.value = '';
                         }}
                       />
-                    </button>
+                    </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <select
+                        aria-label="Template"
                         value={selectedTemplate.title}
                         onChange={(e) => {
                           const tpl = [template, ...DEFAULT_TEMPLATES].find((t) => t && !t.file && t.title === e.target.value);
@@ -426,141 +412,143 @@ export const SendAgreementModal: React.FC<SendAgreementModalProps> = ({ template
                           </option>
                         ))}
                       </select>
-                      <div
-                        className="prose prose-sm max-h-40 max-w-none overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-800"
-                        dangerouslySetInnerHTML={{
-                          __html: sanitizeHtml(
-                            fillTemplate(selectedTemplate.content, {
-                              recipientName: recipients[0]?.name || 'Recipient name',
-                              recipientEmail: recipients[0]?.email || recipients[0]?.phone || 'recipient@email.com',
-                              senderName,
-                              extra: fieldValues,
-                            })
-                          ),
-                        }}
-                      />
-                      {inputTags.length > 0 && (
-                        <div className="grid gap-3 pt-1 sm:grid-cols-2">
-                          {inputTags.map((tag) => (
-                            <div key={tag}>
-                              <Label className="mb-1 block text-xs font-semibold text-slate-700">
-                                {tagLabel(tag)}
-                                {OPTIONAL_TAGS.includes(tag) && <span className="font-normal text-slate-400"> (optional)</span>}
-                              </Label>
-                              <Input
-                                value={fieldValues[tag] ?? ''}
-                                onChange={(e) => setFieldValues((prev) => ({ ...prev, [tag]: e.target.value }))}
-                                placeholder={tag === 'ORGANIZATION_NAME' ? senderName : TAG_PLACEHOLDERS[tag] ?? tagLabel(tag)}
-                                className="text-sm"
-                              />
-                            </div>
-                          ))}
+                      <details className="rounded-md border border-slate-200 text-sm">
+                        <summary className="cursor-pointer px-3 py-2 text-slate-700">Preview</summary>
+                        <div
+                          className="prose prose-sm max-h-48 max-w-none overflow-y-auto border-t border-slate-200 p-3 text-xs text-slate-800"
+                          dangerouslySetInnerHTML={{
+                            __html: sanitizeHtml(
+                              fillTemplate(selectedTemplate.content, {
+                                recipientName: recipients[0]?.name || 'Recipient name',
+                                recipientEmail: recipients[0]?.email || recipients[0]?.phone || 'recipient@email.com',
+                                senderName,
+                                extra: fieldValues,
+                              })
+                            ),
+                          }}
+                        />
+                      </details>
+                      {inputTags.map((tag) => (
+                        <div key={tag}>
+                          <Label htmlFor={`tag-${tag}`} className={fieldLabel}>
+                            {tagLabel(tag)}
+                            {OPTIONAL_TAGS.includes(tag) && <span className="font-normal text-slate-500"> (optional)</span>}
+                          </Label>
+                          <Input
+                            id={`tag-${tag}`}
+                            value={fieldValues[tag] ?? ''}
+                            onChange={(e) => setFieldValues((prev) => ({ ...prev, [tag]: e.target.value }))}
+                            className="h-10 text-sm"
+                          />
+                          {tag === 'ORGANIZATION_NAME' && <p className={hint}>If left blank, we'll use {senderName}.</p>}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div>
-                <Label className="mb-1 block text-xs font-semibold text-slate-700">Document title</Label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={source === 'upload' ? pdfFile?.name.replace(/\.pdf$/i, '') || 'e.g. Services Agreement' : selectedTemplate.title}
-                  className="text-sm"
-                />
-              </div>
-            </section>
-
-            {/* 2. Recipients */}
-            <section className="space-y-3 border-t border-slate-100 pt-5">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">2. Who needs to sign?</h4>
-              {recipients.map((r, i) => (
-                <div key={i} className="space-y-2 rounded-xl border border-slate-200 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
-                      {([
-                        { id: 'email', label: 'Email', icon: Mail },
-                        { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
-                      ] as const).map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => updateRecipient(i, { channel: c.id })}
-                          className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                            r.channel === c.id ? 'bg-white text-[#0A66C2] shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                          }`}
-                        >
-                          <c.icon className="h-3 w-3" /> {c.label}
-                        </button>
                       ))}
                     </div>
-                    {recipients.length > 1 && (
-                      <button
-                        type="button"
-                        className="rounded p-1 text-slate-400 hover:text-rose-600"
-                        onClick={() => setRecipients((prev) => prev.filter((_, idx) => idx !== i))}
-                        aria-label="Remove recipient"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input value={r.name} onChange={(e) => updateRecipient(i, { name: e.target.value })} placeholder="Full name" className="text-sm" />
-                    {r.channel === 'email' ? (
-                      <Input
-                        type="email"
-                        value={r.email}
-                        onChange={(e) => updateRecipient(i, { email: e.target.value })}
-                        placeholder="email@example.com"
-                        className="text-sm"
-                      />
-                    ) : (
-                      <Input
-                        type="tel"
-                        value={r.phone}
-                        onChange={(e) => updateRecipient(i, { phone: e.target.value })}
-                        placeholder="+2348012345678"
-                        className="text-sm"
-                      />
-                    )}
-                  </div>
+                  )}
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setRecipients((prev) => [...prev, emptyRecipient(prev[prev.length - 1]?.channel)])}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-[#0A66C2] hover:underline"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add another person
-              </button>
-              <p className="text-[11px] text-slate-500">
-                Email signers sign in with that address. WhatsApp signers confirm a code sent to their number — no account needed.
-              </p>
-            </section>
+              )}
 
-            {/* 3. Message */}
-            <section className="space-y-2 border-t border-slate-100 pt-5">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">3. Message (optional)</h4>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={3}
-                maxLength={1000}
-                placeholder="Add a note for the people signing"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2]"
-              />
-            </section>
+              {!locked && (
+                <div>
+                  <Label htmlFor="send-title" className={fieldLabel}>Title</Label>
+                  <Input id="send-title" value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 text-sm" />
+                </div>
+              )}
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="text-xs">
+              <fieldset className="space-y-4">
+                <legend className="mb-1.5 text-sm font-medium text-slate-800">{recipients.length > 1 ? 'Signers' : 'Who needs to sign?'}</legend>
+                {recipients.map((r, i) => (
+                  <div key={i} className={i > 0 ? 'border-t border-slate-200 pt-4' : ''}>
+                    {recipients.length > 1 && (
+                      <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
+                        <span>Signer {i + 1}</span>
+                        <button
+                          type="button"
+                          className="font-medium text-slate-500 hover:text-rose-600"
+                          onClick={() => setRecipients((prev) => prev.filter((_, idx) => idx !== i))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor={`name-${i}`} className={fieldLabel}>Name</Label>
+                        <Input id={`name-${i}`} value={r.name} autoComplete="off" onChange={(e) => updateRecipient(i, { name: e.target.value })} className="h-10 text-sm" />
+                      </div>
+                      <div>
+                        <Label htmlFor={`channel-${i}`} className={fieldLabel}>Send by</Label>
+                        <select
+                          id={`channel-${i}`}
+                          value={r.channel}
+                          onChange={(e) => updateRecipient(i, { channel: e.target.value as Channel })}
+                          className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+                        >
+                          <option value="email">Email</option>
+                          <option value="whatsapp">WhatsApp</option>
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        {r.channel === 'email' ? (
+                          <>
+                            <Label htmlFor={`contact-${i}`} className={fieldLabel}>Email address</Label>
+                            <Input
+                              id={`contact-${i}`}
+                              type="email"
+                              autoComplete="off"
+                              value={r.email}
+                              onChange={(e) => updateRecipient(i, { email: e.target.value })}
+                              className="h-10 text-sm"
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <Label htmlFor={`contact-${i}`} className={fieldLabel}>WhatsApp number</Label>
+                            <Input
+                              id={`contact-${i}`}
+                              type="tel"
+                              autoComplete="off"
+                              value={r.phone}
+                              onChange={(e) => updateRecipient(i, { phone: e.target.value })}
+                              className="h-10 text-sm"
+                            />
+                            <p className={hint}>Include the country code, starting with +. They'll confirm a code sent to this number, so no account is needed.</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setRecipients((prev) => [...prev, emptyRecipient(prev[prev.length - 1]?.channel)])}
+                  className="text-sm font-medium text-[#0A66C2] hover:underline"
+                >
+                  + Add another signer
+                </button>
+              </fieldset>
+
+              <div>
+                <Label htmlFor="send-message" className={fieldLabel}>
+                  Message <span className="font-normal text-slate-500">(optional)</span>
+                </Label>
+                <textarea
+                  id="send-message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2]"
+                />
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 px-5 py-4 sm:px-6">
+              <Button type="button" variant="ghost" onClick={onClose} className="h-10 text-sm">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSending} className="bg-[#0A66C2] px-6 text-xs font-bold text-white hover:bg-[#08519c]">
-                <Send className="mr-1.5 h-4 w-4" />
-                {isSending ? 'Sending…' : 'Send for signature'}
+              <Button type="submit" disabled={isSending} className="h-10 bg-[#0A66C2] px-5 text-sm font-medium text-white hover:bg-[#08519c]">
+                {isSending ? 'Sending…' : 'Send'}
               </Button>
             </div>
           </form>

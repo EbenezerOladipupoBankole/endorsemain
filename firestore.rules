@@ -61,9 +61,13 @@ service cloud.firestore {
     match /documents/{docId} {
       allow read: if isSignedIn() &&
         (isAdmin() || isWhatsAppSigner(docId) || request.auth.token.email == resource.data.ownerEmail || isRecipient());
+      // Senders can't touch plan counting or the audit/seal fields, which only the server writes,
+      // and can't change a document once it has been sealed.
       allow update: if isSignedIn() &&
         (isAdmin() || (request.auth.token.email == resource.data.ownerEmail &&
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['creditOk'])));
+          !('documentHash' in resource.data) &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['creditOk', 'documentHash', 'sealedAt', 'signerUid', 'viewedAt'])));
       // Recipients (by email, or by verified WhatsApp code) may only record their
       // signature on a pending document — nothing else.
       allow update: if (isRecipient() || isWhatsAppSigner(docId)) &&
@@ -104,6 +108,15 @@ service cloud.firestore {
         allow delete: if canAccessParent() &&
           (resource.data.authorUid == request.auth.uid || request.auth.token.email == parent().ownerEmail);
         allow update: if false;
+      }
+
+      // Audit trail: written only by the server (Admin SDK), readable by the document's parties.
+      match /audit/{eventId} {
+        allow read: if isSignedIn() && (isAdmin() || isWhatsAppSigner(docId) ||
+          request.auth.token.email == get(/databases/$(database)/documents/documents/$(docId)).data.ownerEmail ||
+          (request.auth.token.email_verified == true &&
+            request.auth.token.email == get(/databases/$(database)/documents/documents/$(docId)).data.recipientEmail));
+        allow write: if false;
       }
     }
 
