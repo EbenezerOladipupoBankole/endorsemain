@@ -5,7 +5,6 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useDocumentMeta } from "@/components/FeaturePage";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthContext";
-import { Check } from "lucide-react";
 
 const serif = { fontFamily: "Gilroy, Inter, system-ui, sans-serif" };
 
@@ -64,8 +63,8 @@ function PhoneMockup() {
       <div className="absolute -left-10 top-24 hidden rotate-[-4deg] rounded-xl bg-white px-3 py-2 text-[11px] font-medium text-[#0F172A] shadow-lg sm:block">
         Opened · 9:04 am
       </div>
-      <div className="absolute -right-12 bottom-24 hidden rotate-[3deg] items-center gap-1.5 rounded-xl bg-[#FFC83D] px-3 py-2 text-[11px] font-semibold text-[#0F172A] shadow-lg sm:flex">
-        <Check className="h-3.5 w-3.5" /> Signed in 58s
+      <div className="absolute -right-12 bottom-24 hidden rotate-[3deg] rounded-xl bg-[#FFC83D] px-3 py-2 text-[11px] font-semibold text-[#0F172A] shadow-lg sm:flex">
+        Signed in 58s
       </div>
     </div>
   );
@@ -102,8 +101,8 @@ function PacketStack() {
                 </div>
                 <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between border-t border-[#E8EFF7] pt-3">
                   <span className="text-lg italic text-[#0A66C2]" style={serif}>J. Lee</span>
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
-                    <Check className="h-3.5 w-3.5" />
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                    Signed
                   </span>
                 </div>
               </div>

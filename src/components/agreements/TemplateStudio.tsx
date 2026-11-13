@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, onSnapshot, deleteField } from 'firebase/firestore';
 import { db } from '@/components/client';
 import { useAuth } from '@/components/AuthContext';
-import { FileText, Save, Tag, Plus, Send, Pencil } from 'lucide-react';
+import { Save, Plus, Send, Upload, Loader2, X } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import { fileToDataUrl, MAX_PDF_BYTES } from './signingUtils';
+import { convertWordToPDF, isPdfFile, isWordFile } from '@/lib/wordToPdf';
 
 export interface AgreementTemplate {
   id?: string;
@@ -19,9 +21,23 @@ export interface AgreementTemplate {
   fields: string[];
   createdAt?: any;
   ownerUid?: string;
+  /** Display name of whoever saved it, shown to teammates. */
+  ownerName?: string;
+  /** Set when the template is shared with a team; every member of that team can see and use it. */
+  teamId?: string;
+  /** 'file' for an uploaded PDF/Word document; HTML templates leave this unset. */
+  kind?: 'file';
+  /** Uploaded document as a PDF data URL (kind === 'file'). */
+  pdfBase64?: string;
+  fileName?: string;
   /** Set when sending an uploaded PDF instead of an HTML template. */
   file?: File;
 }
+
+const dataUrlToFile = async (dataUrl: string, name: string) => {
+  const blob = await (await fetch(dataUrl)).blob();
+  return new File([blob], name, { type: 'application/pdf' });
+};
 
 const STANDARD_FIELDS = ['RECIPIENT_NAME', 'RECIPIENT_EMAIL', 'SENDER_NAME', 'ORGANIZATION_NAME', 'DATE'];
 
@@ -81,15 +97,37 @@ export const DEFAULT_TEMPLATES: AgreementTemplate[] = [
   },
 ];
 
+const ACCEPTED_UPLOADS = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+/** Strips the extension from an uploaded file's name to use as a default title. */
+const baseName = (name: string) => name.replace(/\.(pdf|docx?)$/i, '');
+
+/** Reads a local PDF or Word file and returns it as a PDF data URL, converting Word documents first. */
+const readUploadAsPdf = async (file: File) => {
+  let pdf: Blob = file;
+  if (isWordFile(file)) {
+    pdf = await convertWordToPDF(file);
+  } else if (!isPdfFile(file)) {
+    throw new Error('Please choose a PDF or Word (.doc, .docx) file.');
+  }
+  if (pdf.size > MAX_PDF_BYTES) {
+    throw new Error(`That document is ${Math.round(pdf.size / 1024)}KB as a PDF. The limit is 600KB, so please compress it and try again.`);
+  }
+  const pdfFile = new File([pdf], `${baseName(file.name)}.pdf`, { type: 'application/pdf' });
+  return { dataUrl: await fileToDataUrl(pdfFile), fileName: pdfFile.name };
+};
+
 interface TemplateStudioProps {
   onSelectTemplateToDispatch?: (template: AgreementTemplate) => void;
 }
 
 export const TemplateStudio: React.FC<TemplateStudioProps> = ({ onSelectTemplateToDispatch }) => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [savedTemplates, setSavedTemplates] = useState<AgreementTemplate[]>([]);
   const [mode, setMode] = useState<'library' | 'editor'>('library');
 
+  /** Firestore ID of the saved template being edited; null when creating a new one or copying a built-in. */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('General');
   const [description, setDescription] = useState('');
@@ -97,6 +135,13 @@ export const TemplateStudio: React.FC<TemplateStudioProps> = ({ onSelectTemplate
   const [customTag, setCustomTag] = useState('');
   const [fields, setFields] = useState<string[]>(STANDARD_FIELDS);
   const [isSaving, setIsSaving] = useState(false);
+
+  /** Set when the template is an uploaded document rather than HTML. */
+  const [uploadedPdf, setUploadedPdf] = useState<{ dataUrl: string; fileName: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -110,12 +155,41 @@ export const TemplateStudio: React.FC<TemplateStudioProps> = ({ onSelectTemplate
   const templates = [...savedTemplates, ...DEFAULT_TEMPLATES];
 
   const openEditor = (tpl?: AgreementTemplate) => {
+    setEditingId(tpl?.id ?? null);
     setTitle(tpl ? tpl.title : 'New template');
     setCategory(tpl?.category || 'General');
     setDescription(tpl?.description || '');
     setContent(tpl?.content || '<p>Write your agreement here. Use the fields above to personalise it for each recipient.</p>');
     setFields(tpl?.fields?.length ? tpl.fields : STANDARD_FIELDS);
+    setUploadedPdf(tpl?.kind === 'file' && tpl.pdfBase64 ? { dataUrl: tpl.pdfBase64, fileName: tpl.fileName || `${tpl.title}.pdf` } : null);
     setMode('editor');
+  };
+
+  /** Uploads a document from the user's computer and opens it in the editor so they can name and save it. */
+  const handleUpload = async (file: File | undefined, replaceOnly = false) => {
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const pdf = await readUploadAsPdf(file);
+      if (replaceOnly) {
+        setUploadedPdf(pdf);
+        return;
+      }
+      setEditingId(null);
+      setTitle(baseName(file.name));
+      setCategory('Uploaded');
+      setDescription('');
+      setContent('');
+      setFields([]);
+      setUploadedPdf(pdf);
+      setMode('editor');
+    } catch (err) {
+      console.error('Template upload error:', err);
+      toast.error(err instanceof Error && err.message ? err.message : 'Could not read that file. Please try again.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const insertTag = (tag: string) => {
@@ -132,21 +206,30 @@ export const TemplateStudio: React.FC<TemplateStudioProps> = ({ onSelectTemplate
 
   const saveTemplate = async () => {
     if (!user?.uid) return;
-    if (!title.trim() || !content.trim()) {
-      toast.error('Add a title and some content first.');
+    if (!title.trim() || (!uploadedPdf && !content.trim())) {
+      toast.error(uploadedPdf ? 'Give the template a title first.' : 'Add a title and some content first.');
       return;
     }
     setIsSaving(true);
     try {
-      await addDoc(collection(db, 'templates'), {
-        title: title.trim(),
-        category,
-        description,
-        content,
-        fields,
-        ownerUid: user.uid,
-        createdAt: serverTimestamp(),
-      });
+      const body = uploadedPdf
+        ? { kind: 'file' as const, pdfBase64: uploadedPdf.dataUrl, fileName: uploadedPdf.fileName, content: '', fields: [] }
+        : { kind: deleteField(), pdfBase64: deleteField(), fileName: deleteField(), content, fields };
+      const common = { title: title.trim(), category, description };
+
+      if (editingId) {
+        await updateDoc(doc(db, 'templates', editingId), { ...common, ...body });
+      } else {
+        // deleteField() is only valid in updates, so leave the file keys out of a new HTML template.
+        const createBody = uploadedPdf ? body : { content, fields };
+        await addDoc(collection(db, 'templates'), {
+          ...common,
+          ...createBody,
+          ownerUid: user.uid,
+          ownerName: userProfile?.displayName || userProfile?.name || user.displayName || user.email || '',
+          createdAt: serverTimestamp(),
+        });
+      }
       toast.success('Template saved');
       setMode('library');
     } catch (err) {
@@ -157,11 +240,62 @@ export const TemplateStudio: React.FC<TemplateStudioProps> = ({ onSelectTemplate
     }
   };
 
+  const deleteTemplate = async (tpl: AgreementTemplate) => {
+    if (!tpl.id || !window.confirm(`Delete "${tpl.title}"? This can't be undone.`)) return;
+    setBusyId(tpl.id);
+    try {
+      await deleteDoc(doc(db, 'templates', tpl.id));
+      toast.success('Template deleted');
+    } catch (err) {
+      console.error('Delete template error:', err);
+      toast.error('Failed to delete template.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  /** Hands a template to the send flow; uploaded documents go through as a PDF file. */
+  const dispatch = async (tpl: AgreementTemplate) => {
+    if (!onSelectTemplateToDispatch) return;
+    if (tpl.kind !== 'file' || !tpl.pdfBase64) {
+      onSelectTemplateToDispatch(tpl);
+      return;
+    }
+    setBusyId(tpl.id ?? tpl.title);
+    try {
+      const file = await dataUrlToFile(tpl.pdfBase64, tpl.fileName || `${tpl.title}.pdf`);
+      onSelectTemplateToDispatch({ ...tpl, file });
+    } catch (err) {
+      console.error('Open uploaded template error:', err);
+      toast.error('Could not open that document.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const previewPdf = async (dataUrl: string) => {
+    const blob = await (await fetch(dataUrl)).blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+
+  const fileInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept={ACCEPTED_UPLOADS}
+      className="hidden"
+      onChange={(e) => handleUpload(e.target.files?.[0], mode === 'editor')}
+    />
+  );
+
   if (mode === 'editor') {
     return (
       <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+        {fileInput}
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-900">Edit template</h3>
+          <h3 className="text-base font-bold text-slate-900">{uploadedPdf ? 'Uploaded template' : 'Edit template'}</h3>
           <button onClick={() => setMode('library')} className="text-xs font-semibold text-slate-500 hover:text-slate-900">
             Back to templates
           </button>
@@ -182,42 +316,68 @@ export const TemplateStudio: React.FC<TemplateStudioProps> = ({ onSelectTemplate
           </div>
         </div>
 
-        <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-[#0A66C2]">
-            <Tag className="h-3.5 w-3.5" /> Fields
-          </p>
-          <p className="mb-3 text-[11px] text-slate-600">
-            Click to insert. Recipient name, email, sender and date fill in automatically when you send.
-          </p>
-          <div className="mb-3 flex flex-wrap gap-2">
-            {fields.map((field) => (
-              <button
-                key={field}
-                type="button"
-                onClick={() => insertTag(field)}
-                className="rounded-md border border-blue-200 bg-white px-2 py-1 font-mono text-[11px] text-blue-800 hover:bg-[#0A66C2] hover:text-white"
-              >
-                {`{{${field}}}`}
-              </button>
-            ))}
+        {uploadedPdf ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-bold text-slate-900">Document</p>
+            <p className="mt-1 break-all text-sm text-slate-700">{uploadedPdf.fileName}</p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Saved as a PDF. When you use this template you'll place signature fields on the document before sending.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => previewPdf(uploadedPdf.dataUrl)}>
+                Preview
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs" disabled={isUploading} onClick={() => fileInputRef.current?.click()}>
+                {isUploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                {isUploading ? 'Converting…' : 'Replace file'}
+              </Button>
+            </div>
           </div>
-          <div className="flex max-w-sm items-center gap-2">
-            <Input value={customTag} onChange={(e) => setCustomTag(e.target.value)} placeholder="Custom field, e.g. PROJECT_NAME" className="h-8 bg-white text-xs" />
-            <Button onClick={addCustomTag} size="sm" className="h-8 bg-[#0A66C2] text-xs text-white hover:bg-[#08519c]">
-              Add
-            </Button>
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+              <p className="mb-2 text-xs font-bold text-[#0A66C2]">Fields</p>
+              <p className="mb-3 text-[11px] text-slate-600">
+                Click to insert. Recipient name, email, sender and date fill in automatically when you send.
+              </p>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {fields.map((field) => (
+                  <button
+                    key={field}
+                    type="button"
+                    onClick={() => insertTag(field)}
+                    className="rounded-md border border-blue-200 bg-white px-2 py-1 font-mono text-[11px] text-blue-800 hover:bg-[#0A66C2] hover:text-white"
+                  >
+                    {`{{${field}}}`}
+                  </button>
+                ))}
+              </div>
+              <div className="flex max-w-sm items-center gap-2">
+                <Input value={customTag} onChange={(e) => setCustomTag(e.target.value)} placeholder="Custom field, e.g. PROJECT_NAME" className="h-8 bg-white text-xs" />
+                <Button onClick={addCustomTag} size="sm" className="h-8 bg-[#0A66C2] text-xs text-white hover:bg-[#08519c]">
+                  Add
+                </Button>
+              </div>
+            </div>
 
-        <ReactQuill value={content} onChange={setContent} theme="snow" className="min-h-[260px] rounded-lg bg-white" />
+            <ReactQuill value={content} onChange={setContent} theme="snow" className="min-h-[260px] rounded-lg bg-white" />
+          </>
+        )}
 
         <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-          <Button variant="outline" onClick={saveTemplate} disabled={isSaving} className="text-xs">
+          <Button variant="outline" onClick={saveTemplate} disabled={isSaving || isUploading} className="text-xs">
             <Save className="mr-1.5 h-4 w-4" /> {isSaving ? 'Saving…' : 'Save template'}
           </Button>
           {onSelectTemplateToDispatch && (
             <Button
-              onClick={() => onSelectTemplateToDispatch({ title, category, description, content, fields })}
+              disabled={isUploading}
+              onClick={() =>
+                dispatch(
+                  uploadedPdf
+                    ? { title, category, description, content: '', fields: [], kind: 'file', pdfBase64: uploadedPdf.dataUrl, fileName: uploadedPdf.fileName }
+                    : { title, category, description, content, fields }
+                )
+              }
               className="bg-[#0A66C2] text-xs font-bold text-white hover:bg-[#08519c]"
             >
               <Send className="mr-1.5 h-4 w-4" /> Send for signature
@@ -230,40 +390,88 @@ export const TemplateStudio: React.FC<TemplateStudioProps> = ({ onSelectTemplate
 
   return (
     <div className="space-y-4">
+      {fileInput}
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h3 className="text-base font-bold text-slate-900">Templates</h3>
           <p className="text-xs text-slate-500">Reusable agreements that fill in each recipient's details automatically.</p>
         </div>
-        <Button onClick={() => openEditor()} className="bg-[#0A66C2] text-xs font-semibold text-white hover:bg-[#08519c]">
-          <Plus className="mr-1.5 h-4 w-4" /> New template
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="text-xs font-semibold">
+            {isUploading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
+            {isUploading ? 'Converting…' : 'Upload document'}
+          </Button>
+          <Button onClick={() => openEditor()} className="bg-[#0A66C2] text-xs font-semibold text-white hover:bg-[#08519c]">
+            <Plus className="mr-1.5 h-4 w-4" /> New template
+          </Button>
+        </div>
+      </div>
+
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => !isUploading && fileInputRef.current?.click()}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !isUploading && fileInputRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          if (!isUploading) handleUpload(e.dataTransfer.files?.[0]);
+        }}
+        className={`cursor-pointer rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
+          isDragging ? 'border-[#0A66C2] bg-blue-50' : 'border-slate-200 bg-slate-50/60 hover:border-[#0A66C2]'
+        }`}
+      >
+        <p className="text-sm font-semibold text-slate-800">
+          {isUploading ? 'Preparing your document…' : 'Have your own agreement? Drop it here or click to upload'}
+        </p>
+        <p className="mt-1 text-[11px] text-slate-500">PDF or Word (.doc, .docx), up to 600KB. Word files are converted to PDF.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {templates.map((tpl) => (
-          <div key={tpl.id || tpl.title} className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 transition-colors hover:border-[#0A66C2]">
-            <div>
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-[#0A66C2]" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{tpl.category}</span>
-                {tpl.id && <span className="rounded-full bg-[#FFF4D6] px-2 py-0.5 text-[10px] font-semibold text-slate-700">Yours</span>}
+        {templates.map((tpl) => {
+          const key = tpl.id || tpl.title;
+          const busy = busyId === key;
+          return (
+            <div key={key} className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 transition-colors hover:border-[#0A66C2]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{tpl.category}</span>
+                  {tpl.kind === 'file' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">PDF</span>}
+                  {tpl.id && <span className="rounded-full bg-[#FFF4D6] px-2 py-0.5 text-[10px] font-semibold text-slate-700">Yours</span>}
+                  {tpl.id && (
+                    <button
+                      onClick={() => deleteTemplate(tpl)}
+                      disabled={busy}
+                      aria-label={`Delete ${tpl.title}`}
+                      className="ml-auto rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <h4 className="mt-2 text-sm font-bold text-slate-900">{tpl.title}</h4>
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-600">
+                  {tpl.description || (tpl.kind === 'file' ? tpl.fileName : '')}
+                </p>
               </div>
-              <h4 className="mt-2 text-sm font-bold text-slate-900">{tpl.title}</h4>
-              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-600">{tpl.description}</p>
-            </div>
-            <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
-              {onSelectTemplateToDispatch && (
-                <Button onClick={() => onSelectTemplateToDispatch(tpl)} size="sm" className="flex-1 bg-[#0A66C2] text-xs font-semibold text-white hover:bg-[#08519c]">
-                  Use template
+              <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
+                {onSelectTemplateToDispatch && (
+                  <Button onClick={() => dispatch(tpl)} disabled={busy} size="sm" className="flex-1 bg-[#0A66C2] text-xs font-semibold text-white hover:bg-[#08519c]">
+                    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Use template'}
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => openEditor(tpl)} className="text-xs">
+                  Edit
                 </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={() => openEditor(tpl)} className="text-xs">
-                <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-              </Button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { NewsletterForm } from "@/components/NewsletterForm";
 import { toast } from "sonner";
-import { ArrowRight, FileText, Image as ImageIcon, Search, Share2, Sparkles, User, X } from "lucide-react";
+import { ArrowRight, Search, Share2, X } from "lucide-react";
 
 const plainText = (html: unknown) =>
   String(html ?? "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
@@ -79,8 +79,7 @@ const Blog = () => {
         <div className="container mx-auto max-w-6xl px-0">
           {/* Header */}
           <div className="text-center mb-12 md:mb-20">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              <Sparkles className="w-4 h-4" />
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
               The Endorse Blog
             </div>
             <h1 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold mb-6 tracking-tight">
@@ -129,9 +128,7 @@ const Blog = () => {
                    {featured.image?.startsWith('http') || featured.image?.startsWith('/') ? (
                      <img src={featured.image} alt={featured.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                    ) : (
-                     <div className={`w-full h-full ${featured.image || 'bg-primary/5'} flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500`}>
-                        <FileText className="w-24 h-24" />
-                     </div>
+                     <div className={`w-full h-full ${featured.image || 'bg-primary/5'}`} />
                    )}
                 </div>
                 <div className="p-6 md:p-12 flex flex-col justify-center">
@@ -148,7 +145,7 @@ const Blog = () => {
                   </p>
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-muted-foreground">
-                      <User className="w-5 h-5" />
+                      {featured.author?.charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <p className="font-semibold text-sm">{featured.author}</p>
@@ -172,9 +169,7 @@ const Blog = () => {
                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                      />
                    ) : (
-                     <div className={`w-full h-full ${post.image || 'bg-primary/5'} flex items-center justify-center text-muted-foreground/20 group-hover:scale-105 transition-transform duration-500`}>
-                        <ImageIcon className="w-12 h-12" />
-                     </div>
+                     <div className={`w-full h-full ${post.image || 'bg-primary/5'}`} />
                    )}
                 </div>
                 <div className="p-6 flex flex-col flex-1">
@@ -194,8 +189,7 @@ const Blog = () => {
                     {post.excerpt}
                   </p>
                   <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-auto">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <User className="w-3 h-3" />
+                    <div className="text-xs text-muted-foreground">
                       {post.author}
                     </div>
                     <div className="flex items-center gap-1">

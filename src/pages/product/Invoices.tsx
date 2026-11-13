@@ -1,4 +1,3 @@
-import { BadgeCheck, Calculator, Coins, FileDown, Filter, Receipt } from "lucide-react";
 import { FeaturePage, serif } from "@/components/FeaturePage";
 
 const LINES = [
@@ -59,12 +58,12 @@ export default function ProductInvoices() {
       ]}
       highlightsTitle="All the basics, none of the spreadsheet"
       highlights={[
-        { icon: Calculator, title: "Automatic totals", text: "Quantities, prices, tax percentage and discounts add up for you — no formulas to break." },
-        { icon: Coins, title: "10 currencies", text: "Naira, Kenyan Shilling, Ghanaian Cedi and Rand, plus US Dollar, Euro, Pound, Canadian and Australian Dollar and Rupee." },
-        { icon: FileDown, title: "PDF download", text: "A clean, professional PDF with your tax ID, line items and notes, ready to email or print." },
-        { icon: BadgeCheck, title: "Paid or pending", text: "Mark invoices as paid in one click so you always know who still owes you." },
-        { icon: Filter, title: "See who owes you", text: "Switch between paid, pending and overdue invoices, with totals for each. Unpaid invoices past their due date move to overdue on their own." },
-        { icon: Receipt, title: "Notes and terms", text: "Add payment instructions or terms to the bottom of any invoice." },
+        { title: "Automatic totals", text: "Quantities, prices, tax percentage and discounts add up for you — no formulas to break." },
+        { title: "10 currencies", text: "Naira, Kenyan Shilling, Ghanaian Cedi and Rand, plus US Dollar, Euro, Pound, Canadian and Australian Dollar and Rupee." },
+        { title: "PDF download", text: "A clean, professional PDF with your tax ID, line items and notes, ready to email or print." },
+        { title: "Paid or pending", text: "Mark invoices as paid in one click so you always know who still owes you." },
+        { title: "See who owes you", text: "Switch between paid, pending and overdue invoices, with totals for each. Unpaid invoices past their due date move to overdue on their own." },
+        { title: "Notes and terms", text: "Add payment instructions or terms to the bottom of any invoice." },
       ]}
       faqs={[
         { q: "Is it free?", a: "Yes. Create an account and start making invoices straight away." },

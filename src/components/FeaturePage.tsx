@@ -4,7 +4,6 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthContext";
-import type { LucideIcon } from "lucide-react";
 
 export const serif = { fontFamily: "Gilroy, Inter, system-ui, sans-serif" };
 
@@ -14,7 +13,6 @@ export interface FeatureStep {
 }
 
 export interface FeatureHighlight {
-  icon: LucideIcon;
   title: string;
   text: string;
 }
@@ -135,14 +133,9 @@ export function FeaturePage({
           </h2>
           <div className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
             {highlights.map((h) => (
-              <div key={h.title} className="flex gap-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0A66C2]/10 text-[#0A66C2] dark:text-[#FFC83D]">
-                  <h.icon className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="font-bold text-[#0F172A] dark:text-white">{h.title}</p>
-                  <p className="mt-1 text-[15px] leading-relaxed text-[#475569] dark:text-slate-400">{h.text}</p>
-                </div>
+              <div key={h.title} className="border-t-2 border-[#0A66C2] pt-4 dark:border-[#FFC83D]">
+                <p className="font-bold text-[#0F172A] dark:text-white">{h.title}</p>
+                <p className="mt-1 text-[15px] leading-relaxed text-[#475569] dark:text-slate-400">{h.text}</p>
               </div>
             ))}
           </div>

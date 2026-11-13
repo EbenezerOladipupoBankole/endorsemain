@@ -3,17 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { ArrowLeft, ArrowRight, CheckCircle2, Combine, Download, FileImage, FileText, FileType, ImagePlus, Loader2, Lock, ShieldCheck, Sparkles, Upload, X, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Download, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { httpsCallable } from "@/lib/callable";
 import { functions } from "@/components/client";
+import { mergePdfs, pdfToDocx } from "@/lib/pdfTools";
 
 const tools = [
   {
     id: "word-to-pdf",
     title: "Word to PDF",
     description: "Convert DOC and DOCX files to PDF instantly.",
-    icon: FileText,
     color: "text-blue-600",
     bgColor: "bg-blue-50",
     borderColor: "group-hover:border-blue-200",
@@ -24,7 +24,6 @@ const tools = [
     id: "pdf-to-word",
     title: "PDF to Word",
     description: "Turn your PDF files into editable Word documents.",
-    icon: FileType,
     color: "text-red-600",
     bgColor: "bg-red-50",
     borderColor: "group-hover:border-red-200",
@@ -35,7 +34,6 @@ const tools = [
     id: "image-to-pdf",
     title: "Image to PDF",
     description: "Convert JPG and PNG images to PDF format.",
-    icon: ImagePlus,
     color: "text-teal-600",
     bgColor: "bg-teal-50",
     borderColor: "group-hover:border-teal-200",
@@ -46,7 +44,6 @@ const tools = [
     id: "pdf-to-image",
     title: "PDF to Image",
     description: "Extract pages from your PDF as high-quality images.",
-    icon: FileImage,
     color: "text-orange-600",
     bgColor: "bg-orange-50",
     borderColor: "group-hover:border-orange-200",
@@ -57,7 +54,6 @@ const tools = [
     id: "merge-pdf",
     title: "Merge PDF",
     description: "Combine multiple PDF files into one single document.",
-    icon: Combine,
     color: "text-green-600",
     bgColor: "bg-green-50",
     borderColor: "group-hover:border-green-200",
@@ -69,7 +65,6 @@ const tools = [
     id: "lock-pdf",
     title: "Protect PDF",
     description: "Add a password to your PDF document for security.",
-    icon: Lock,
     color: "text-slate-700",
     bgColor: "bg-slate-100",
     borderColor: "group-hover:border-slate-300",
@@ -155,6 +150,18 @@ const FileConversion = () => {
 
     setIsConverting(true);
     try {
+      // Merge and PDF to Word run in the browser: no upload, so they're quick even for large files.
+      if (selectedTool.id === "merge-pdf" || selectedTool.id === "pdf-to-word") {
+        if (selectedTool.id === "merge-pdf" && files.length < 2) {
+          throw new Error("Add at least two PDFs to merge.");
+        }
+        const blob = selectedTool.id === "merge-pdf" ? await mergePdfs(files) : await pdfToDocx(files[0]);
+        setConvertedBlob(blob);
+        setIsSuccess(true);
+        toast.success(selectedTool.id === "merge-pdf" ? `Merged ${files.length} PDFs` : "Converted to Word");
+        return;
+      }
+
       const filePromises = files.map(f => {
         return new Promise<{base64: string, name: string, type: string}>((resolve, reject) => {
           const reader = new FileReader();
@@ -247,7 +254,6 @@ const FileConversion = () => {
               <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
               <div className="container max-w-4xl mx-auto text-center">
                 <div className="inline-flex items-center justify-center px-4 py-1.5 mb-6 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20 shadow-sm">
-                  <Sparkles className="w-4 h-4 mr-2" />
                   <span>Professional Document Tools</span>
                 </div>
                 <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-6 text-foreground">
@@ -268,10 +274,7 @@ const FileConversion = () => {
                   className={`group relative bg-card p-8 rounded-2xl border border-border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden ${tool.borderColor}`}
                 >
                   <div className={`absolute top-0 right-0 p-20 ${tool.bgColor} rounded-bl-full opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
-                  <div className="relative z-10 flex items-start gap-6">
-                    <div className={`p-4 rounded-xl ${tool.bgColor} ${tool.color} group-hover:scale-110 transition-transform duration-300`}>
-                      {tool.icon && <tool.icon className="w-8 h-8" />}
-                    </div>
+                  <div className="relative z-10">
                     <div>
                       <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
                         {tool.title}
@@ -292,16 +295,10 @@ const FileConversion = () => {
             <div className="container max-w-6xl mx-auto px-4 md:px-6 mt-24">
               <div className="grid md:grid-cols-2 gap-8 text-center max-w-4xl mx-auto">
                 <div className="p-6 rounded-2xl bg-secondary/20 border border-border/50">
-                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Zap className="w-6 h-6" />
-                  </div>
                   <h3 className="font-bold text-lg mb-2">Lightning Fast</h3>
                   <p className="text-muted-foreground text-sm">Our cloud servers process your documents in seconds, not minutes.</p>
                 </div>
                 <div className="p-6 rounded-2xl bg-secondary/20 border border-border/50">
-                  <div className="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <ShieldCheck className="w-6 h-6" />
-                  </div>
                   <h3 className="font-bold text-lg mb-2">High Quality</h3>
                   <p className="text-muted-foreground text-sm">We preserve your document formatting, images, and layout perfectly.</p>
                 </div>
@@ -316,8 +313,7 @@ const FileConversion = () => {
             </Button>
 
             <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold mb-2 flex items-center justify-center gap-3">
-                {selectedTool.icon && <selectedTool.icon className={`w-8 h-8 ${selectedTool.color}`} />}
+              <h2 className="text-3xl font-bold mb-2">
                 {selectedTool.title}
               </h2>
               <p className="text-muted-foreground">{selectedTool.description}</p>
@@ -364,9 +360,6 @@ const FileConversion = () => {
                       {files.map((f, index) => (
                         <div key={index} className="flex items-center justify-between p-4 bg-background rounded-xl border border-border shadow-sm">
                           <div className="flex items-center gap-4">
-                            <div className={`p-3 ${selectedTool.bgColor} rounded-lg`}>
-                              {selectedTool.icon && <selectedTool.icon className={`w-6 h-6 ${selectedTool.color}`} />}
-                            </div>
                             <div className="min-w-0">
                               <p className="font-medium truncate max-w-[200px]">{f.name}</p>
                               <p className="text-xs text-muted-foreground">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
@@ -438,4 +431,4 @@ const FileConversion = () => {
   );
 };
 
-export default FileConversion;
+export default FileConversion;

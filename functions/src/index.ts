@@ -1964,3 +1964,108 @@ export const summarizeDocument = onCall({
     throw new HttpsError("internal", "Could not summarize this document.");
   }
 });
+
+// --- HOME PAGE CHAT ASSISTANT ---
+
+const CHAT_SYSTEM = `You are the assistant on the home page of Endorse (e-ndorse.online), an e-signature app. Visitors ask about the product; answer briefly and warmly in plain language, usually in 1-4 short sentences or a short list. No markdown headings.
+
+What Endorse does:
+- Sign your own PDFs: draw, type or upload a signature, place it on the page, download the signed copy.
+- Send for signature by email or WhatsApp. Email signers sign in (or create a free account) with the address it was sent to; WhatsApp signers confirm a one-time code. No app to install; works in any phone or computer browser.
+- Track status (sent, delivered, signed); the sender is emailed a link to the signed copy. Each signed document keeps the signature, field positions and timestamps, and can be checked on the Verify page.
+- Templates: built-in NDA, Services Agreement and Offer Letter, your own templates with fields like {{RECIPIENT_NAME}}, or upload your own PDF/Word document as a template.
+- Invoices, team accounts (Business plan) and AI document summaries.
+- Free file tools at /conversion: Word to PDF, PDF to Word, Image to PDF, Merge PDF.
+- Supported uploads: PDF, .doc, .docx (Word is converted to PDF; layout may change, so upload a PDF for exact formatting).
+
+Pricing: Free $0 (3 free documents). Pro $8 per 30 days (unlimited signing and sending, email and WhatsApp signers, status tracking). Business $15 per 30 days (everything in Pro, team management, custom branding). Payments never auto-renew; we email before a plan ends. Signing documents other people send you is always free.
+
+Legal: simple electronic signatures of the kind recognised under the US ESIGN Act, UETA and EU eIDAS. Some documents (e.g. wills, some land transfers) still need wet signatures or a notary. Give general information only, not legal advice.
+
+Security: TLS in transit, AES-256 at rest on Google Cloud; only the sender and recipients can open a document.
+
+Getting started: "Get started" or /auth to create an account; the dashboard is at /dashboard.
+
+If you don't know something (account-specific problems, refunds, billing issues, anything not listed here), say so and point them to support@e-ndorse.online or the Help Center at /help-center. Never invent features, prices or policies. Stay on topic: politely steer unrelated requests back to Endorse.`;
+
+const CHAT_DAILY_LIMIT = 40;
+const CHAT_MAX_TURNS = 20;
+const CHAT_MAX_CHARS = 2000;
+
+/** Per-visitor daily cap (signed-in user, else hashed IP) so the public chat can't be used to run up API costs. */
+async function consumeChatQuota(request: { auth?: { uid: string }; rawRequest: { ip?: string; headers: Record<string, unknown> } }): Promise<void> {
+  const forwarded = String(request.rawRequest.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const who = request.auth?.uid || `ip_${crypto.createHash("sha256").update(forwarded || request.rawRequest.ip || "unknown").digest("hex").slice(0, 32)}`;
+  const day = new Date().toISOString().slice(0, 10);
+  const ref = admin.firestore().collection("chat_quota").doc(`${who}_${day}`);
+  await admin.firestore().runTransaction(async (tx) => {
+    const used = ((await tx.get(ref)).data()?.count as number) || 0;
+    if (used >= CHAT_DAILY_LIMIT) {
+      throw new HttpsError("resource-exhausted", "Daily chat limit reached.");
+    }
+    tx.set(ref, { count: used + 1, day, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  });
+}
+
+export const chatAssistant = onCall({
+  secrets: [anthropicApiKey],
+  memory: "256MiB",
+  timeoutSeconds: 120,
+  cors: true,
+}, async (request) => {
+  const raw = (request.data as { messages?: unknown })?.messages;
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > CHAT_MAX_TURNS) {
+    throw new HttpsError("invalid-argument", "Invalid conversation.");
+  }
+  const messages: Anthropic.Beta.BetaMessageParam[] = [];
+  for (const m of raw) {
+    const role = (m as { role?: unknown })?.role;
+    const content = (m as { content?: unknown })?.content;
+    if ((role !== "user" && role !== "assistant") || typeof content !== "string" || !content.trim() || content.length > CHAT_MAX_CHARS) {
+      throw new HttpsError("invalid-argument", "Invalid message.");
+    }
+    messages.push({ role, content });
+  }
+  // The API requires the conversation to start with the user and end on the user's new message.
+  while (messages.length && messages[0].role !== "user") messages.shift();
+  if (!messages.length || messages[messages.length - 1].role !== "user") {
+    throw new HttpsError("invalid-argument", "Invalid conversation.");
+  }
+
+  await consumeChatQuota(request);
+
+  const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+  try {
+    const response = await client.beta.messages.create({
+      model: "claude-opus-5-5",
+      max_tokens: 4000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low" },
+      system: CHAT_SYSTEM,
+      messages,
+    });
+
+    if (response.stop_reason === "refusal") {
+      return { reply: "Sorry, I can't help with that. For anything about Endorse, email support@e-ndorse.online." };
+    }
+    const reply = response.content
+      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    if (!reply) throw new HttpsError("internal", "No reply was returned.");
+    return { reply };
+  } catch (err) {
+    if (err instanceof HttpsError) throw err;
+    if (err instanceof Anthropic.RateLimitError) {
+      throw new HttpsError("unavailable", "The assistant is busy. Try again in a minute.");
+    }
+    if (err instanceof Anthropic.APIError) {
+      console.error("chatAssistant Claude API error:", err.status, err.message, err.requestID);
+    } else {
+      console.error("chatAssistant error:", err);
+    }
+    throw new HttpsError("internal", "The assistant couldn't reply.");
+  }
+});

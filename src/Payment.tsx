@@ -5,7 +5,7 @@ import { FREE_LIMIT_ENFORCED } from "./lib/plan";
 import { httpsCallable } from "@/lib/callable";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Building2, Check, CheckCircle2, Loader2, Lock, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Logo } from "./components/Logo";
 
@@ -19,7 +19,6 @@ const PLANS = [
     description: "Perfect for individuals and professionals",
     features: ["Unlimited signing and sending", "Templates and invoices", "Signing status tracking", "Priority support"],
     color: "from-blue-500 to-indigo-600",
-    icon: Zap,
   },
   {
     id: "business",
@@ -29,7 +28,6 @@ const PLANS = [
     description: "Advanced features for teams and companies",
     features: ["Everything in Pro", "Team management", "Custom branding", "24/7 Support"],
     color: "from-purple-500 to-pink-600",
-    icon: Building2,
   }
 ];
 
@@ -187,8 +185,8 @@ const Payment = () => {
                 {selectedPlan.id === plan.id && (
                   <div className="mt-3 pl-8 flex flex-wrap gap-x-4 gap-y-1">
                     {plan.features.slice(0, 2).map((feature, i) => (
-                      <span key={i} className="text-[11px] text-slate-500 flex items-center gap-1">
-                        <Check className="w-3 h-3 text-indigo-600" /> {feature}
+                      <span key={i} className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                        <span aria-hidden="true" className="h-1 w-1 rounded-full bg-indigo-600 shrink-0" /> {feature}
                       </span>
                     ))}
                     <span className="text-[11px] text-indigo-600 font-medium">+ more</span>
@@ -250,8 +248,8 @@ const Payment = () => {
                 </Button>
               </div>
 
-              <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-                <Lock className="w-3 h-3" /> Payments are processed securely by Paystack and Stripe
+              <div className="text-center text-xs text-slate-400">
+                Payments are processed securely by Paystack and Stripe
               </div>
             </div>
 

@@ -3,7 +3,7 @@ import { useNavigate, Link, useSearchParams, useLocation } from "react-router-do
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import { httpsCallable } from "@/lib/callable";
@@ -317,9 +317,6 @@ const Auth = () => {
             </form>
           ) : needsVerification ? (
             <div className="text-center space-y-6">
-              <div className="w-20 h-20 bg-[#0A66C2]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Mail className="w-10 h-10 text-[#0A66C2]" />
-              </div>
               <h3 className="text-2xl font-bold text-slate-900">Verify Email</h3>
               <p className="text-slate-500 text-[15px] leading-relaxed">
                 We've sent a link to <span className="font-semibold text-slate-900">{email}</span>. Please click it to continue.

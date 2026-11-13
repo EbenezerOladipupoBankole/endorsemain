@@ -1,4 +1,3 @@
-import { Braces, Copy, FilePlus2, Files, Send, UserCheck } from "lucide-react";
 import { FeaturePage, serif } from "@/components/FeaturePage";
 
 function TemplateMockup() {
@@ -40,12 +39,12 @@ export default function ProductTemplates() {
       ]}
       highlightsTitle="Less typing, fewer mistakes"
       highlights={[
-        { icon: Files, title: "Ready-made agreements", text: "Mutual NDA, Services Agreement and Offer Letter are ready to use from day one." },
-        { icon: FilePlus2, title: "Your own templates", text: "Save the agreements your business uses and reuse them whenever you need." },
-        { icon: UserCheck, title: "Automatic details", text: "Each signer's name and email, your name and organisation, and today's date fill in on their copy." },
-        { icon: Braces, title: "Custom fields", text: "Add your own placeholders — like {{FEE}} or {{START_DATE}} — and fill them in when you send." },
-        { icon: Copy, title: "One template, many signers", text: "Send the same agreement to several people and each copy is personalised to them." },
-        { icon: Send, title: "Straight to signing", text: "Templates go out through Send for Signature, so you can track every copy." },
+        { title: "Ready-made agreements", text: "Mutual NDA, Services Agreement and Offer Letter are ready to use from day one." },
+        { title: "Your own templates", text: "Save the agreements your business uses and reuse them whenever you need." },
+        { title: "Automatic details", text: "Each signer's name and email, your name and organisation, and today's date fill in on their copy." },
+        { title: "Custom fields", text: "Add your own placeholders — like {{FEE}} or {{START_DATE}} — and fill them in when you send." },
+        { title: "One template, many signers", text: "Send the same agreement to several people and each copy is personalised to them." },
+        { title: "Straight to signing", text: "Templates go out through Send for Signature, so you can track every copy." },
       ]}
       faqs={[
         { q: "Which templates are included?", a: "A Mutual Non-Disclosure Agreement, a Services Agreement and an Offer Letter. You can also create and save your own." },
