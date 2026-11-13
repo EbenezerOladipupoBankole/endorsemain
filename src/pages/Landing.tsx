@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Search,
   PenTool,
-  Receipt,
   ArrowRight,
   X,
   FileText,
@@ -120,101 +119,47 @@ const Landing = () => {
       <SiteHeader />
       <main>
 
-      {/* Hero */}
-      <section className="pt-10 pb-12 md:pt-16 md:pb-20 px-4 md:px-6 bg-white dark:bg-slate-950 relative overflow-hidden">
-        <div className="container mx-auto max-w-6xl px-0 sm:px-8 grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
-          <div className="text-center lg:text-left">
-            <h1 className="font-display text-[2.1rem] sm:text-5xl md:text-[3.4rem] font-extrabold text-slate-900 dark:text-white leading-[1.08] tracking-tight">
-              eSign your agreements <span className="text-[#0A66C2]">on one structured platform.</span>
-            </h1>
-            <p className="mt-5 text-base md:text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
-              Endorse takes a digital agreement from upload to signed record. Place every field, send it
-              to signers by email or WhatsApp, follow each step as it happens, and keep an audit trail
-              anyone can verify. Then invoice the client from the same account.
-            </p>
-            <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-              <Button asChild size="lg" className="h-12 rounded-full px-7 text-base font-extrabold bg-[#FFC83D] text-black hover:bg-[#e6b435]">
-                <Link to="/auth?mode=signup">Start signing free</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="h-12 rounded-full px-7 text-base font-bold border-slate-300 dark:border-slate-700">
-                <a href="#pricing">View pricing</a>
-              </Button>
-            </div>
-            <p className="mt-4 text-sm text-slate-500">3 free documents · No card required · Free for signers</p>
+      {/* Hero: words only, no product graphic */}
+      <section className="bg-[#F4F7FB] dark:bg-slate-950 px-4 md:px-6 pt-16 pb-16 sm:pt-24 md:pt-32 md:pb-28">
+        <div className="mx-auto max-w-4xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2] dark:text-[#7cb7f0]">
+            eSignature for digital agreements
+          </p>
+          <h1 className="mt-5 font-display text-[2.4rem] sm:text-6xl md:text-7xl font-extrabold leading-[1.04] tracking-tight text-slate-900 dark:text-white">
+            eSign your agreements on one structured platform.
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-base md:text-xl leading-relaxed text-slate-600 dark:text-slate-400">
+            Take every agreement from upload to signed record. Send it by email or WhatsApp, follow each
+            step as it happens, and keep an audit trail anyone can verify.
+          </p>
+          <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild size="lg" className="h-12 rounded-full px-8 text-base font-extrabold bg-[#FFC83D] text-black hover:bg-[#e6b435]">
+              <Link to="/auth?mode=signup">Start signing free</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="h-12 rounded-full px-8 text-base font-bold border-slate-400 bg-transparent dark:border-slate-600">
+              <a href="#pricing">View pricing</a>
+            </Button>
           </div>
+          <p className="mt-5 text-sm text-slate-600 dark:text-slate-400">3 free documents · No card required · Free for signers</p>
+        </div>
+      </section>
 
-          {/* Product snapshot: what a workspace looks like once you've sent a few things */}
-          <div className="relative mx-auto w-full max-w-[520px] animate-scale-in">
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_30px_60px_-30px_rgba(10,102,194,0.35)] overflow-hidden text-left">
-              <div className="flex gap-1 border-b border-slate-100 dark:border-slate-800 px-3 pt-3 text-[11px] font-bold text-slate-500 overflow-hidden">
-                {["Dashboard", "Send for Signature", "Invoices", "File Converter"].map((tab) => (
-                  <span
-                    key={tab}
-                    className={`shrink-0 whitespace-nowrap rounded-t-lg px-3 py-2 ${tab === "Send for Signature" ? "bg-[#0A66C2]/10 text-[#0A66C2] dark:text-[#7cb7f0]" : ""}`}
-                  >
-                    {tab}
-                  </span>
-                ))}
-              </div>
-              <div className="p-4 sm:p-5">
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {[
-                    { label: "Sent", value: 14, tone: "text-slate-900 dark:text-white" },
-                    { label: "Awaiting", value: 3, tone: "text-amber-600" },
-                    { label: "Signed", value: 11, tone: "text-emerald-700" },
-                  ].map((s) => (
-                    <div key={s.label} className="rounded-xl border border-slate-100 dark:border-slate-800 px-3 py-2">
-                      <p className={`text-lg font-extrabold ${s.tone}`}>{s.value}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {[
-                    { doc: "Offer letter", who: "Amaka Obi", via: "Email", signed: "Signed 22 Oct" },
-                    { doc: "Tenancy agreement", who: "Kofi Mensah", via: "WhatsApp", signed: null },
-                    { doc: "Service agreement", who: "Kibet & Sons Ltd", via: "Email", signed: "Signed 20 Oct" },
-                  ].map((row) => (
-                    <li key={row.doc} className="flex items-center justify-between gap-3 py-2.5">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <FileText className="h-4 w-4 shrink-0 text-slate-500" />
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-bold text-slate-800 dark:text-slate-100">{row.doc}</p>
-                          <p className="truncate text-[11px] text-slate-500">{row.who} · {row.via}</p>
-                        </div>
-                      </div>
-                      {row.signed ? (
-                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="h-3 w-3" /> {row.signed}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 rounded-full bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                          Awaiting signature
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Invoice card overlapping the corner */}
-            <div className="relative z-10 -mt-6 ml-auto mr-2 sm:-mr-6 w-[230px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xl text-left">
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
-                  <Receipt className="h-3.5 w-3.5 text-[#0A66C2]" /> INV-0007
-                </span>
-                <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Paid</span>
-              </div>
-              <p className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">₦450,000.00</p>
-              <p className="text-[11px] text-slate-500">Brand design · Adeola Studio</p>
-            </div>
-          </div>
+      {/* Who uses it */}
+      <section className="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 md:px-6 py-10 md:py-12">
+        <div className="mx-auto max-w-5xl text-center">
+          <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">Already using Endorse</p>
+          <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+            {CUSTOMERS.map((name) => (
+              <li key={name} className="font-display text-lg md:text-xl font-bold tracking-tight text-slate-500 dark:text-slate-400">
+                {name}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
       {/* How It Works */}
-      <section className="py-20 md:py-28 bg-white border-y border-slate-100 relative overflow-hidden">
+      <section className="py-20 md:py-28 bg-white border-b border-slate-100 relative overflow-hidden">
 
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 relative z-10">
           {/* Section Header */}
@@ -727,35 +672,6 @@ const Landing = () => {
                   Get started
                 </button>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Companies Using The Product Ticker Section */}
-      <section className="py-14 border-y border-border/40 bg-slate-50/70 dark:bg-slate-900/40 overflow-hidden relative">
-        <div className="container mx-auto px-4 sm:px-6 mb-8 text-center">
-          <p className="text-sm md:text-base font-extrabold uppercase tracking-widest text-slate-800 dark:text-slate-200">
-            Already using Endorse
-          </p>
-        </div>
-
-        {/* Gradient edge fade masks */}
-        <div className="absolute top-0 bottom-0 left-0 w-24 md:w-40 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-        <div className="absolute top-0 bottom-0 right-0 w-24 md:w-40 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-
-        {/* Scrolling Ticker */}
-        <div className="overflow-hidden flex w-full">
-          <div className="animate-marquee flex items-center gap-14 md:gap-20 py-3">
-            {/* The list is repeated once so the marquee loops without a gap */}
-            {[...CUSTOMERS, ...CUSTOMERS].map((name, index) => (
-              <span
-                key={index}
-                aria-hidden={index >= CUSTOMERS.length}
-                className="text-slate-500 dark:text-slate-400 font-display font-bold text-xl md:text-2xl tracking-tight select-none whitespace-nowrap px-6"
-              >
-                {name}
-              </span>
             ))}
           </div>
         </div>
