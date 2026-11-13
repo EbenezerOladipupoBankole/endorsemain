@@ -1,34 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
 import { useAuth } from "@/components/AuthContext";
 import {
   UploadCloud,
-  Send,
   ShieldCheck,
   CheckCircle2,
-  Cpu,
-  HelpCircle,
   Search,
-  MessageCircle,
   PenTool,
-  Receipt,
-  Layers,
-  FileCode,
-  Users,
   ArrowRight,
-  Bot,
   X,
-  Eye,
-  Check,
   FileText,
   MousePointerClick,
   Download,
-  Cookie,
 } from "lucide-react";
 import {
   Accordion,
@@ -67,16 +54,6 @@ const tiers = [
   },
 ];
 
-const CUSTOMERS = [
-  "Pioneer Artificial Intelligence Academy",
-  "Dera Everight Ltd",
-  "Macddy Tech Solution",
-  "Ike Ake & Associates",
-  "BlaqLink",
-  "ViteHire",
-  "CC Tech Solutions",
-];
-
 const Landing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -91,12 +68,7 @@ const Landing = () => {
     return () => clearTimeout(timer);
   }, [location.hash]);
   const [showCookieConsent, setShowCookieConsent] = useState(false);
-  const [showChat, setShowChat] = useState(false);
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState([
-    { text: "Hi! I can answer quick questions about pricing, signing and security. For anything else, email support@e-ndorse.online.", isUser: false, time: "Just now" }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
   const [isStepAutoplay, setIsStepAutoplay] = useState(true);
 
@@ -132,140 +104,33 @@ const Landing = () => {
     navigate(`/payment?plan=${plan.toLowerCase()}`);
   };
 
-  const getBotResponse = (text: string) => {
-    const lower = text.toLowerCase();
-    if (lower.includes("price") || lower.includes("cost") || lower.includes("plan") || lower.includes("free")) {
-      return "Your first 3 documents are free. After that, Pro is $8 and Business is $15 for 30 days of unlimited signing and sending. Each payment covers 30 days and nothing renews automatically.";
-    }
-    if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
-      return "Hi there! Ready to sign some documents? 📄 How can I help you today?";
-    }
-    if (lower.includes("security") || lower.includes("safe") || lower.includes("legal") || lower.includes("binding")) {
-      return "Endorse provides simple electronic signatures of the kind recognised under the US ESIGN Act and the EU's eIDAS regulation. Files are encrypted in transit and at rest.";
-    }
-    if (lower.includes("support") || lower.includes("help")) {
-      return "Email us at support@e-ndorse.online, or have a look at the Help Center.";
-    }
-    return "I can only answer a few common questions here. For anything else, email support@e-ndorse.online and we'll get back to you.";
-  };
-
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
-
-    const newMessage = { text, isUser: true, time: "Just now" };
-    setChatMessages((prev) => [...prev, newMessage]);
-    setChatInput("");
-    setIsTyping(true);
-
-    setTimeout(() => {
-      setIsTyping(false);
-      const response = getBotResponse(text);
-      setChatMessages((prev) => [...prev, { text: response, isUser: false, time: "Just now" }]);
-    }, 600);
-  };
-
-  const handleChatSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sendMessage(chatInput);
-  };
-
-
-
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main>
 
-      {/* Hero */}
-      <section className="pt-10 pb-12 md:pt-16 md:pb-20 px-4 md:px-6 bg-white dark:bg-slate-950 relative overflow-hidden">
-        <div className="container mx-auto max-w-6xl px-0 sm:px-8 grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
-          <div className="text-center lg:text-left">
-            <h1 className="font-display text-[2.1rem] sm:text-5xl md:text-[3.4rem] font-extrabold text-slate-900 dark:text-white leading-[1.08] tracking-tight">
-              eSign your agreements <span className="text-[#0A66C2]">on one structured platform.</span>
-            </h1>
-            <p className="mt-5 text-base md:text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
-              Endorse takes a digital agreement from upload to signed record. Place every field, send it
-              to signers by email or WhatsApp, follow each step as it happens, and keep an audit trail
-              anyone can verify. Then invoice the client from the same account.
-            </p>
-            <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-              <Button asChild size="lg" className="h-12 rounded-full px-7 text-base font-extrabold bg-[#FFC83D] text-black hover:bg-[#e6b435]">
-                <Link to="/auth?mode=signup">Start signing free</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="h-12 rounded-full px-7 text-base font-bold border-slate-300 dark:border-slate-700">
-                <a href="#pricing">View pricing</a>
-              </Button>
-            </div>
-            <p className="mt-4 text-sm text-slate-500">3 free documents · No card required · Free for signers</p>
+      {/* Hero: words only, no product graphic */}
+      <section className="bg-[#F4F7FB] dark:bg-slate-950 px-4 md:px-6 pt-16 pb-16 sm:pt-24 md:pt-32 md:pb-28">
+        <div className="mx-auto max-w-4xl text-center">
+          <p className="text-base font-semibold uppercase tracking-wider text-[#0A66C2] dark:text-[#7cb7f0]">
+            eSignature for digital agreements
+          </p>
+          <h1 className="mt-5 font-display text-[2.4rem] sm:text-6xl md:text-7xl font-extrabold leading-[1.04] tracking-tight text-slate-900 dark:text-white">
+            eSign your agreements on one structured platform.
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg md:text-2xl leading-relaxed text-slate-600 dark:text-slate-400">
+            Take every agreement from upload to signed record. Send it by email or WhatsApp, follow each
+            step as it happens, and keep an audit trail anyone can verify.
+          </p>
+          <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild size="lg" className="h-14 rounded-full px-8 text-lg font-extrabold bg-[#FFC83D] text-black hover:bg-[#e6b435]">
+              <Link to="/auth?mode=signup">Start signing free</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="h-14 rounded-full px-8 text-lg font-bold border-slate-400 bg-transparent dark:border-slate-600">
+              <a href="#pricing">View pricing</a>
+            </Button>
           </div>
-
-          {/* Product snapshot: what a workspace looks like once you've sent a few things */}
-          <div className="relative mx-auto w-full max-w-[520px] animate-scale-in">
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_30px_60px_-30px_rgba(10,102,194,0.35)] overflow-hidden text-left">
-              <div className="flex gap-1 border-b border-slate-100 dark:border-slate-800 px-3 pt-3 text-[11px] font-bold text-slate-500 overflow-hidden">
-                {["Dashboard", "Send for Signature", "Invoices", "File Converter"].map((tab) => (
-                  <span
-                    key={tab}
-                    className={`shrink-0 whitespace-nowrap rounded-t-lg px-3 py-2 ${tab === "Send for Signature" ? "bg-[#0A66C2]/10 text-[#0A66C2] dark:text-[#7cb7f0]" : ""}`}
-                  >
-                    {tab}
-                  </span>
-                ))}
-              </div>
-              <div className="p-4 sm:p-5">
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {[
-                    { label: "Sent", value: 14, tone: "text-slate-900 dark:text-white" },
-                    { label: "Awaiting", value: 3, tone: "text-amber-600" },
-                    { label: "Signed", value: 11, tone: "text-emerald-700" },
-                  ].map((s) => (
-                    <div key={s.label} className="rounded-xl border border-slate-100 dark:border-slate-800 px-3 py-2">
-                      <p className={`text-lg font-extrabold ${s.tone}`}>{s.value}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {[
-                    { doc: "Offer letter", who: "Amaka Obi", via: "Email", signed: "Signed 22 Oct" },
-                    { doc: "Tenancy agreement", who: "Kofi Mensah", via: "WhatsApp", signed: null },
-                    { doc: "Service agreement", who: "Kibet & Sons Ltd", via: "Email", signed: "Signed 20 Oct" },
-                  ].map((row) => (
-                    <li key={row.doc} className="flex items-center justify-between gap-3 py-2.5">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <FileText className="h-4 w-4 shrink-0 text-slate-500" />
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-bold text-slate-800 dark:text-slate-100">{row.doc}</p>
-                          <p className="truncate text-[11px] text-slate-500">{row.who} · {row.via}</p>
-                        </div>
-                      </div>
-                      {row.signed ? (
-                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="h-3 w-3" /> {row.signed}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 rounded-full bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                          Awaiting signature
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Invoice card overlapping the corner */}
-            <div className="relative z-10 -mt-6 ml-auto mr-2 sm:-mr-6 w-[230px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xl text-left">
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
-                  <Receipt className="h-3.5 w-3.5 text-[#0A66C2]" /> INV-0007
-                </span>
-                <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Paid</span>
-              </div>
-              <p className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">₦450,000.00</p>
-              <p className="text-[11px] text-slate-500">Brand design · Adeola Studio</p>
-            </div>
-          </div>
+          <p className="mt-5 text-base text-slate-600 dark:text-slate-400">3 free documents · No card required · Free for signers</p>
         </div>
       </section>
 
@@ -275,11 +140,11 @@ const Landing = () => {
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 relative z-10">
           {/* Section Header */}
           <div className="text-center max-w-2xl mx-auto mb-10 md:mb-20">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2] mb-3">How it works</p>
+            <p className="text-base font-semibold uppercase tracking-wider text-[#0A66C2] mb-3">How it works</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">
               Every agreement follows the same clear steps
             </h2>
-            <p className="text-slate-500 text-base md:text-lg leading-relaxed">
+            <p className="text-slate-500 text-lg md:text-xl leading-relaxed">
               Upload, prepare and send. Signers eSign from any device with no app to install, and the signed copy comes back to you with its audit trail.
             </p>
           </div>
@@ -295,30 +160,23 @@ const Landing = () => {
                   step: "01",
                   title: "Upload",
                   subtitle: "PDF or Word",
-                  desc: "Bring in a PDF or Word file from your computer or phone, or start from one of your saved templates.",
-                  icon: UploadCloud,
-                  activeColor: "border-primary text-primary"
+                  desc: "Bring in a PDF or Word file from your computer or phone, or start from one of your saved templates."
                 },
                 {
                   id: 1,
                   step: "02",
                   title: "Prepare",
                   subtitle: "Place every field",
-                  desc: "Add each signer by email or WhatsApp number, then place signature, initials, date and text fields exactly where they belong.",
-                  icon: MousePointerClick,
-                  activeColor: "border-emerald-500 text-emerald-600"
+                  desc: "Add each signer by email or WhatsApp number, then place signature, initials, date and text fields exactly where they belong."
                 },
                 {
                   id: 2,
                   step: "03",
                   title: "Send & sign",
                   subtitle: "Always know where it stands",
-                  desc: "Secure signing links go out by email or WhatsApp. Watch each document move from awaiting signature to signed, then download the completed copy.",
-                  icon: ShieldCheck,
-                  activeColor: "border-[#FFC83D] text-[#D89E24]"
+                  desc: "Secure signing links go out by email or WhatsApp. Watch each document move from awaiting signature to signed, then download the completed copy."
                 }
               ].map((item, i) => {
-                const IconComp = item.icon;
                 const isActive = activeWorkflowStep === item.id;
                 return (
                   <div
@@ -341,24 +199,21 @@ const Landing = () => {
                     onMouseLeave={() => setIsStepAutoplay(true)}  // Resume on leave
                     className={`group flex items-start gap-4 sm:gap-5 p-4 sm:p-6 rounded-2xl border transition-all duration-350 cursor-pointer text-left ${isActive ? 'bg-slate-50/80 border-slate-200 shadow-sm' : 'bg-transparent border-transparent hover:bg-slate-50/40'}`}
                   >
-                    {/* Stepper Icon */}
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 ${isActive ? 'bg-primary text-white scale-105' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>
-                      <IconComp className="w-5.5 h-5.5" />
-                    </div>
+                    {/* Step number */}
+                    <span className={`w-10 shrink-0 font-display text-3xl font-extrabold leading-none tabular-nums transition-colors ${isActive ? 'text-[#0A66C2]' : 'text-slate-400'}`}>
+                      {item.step}
+                    </span>
 
                     {/* Stepper Details */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground">{item.subtitle}</span>
-                        <span className={`shrink-0 whitespace-nowrap text-xs font-mono font-bold ${isActive ? 'text-primary' : 'text-slate-500'}`}>Step {item.step}</span>
-                      </div>
-                      <h3 className={`text-lg font-bold mt-1 mb-1.5 transition-colors ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>
+                      <span className="text-sm uppercase tracking-wider font-extrabold text-muted-foreground">{item.subtitle}</span>
+                      <h3 className={`text-xl font-bold mt-1 mb-1.5 transition-colors ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>
                         {item.title}
                       </h3>
 
                       {/* Smooth collapsible description */}
                       <div className={`overflow-hidden transition-all duration-350 ${isActive ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-                        <p className="text-sm text-slate-500 leading-relaxed">
+                        <p className="text-base text-slate-500 leading-relaxed">
                           {item.desc}
                         </p>
 
@@ -405,7 +260,7 @@ const Landing = () => {
                       </div>
 
                       <div className="border border-dashed border-slate-300 hover:border-slate-400 rounded-xl p-5 text-center bg-slate-50/50 transition-colors">
-                        <UploadCloud className="w-8 h-8 text-primary mx-auto mb-2 animate-bounce" />
+                        <UploadCloud className="w-8 h-8 text-primary mx-auto mb-2" />
                         <p className="text-xs font-bold text-slate-700">Drag & drop files here</p>
                         <p className="text-[10px] text-slate-500 mt-1">PDF, Word, or JPG up to 25MB</p>
                       </div>
@@ -559,11 +414,11 @@ const Landing = () => {
       <section id="features" className="scroll-mt-20 py-16 md:py-24 px-4 md:px-6 overflow-hidden">
         <div className="container mx-auto max-w-6xl px-0 sm:px-8">
           <div className="text-center mb-12 md:mb-16">
-            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Built for digital agreements</p>
+            <p className="text-base font-semibold text-primary uppercase tracking-wider mb-3">Built for digital agreements</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
               Structure every agreement, from draft to signed record
             </h2>
-            <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Prepare, send, eSign, track and store your agreements, then invoice the client, without leaving Endorse.
             </p>
           </div>
@@ -571,22 +426,21 @@ const Landing = () => {
           {/* Product tour: each card links to its product page */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16 md:mb-24">
             {[
-              { icon: PenTool, title: "eSign documents", text: "Sign any PDF or Word file in seconds and keep a clean, signed copy.", to: "/product/esign" },
-              { icon: Send, title: "Send for signature", text: "Route a document to one or many signers by email or WhatsApp and see who has signed.", to: "/product/send-for-signature" },
-              { icon: Layers, title: "Templates", text: "Save an agreement once and reuse it. Each signer's details fill in automatically.", to: "/product/templates" },
-              { icon: Receipt, title: "Invoices", text: "Professional, itemised invoices with tax and discounts in 10 currencies, delivered as a PDF.", to: "/product/invoices" },
-              { icon: FileCode, title: "File conversion", text: "Convert between Word, PDF and images, merge files and password-protect PDFs.", to: "/conversion" },
-              { icon: Users, title: "Teams", text: "Bring your team onto the Business plan and share templates across the company.", to: "/#pricing" },
+              { title: "eSign documents", text: "Sign any PDF or Word file in seconds and keep a clean, signed copy.", to: "/product/esign" },
+              { title: "Send for signature", text: "Route a document to one or many signers by email or WhatsApp and see who has signed.", to: "/product/send-for-signature" },
+              { title: "Templates", text: "Save an agreement once and reuse it. Each signer's details fill in automatically.", to: "/product/templates" },
+              { title: "Invoices", text: "Professional, itemised invoices with tax and discounts in 10 currencies, delivered as a PDF.", to: "/product/invoices" },
+              { title: "File conversion", text: "Convert between Word, PDF and images, merge files and password-protect PDFs.", to: "/conversion" },
+              { title: "Teams", text: "Bring your team onto the Business plan and share templates across the company.", to: "/#pricing" },
             ].map((p) => (
               <Link
                 key={p.title}
                 to={p.to}
                 className="group rounded-2xl border border-border bg-card p-5 sm:p-6 transition-colors hover:border-[#0A66C2]/40"
               >
-                <p.icon className="h-6 w-6 text-[#0A66C2]" />
-                <h3 className="mt-4 text-lg font-bold text-foreground">{p.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{p.text}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#0A66C2]">
+                <h3 className="text-xl font-bold text-foreground">{p.title}</h3>
+                <p className="mt-1.5 text-base leading-relaxed text-muted-foreground">{p.text}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-base font-semibold text-[#0A66C2]">
                   Learn more <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Link>
@@ -628,14 +482,14 @@ const Landing = () => {
             </div>
             <div className="w-full md:w-1/2 order-1 md:order-2">
               <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">eSign from anywhere, on any device.</h3>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
                 Draw your signature, type it in a handwriting style, or upload an image of it. Endorse runs in the browser, so signers never need to install an app.
               </p>
               <ul className="space-y-3">
                 {["Draw, type, or upload a signature", "Initials, dates, names and text fields too", "No account needed for WhatsApp signers"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-[#0A66C2] shrink-0" />
-                    <span className="text-foreground text-sm font-medium">{item}</span>
+                  <li key={i} className="flex items-center gap-3">
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#0A66C2] shrink-0" />
+                    <span className="text-foreground text-base font-medium">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -646,7 +500,7 @@ const Landing = () => {
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-16 md:mb-24">
             <div className="w-full md:w-1/2">
               <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Know where every agreement stands.</h3>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
                 Every document shows when it went out and when each person signed. The completed copy is emailed to you the moment it's done, and a gentle reminder is one click away.
               </p>
               <Link to="/product/send-for-signature" className="inline-flex">
@@ -657,129 +511,35 @@ const Landing = () => {
             </div>
             <div className="w-full md:w-1/2">
               <div className="relative rounded-2xl bg-card border border-border p-4 sm:p-6 shadow-xl overflow-hidden">
-                <div className="absolute top-0 right-0 p-16 bg-primary/5 blur-[50px] rounded-full pointer-events-none"></div>
-
-                {/* Live Feed Header */}
-                <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6 pb-4 border-b border-border/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Activity Feed</span>
-                  </div>
-                  <span className="shrink-0 whitespace-nowrap text-xs bg-secondary px-2.5 py-1 rounded-md text-muted-foreground font-semibold">Doc #394-02</span>
+                <div className="flex items-center justify-between gap-3 mb-5 pb-4 border-b border-border/60">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Activity</span>
+                  <span className="truncate text-xs font-medium text-muted-foreground">Tenancy_Agreement.pdf</span>
                 </div>
 
-                <div className="relative space-y-4 sm:space-y-6 pl-3 sm:pl-4 border-l-2 border-dashed border-border/80 ml-1.5 sm:ml-5">
+                <ol className="space-y-5">
                   {[
-                    {
-                      user: "Sarah Okafor",
-                      action: "viewed the document",
-                      time: "2 mins ago",
-                      avatar: "https://images.unsplash.com/photo-1523824921871-d6f1a15151f1?auto=format&fit=crop&crop=focalpoint&fp-x=0.5&fp-y=0.18&fp-z=2.5&q=80&w=150&h=150",
-                      initials: "SO",
-                      bgGradient: "from-blue-500/10 to-sky-500/10",
-                      ringColor: "ring-blue-100 dark:ring-blue-950",
-                      badgeBg: "bg-blue-500",
-                      badgeIcon: Eye,
-                      textColor: "text-blue-600 dark:text-blue-400"
-                    },
-                    {
-                      user: "Mike Ross",
-                      action: "signed the contract",
-                      time: "Just now",
-                      avatar: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?auto=format&fit=crop&crop=faces&q=80&w=150&h=150",
-                      initials: "MR",
-                      bgGradient: "from-emerald-500/10 to-teal-500/10",
-                      ringColor: "ring-emerald-100 dark:ring-emerald-950",
-                      badgeBg: "bg-emerald-500",
-                      badgeIcon: Check,
-                      textColor: "text-emerald-600 dark:text-emerald-400",
-                      isPulse: true
-                    },
-                    {
-                      user: "System",
-                      action: "sent copy to all parties",
-                      time: "Just now",
-                      avatar: null,
-                      initials: "SYS",
-                      bgGradient: "from-amber-400/15 to-yellow-300/15",
-                      ringColor: "ring-amber-100 dark:ring-amber-950",
-                      badgeBg: "bg-amber-500",
-                      badgeIcon: Send,
-                      textColor: "text-amber-600 dark:text-amber-400",
-                      isPulse: true
-                    }
-                  ].map((notif, i) => (
-                    <div
-                      key={i}
-                      className={`relative flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border border-border/40 bg-background/60 backdrop-blur-sm shadow-sm transition-all duration-300 hover:shadow-md hover:scale-[1.01] ${notif.isPulse ? 'ring-1 ring-primary/20 bg-primary/[0.01]' : ''}`}
-                    >
-                      {/* Timeline dot connector */}
-                      <div className="absolute -left-[21px] sm:-left-[27px] top-6 sm:top-7 w-3.5 h-3.5 rounded-full border-2 border-card bg-border" />
-
-                      {/* Avatar / Icon Container */}
-                      <div className="relative shrink-0">
-                        {notif.avatar ? (
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden ring-2 sm:ring-4 ${notif.ringColor} shadow-inner`}>
-                            <img
-                              src={notif.avatar}
-                              alt={notif.user}
-                              width={48}
-                              height={48}
-                              loading="lazy"
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                // Fallback if image fails to load
-                                e.currentTarget.style.display = 'none';
-                                const parent = e.currentTarget.parentElement;
-                                if (parent) {
-                                  const fallback = parent.nextElementSibling;
-                                  if (fallback) fallback.classList.remove('hidden');
-                                }
-                              }}
-                            />
-                            {/* Fallback Initials */}
-                            <div className="hidden absolute inset-0 flex items-center justify-center bg-muted text-foreground font-bold text-sm">
-                              {notif.initials}
-                            </div>
-                          </div>
-                        ) : (
-                          // System Icon
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center bg-gradient-to-br ${notif.bgGradient} ring-2 sm:ring-4 ${notif.ringColor} shadow-inner`}>
-                            <Cpu className={`w-5 h-5 sm:w-6 sm:h-6 ${notif.textColor}`} />
-                          </div>
-                        )}
-
-                        {/* Status action badge */}
-                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${notif.badgeBg} text-white border-2 border-background shadow-sm`}>
-                          <notif.badgeIcon className="w-2.5 h-2.5" />
+                    { initials: "SO", name: "Sarah Okafor", action: "Opened the document", time: "10:42 AM" },
+                    { initials: "KM", name: "Kwame Mensah", action: "Signed", time: "10:47 AM" },
+                    { initials: "", name: "Endorse", action: "Signed copy and audit trail emailed to both parties", time: "10:47 AM" },
+                  ].map((row) => (
+                    <li key={row.name} className="flex items-start gap-3">
+                      {row.initials ? (
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          {row.initials}
+                        </span>
+                      ) : (
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0A66C2] text-xs font-bold text-white">E</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="text-sm font-bold text-foreground">{row.name}</p>
+                          <p className="shrink-0 text-xs text-muted-foreground">{row.time}</p>
                         </div>
+                        <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{row.action}</p>
                       </div>
-
-                      {/* Content Area */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col min-[400px]:flex-row min-[400px]:items-center min-[400px]:justify-between gap-0.5 min-[400px]:gap-2">
-                          <p className="text-sm font-bold text-foreground">
-                            {notif.user}
-                          </p>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {notif.isPulse && (
-                              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                            )}
-                            <p className="text-xs text-muted-foreground font-medium">{notif.time}</p>
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-0.5 leading-snug">
-                          {notif.action}
-                        </p>
-                      </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
-                {/* Decorative Background Card Shadow Offset */}
-                <div className="absolute -z-10 -bottom-4 -right-4 w-full h-full bg-secondary/30 rounded-2xl border border-border/20"></div>
+                </ol>
               </div>
             </div>
           </div>
@@ -788,7 +548,7 @@ const Landing = () => {
           <div className="py-12 border-t border-slate-100">
             <div className="max-w-3xl mx-auto text-center mb-10 md:mb-16">
               <h3 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-slate-900 dark:text-white">Legally binding, with a record to prove it.</h3>
-              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
                 Identity checks, a timestamped audit trail for every signature, a tamper-evident seal and encrypted storage.
               </p>
             </div>
@@ -819,14 +579,14 @@ const Landing = () => {
                 <div key={i} className="bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 sm:p-8 rounded-2xl flex flex-col justify-between text-left hover:shadow-md transition-all duration-300">
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs uppercase font-extrabold tracking-wider text-slate-700 bg-slate-200/60 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded">
+                      <span className="text-sm uppercase font-extrabold tracking-wider text-slate-700 bg-slate-200/60 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded">
                         {item.badge}
                       </span>
                     </div>
-                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                       {item.title}
                     </h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed">
                       {item.desc}
                     </p>
                   </div>
@@ -841,7 +601,7 @@ const Landing = () => {
       <section id="pricing" className="scroll-mt-20 bg-white px-4 py-16 md:px-6 md:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2]">Pricing</p>
+            <p className="text-base font-semibold uppercase tracking-wider text-[#0A66C2]">Pricing</p>
             <h2 className="mt-3 font-display text-3xl font-bold text-gray-900 sm:text-5xl">
               Plans for every stage of your business
             </h2>
@@ -867,9 +627,9 @@ const Landing = () => {
                   </div>
                   <p className="mt-4 flex items-baseline gap-x-1">
                     <span className="text-4xl font-bold tracking-tight text-gray-900">{tier.price}</span>
-                    {tier.frequency && <span className="text-sm font-semibold leading-6 text-gray-600">{tier.frequency}</span>}
+                    {tier.frequency && <span className="text-base font-semibold leading-6 text-gray-600">{tier.frequency}</span>}
                   </p>
-                  <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
+                  <ul role="list" className="mt-8 space-y-3 text-base leading-6 text-gray-600">
                     {tier.features.map((feature) => (
                       <li key={feature} className="flex gap-x-3">
                         <svg className={`h-6 w-5 flex-none ${tier.color}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -883,7 +643,7 @@ const Landing = () => {
                 <button
                   onClick={() => tier.name === 'Free' ? navigate('/auth?mode=signup') : handleUpgrade(tier.name)}
                   aria-describedby={tier.name}
-                  className={`mt-8 block min-h-[44px] w-full rounded-full px-4 text-center text-sm font-bold shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${tier.buttonColor}`}
+                  className={`mt-8 block min-h-[44px] w-full rounded-full px-4 text-center text-base font-bold shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${tier.buttonColor}`}
                 >
                   Get started
                 </button>
@@ -893,48 +653,16 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Companies Using The Product Ticker Section */}
-      <section className="py-14 border-y border-border/40 bg-slate-50/70 dark:bg-slate-900/40 overflow-hidden relative">
-        <div className="container mx-auto px-4 sm:px-6 mb-8 text-center">
-          <p className="text-sm md:text-base font-extrabold uppercase tracking-widest text-slate-800 dark:text-slate-200">
-            Already using Endorse
-          </p>
-        </div>
-
-        {/* Gradient edge fade masks */}
-        <div className="absolute top-0 bottom-0 left-0 w-24 md:w-40 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-        <div className="absolute top-0 bottom-0 right-0 w-24 md:w-40 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-
-        {/* Scrolling Ticker */}
-        <div className="overflow-hidden flex w-full">
-          <div className="animate-marquee flex items-center gap-14 md:gap-20 py-3">
-            {/* The list is repeated once so the marquee loops without a gap */}
-            {[...CUSTOMERS, ...CUSTOMERS].map((name, index) => (
-              <span
-                key={index}
-                aria-hidden={index >= CUSTOMERS.length}
-                className="text-slate-500 dark:text-slate-400 font-display font-bold text-xl md:text-2xl tracking-tight select-none whitespace-nowrap px-6"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Enhanced Interactive FAQ Section */}
+      {/* FAQ */}
       <section className="py-16 md:py-28 px-4 md:px-6 bg-slate-50/50 dark:bg-slate-900/20 border-t border-border/40">
         <div className="container mx-auto max-w-4xl px-0 sm:px-4">
           {/* Header */}
           <div className="text-center mb-10 md:mb-12">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] dark:text-[#FFC83D] text-xs font-bold uppercase tracking-wider mb-4 border border-[#0A66C2]/20 dark:border-white/10">
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>FAQ</span>
-            </div>
+            <p className="text-base font-semibold uppercase tracking-wider text-[#0A66C2] dark:text-[#FFC83D] mb-3">FAQ</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
               Frequently asked questions
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
               Legal standing, security and billing, answered plainly.
             </p>
           </div>
@@ -959,7 +687,7 @@ const Landing = () => {
                 <button
                   key={cat}
                   onClick={() => setFaqCategory(cat)}
-                  className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap shrink-0 transition-all duration-200 ${faqCategory === cat
+                  className={`min-h-[44px] px-4 py-2 rounded-xl text-base font-bold whitespace-nowrap shrink-0 transition-all duration-200 ${faqCategory === cat
                     ? "bg-[#0A66C2] text-white shadow-md shadow-[#0A66C2]/20 dark:bg-[#FFC83D] dark:text-black"
                     : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                     }`}
@@ -1036,13 +764,13 @@ const Landing = () => {
                     value={faq.id}
                     className="border-slate-100 dark:border-slate-800 last:border-b-0 px-3 sm:px-4 py-0.5 sm:py-2 rounded-xl transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
                   >
-                    <AccordionTrigger className="min-h-[52px] text-left font-display font-semibold text-base md:text-lg text-slate-900 dark:text-white hover:no-underline py-3 gap-3">
+                    <AccordionTrigger className="min-h-[52px] text-left font-display font-semibold text-lg md:text-xl text-slate-900 dark:text-white hover:no-underline py-3 gap-3">
                       <span className="flex items-center gap-2.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] dark:bg-[#FFC83D] shrink-0 opacity-75" />
                         {faq.q}
                       </span>
                     </AccordionTrigger>
-                    <AccordionContent className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed pl-4 sm:pl-5 pb-3">
+                    <AccordionContent className="text-slate-600 dark:text-slate-300 text-base sm:text-lg leading-relaxed pl-4 sm:pl-5 pb-3">
                       {faq.a}
                     </AccordionContent>
                   </AccordionItem>
@@ -1052,20 +780,16 @@ const Landing = () => {
 
           {/* Still Have Questions Support Box */}
           <div className="mt-8 md:mt-12 p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-6 shadow-sm">
-            <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 text-center md:text-left">
-              <div className="w-12 h-12 rounded-2xl bg-[#0A66C2]/10 dark:bg-[#FFC83D]/20 text-[#0A66C2] dark:text-[#FFC83D] flex items-center justify-center shrink-0 mx-auto md:mx-0">
-                <MessageCircle className="w-6 h-6" />
-              </div>
+            <div className="text-center md:text-left">
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">Still have questions?</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">Email us and a person will reply.</p>
+                <h3 className="font-bold text-slate-900 dark:text-white text-lg">Still have questions?</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-base">Email us and a person will reply.</p>
               </div>
             </div>
             <a
               href="mailto:support@e-ndorse.online"
-              className="min-h-[44px] w-full sm:w-auto justify-center bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
+              className="min-h-[44px] w-full sm:w-auto justify-center bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-base px-6 py-3 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
             >
-              <MessageCircle className="w-4 h-4" />
               <span>support@e-ndorse.online</span>
             </a>
           </div>
@@ -1107,11 +831,8 @@ const Landing = () => {
       {showCookieConsent && (
         <div role="region" aria-label="Cookie consent" className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border px-3 py-3 sm:px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-full duration-500">
           <div className="container mx-auto max-w-6xl px-0 sm:px-4 flex items-center justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-primary/10 rounded-full hidden sm:block shrink-0">
-                <Cookie className="w-5 h-5 text-primary" />
-              </div>
-              <p className="text-sm leading-snug text-muted-foreground">
+            <div className="min-w-0">
+              <p className="text-base leading-snug text-muted-foreground">
                 <span className="sm:hidden">We use cookies to improve your experience.</span>
                 <span className="hidden sm:inline">We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies.</span>
               </p>
@@ -1128,72 +849,33 @@ const Landing = () => {
         </div>
       )}
 
-      {/* Live Chat Widget */}
-      <div className={`fixed right-4 md:right-6 z-50 flex flex-col items-end gap-4 transition-[bottom] duration-300 ${showCookieConsent ? "bottom-[84px] md:bottom-[88px]" : "bottom-4 md:bottom-6"}`}>
-        {showChat && (
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-[calc(100vw-2rem)] sm:w-96 overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-            <div className="bg-[#FFC83D] p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-black">Quick answers</span>
-              </div>
-              <button onClick={() => setShowChat(false)} className="-m-2 w-10 h-10 flex items-center justify-center rounded-full text-black/80 hover:text-black hover:bg-black/5 transition-colors" aria-label="Close chat">
-                <X className="w-5 h-5" />
+      {/* Contact: a person answers, not a bot */}
+      <div className={`fixed right-4 md:right-6 z-50 flex flex-col items-end gap-3 transition-[bottom] duration-300 ${showCookieConsent ? "bottom-[84px] md:bottom-[88px]" : "bottom-4 md:bottom-6"}`}>
+        {showContact && (
+          <div id="contact-card" className="w-[calc(100vw-2rem)] sm:w-80 rounded-xl border border-border bg-card p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-bold text-foreground">Talk to us</p>
+              <button onClick={() => setShowContact(false)} className="-m-2 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close">
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="h-80 bg-background p-4 overflow-y-auto flex flex-col gap-4">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`p-3 rounded-lg max-w-[85%] border border-border ${msg.isUser ? 'bg-primary/10 self-end rounded-tr-none' : 'bg-secondary self-start rounded-tl-none'}`}>
-                  <p className="text-sm">{msg.text}</p>
-                  <span className="text-xs text-muted-foreground mt-1 block">{msg.time}</span>
-                </div>
-              ))}
-              {chatMessages.length < 4 && (
-                <div className="flex flex-wrap gap-2 mt-2 px-1">
-                  {["Are there any plans?", "Is it legal?", "Contact Support", "Features"].map((reply) => (
-                    <button
-                      key={reply}
-                      onClick={() => sendMessage(reply)}
-                      className="min-h-[40px] text-sm bg-secondary hover:bg-secondary/80 border border-border rounded-full px-3.5 py-2 transition-colors text-foreground/80"
-                    >
-                      {reply}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {isTyping && (
-                <div className="bg-secondary p-4 rounded-lg rounded-tl-none max-w-[85%] self-start border border-border">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"></span>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t border-border bg-background">
-              <form className="flex gap-2" onSubmit={handleChatSubmit}>
-                <Input
-                  placeholder="Type a message..."
-                  className="flex-1"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  aria-label="Type a message"
-                />
-                <Button size="icon" type="submit" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90" aria-label="Send message">
-                  <Send className="w-4 h-4" />
-                </Button>
-              </form>
-            </div>
+            <p className="mt-1 text-base text-muted-foreground">Email us and a person from the Endorse team will reply, usually within a working day.</p>
+            <a href="mailto:support@e-ndorse.online" className="mt-4 flex min-h-[44px] items-center justify-center rounded-lg bg-[#0A66C2] px-4 text-base font-bold text-white hover:bg-[#08519c]">
+              support@e-ndorse.online
+            </a>
+            <Link to="/help-center" className="mt-2 flex min-h-[44px] items-center justify-center rounded-lg border border-border px-4 text-base font-semibold text-foreground hover:bg-secondary">
+              Browse the Help Center
+            </Link>
           </div>
         )}
-        <Button
-          size="lg"
-          className="h-14 w-14 rounded-full shadow-lg bg-[#FFC83D] text-black hover:bg-[#e6b435] transition-transform hover:scale-105 flex items-center justify-center"
-          onClick={() => setShowChat(!showChat)}
-          aria-label={showChat ? "Close chat" : "Open chat"}
+        <button
+          onClick={() => setShowContact((v) => !v)}
+          aria-expanded={showContact}
+          aria-controls="contact-card"
+          className="min-h-[44px] rounded-full bg-[#FFC83D] px-5 text-base font-bold text-black shadow-lg hover:bg-[#e6b435]"
         >
-          {showChat ? <X className="w-6 h-6" /> : <Bot className="w-6 h-6" />}
-        </Button>
+          {showContact ? "Close" : "Questions?"}
+        </button>
       </div>
     </div>
   );
