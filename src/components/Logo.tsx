@@ -1,4 +1,4 @@
-import logo from "../assets/images/logo-cropped.png";
+import logo from "../assets/images/logo-cropped.webp";
 
 // The image is trimmed to the wordmark, so the className height is the logo's real visual height
 // (e.g. h-9 in headers, h-12 in footers).

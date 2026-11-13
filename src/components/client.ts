@@ -1,6 +1,5 @@
 import { initializeApp } from "firebase/app";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
-import { getAnalytics } from "firebase/analytics";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -29,8 +28,27 @@ for (const [key, value] of Object.entries(firebaseConfig)) {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Analytics loads Google's tracker (~175 KB), so start it on the visitor's first interaction
+// (or after 8 s), keeping it off the critical path for the first screen.
+const startAnalytics = () => {
+  import("firebase/analytics")
+    .then(({ getAnalytics, isSupported }) => isSupported().then((ok) => ok && getAnalytics(app)))
+    .catch(() => {});
+};
+if (typeof window !== "undefined") {
+  const events = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
+  let started = false;
+  const start = () => {
+    if (started) return;
+    started = true;
+    events.forEach((e) => window.removeEventListener(e, start));
+    startAnalytics();
+  };
+  events.forEach((e) => window.addEventListener(e, start, { once: true, passive: true }));
+  setTimeout(start, 8000);
+}
+
 // Initialize Cloud Functions and get a reference to the service
-export const analytics = getAnalytics(app);
 export const functions = getFunctions(app, "us-central1");
 // Connect to emulator in development
 // Disabled: using production Firebase instead

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Linkedin, Instagram } from "lucide-react";
-import ndpcLogo from "@/assets/images/ndpc.png";
+import ndpcLogo from "@/assets/images/ndpc.webp";
 import { NewsletterForm } from "@/components/NewsletterForm";
 
 const COLUMNS: { title: string; links: { label: string; to: string; external?: boolean }[] }[] = [
@@ -76,7 +76,7 @@ export function SiteFooter() {
 
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <h4 className="text-sm font-bold text-slate-900 dark:text-white">{col.title}</h4>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">{col.title}</h2>
               <ul className="mt-4 space-y-1">
                 {col.links.map((link) => (
                   <li key={link.label}>

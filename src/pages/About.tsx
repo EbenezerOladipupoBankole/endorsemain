@@ -191,7 +191,7 @@ const About = () => {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="h-14 rounded-full px-8 text-lg font-bold border-[#0A66C2]/30 text-[#0A66C2] hover:bg-[#0A66C2]/5 hover:text-[#08519c]">
-                <a href="mailto:support@endorse.online?subject=Sales%20enquiry">Contact Sales</a>
+                <a href="mailto:support@e-ndorse.online?subject=Sales%20enquiry">Contact Sales</a>
               </Button>
             </div>
           </div>

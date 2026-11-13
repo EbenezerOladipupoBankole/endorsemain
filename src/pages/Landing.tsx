@@ -94,7 +94,7 @@ const Landing = () => {
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([
-    { text: "Hi! I can answer quick questions about pricing, signing and security. For anything else, email support@endorse.online.", isUser: false, time: "Just now" }
+    { text: "Hi! I can answer quick questions about pricing, signing and security. For anything else, email support@e-ndorse.online.", isUser: false, time: "Just now" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
@@ -144,9 +144,9 @@ const Landing = () => {
       return "Endorse provides simple electronic signatures of the kind recognised under the US ESIGN Act and the EU's eIDAS regulation. Files are encrypted in transit and at rest.";
     }
     if (lower.includes("support") || lower.includes("help")) {
-      return "Email us at support@endorse.online, or have a look at the Help Center.";
+      return "Email us at support@e-ndorse.online, or have a look at the Help Center.";
     }
-    return "I can only answer a few common questions here. For anything else, email support@endorse.online and we'll get back to you.";
+    return "I can only answer a few common questions here. For anything else, email support@e-ndorse.online and we'll get back to you.";
   };
 
   const sendMessage = (text: string) => {
@@ -174,27 +174,29 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
+      <main>
 
       {/* Hero */}
       <section className="pt-10 pb-12 md:pt-16 md:pb-20 px-4 md:px-6 bg-white dark:bg-slate-950 relative overflow-hidden">
         <div className="container mx-auto max-w-6xl px-0 sm:px-8 grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
-          <div className="text-center lg:text-left animate-fade-up">
+          <div className="text-center lg:text-left">
             <h1 className="font-display text-[2.1rem] sm:text-5xl md:text-[3.4rem] font-extrabold text-slate-900 dark:text-white leading-[1.08] tracking-tight">
-              Get documents signed and invoices out, <span className="text-[#0A66C2]">without the paperwork.</span>
+              eSign your agreements <span className="text-[#0A66C2]">on one structured platform.</span>
             </h1>
             <p className="mt-5 text-base md:text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
-              Sign PDFs and Word files yourself, send them to others by email or WhatsApp, reuse your
-              agreements as templates, and bill clients in Naira, Cedis, Shillings, Rand or Dollars.
+              Endorse takes a digital agreement from upload to signed record. Place every field, send it
+              to signers by email or WhatsApp, follow each step as it happens, and keep an audit trail
+              anyone can verify. Then invoice the client from the same account.
             </p>
             <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
               <Button asChild size="lg" className="h-12 rounded-full px-7 text-base font-extrabold bg-[#FFC83D] text-black hover:bg-[#e6b435]">
-                <Link to="/auth?mode=signup">Start free — 3 documents on us</Link>
+                <Link to="/auth?mode=signup">Start signing free</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="h-12 rounded-full px-7 text-base font-bold border-slate-300 dark:border-slate-700">
-                <a href="#pricing">See pricing</a>
+                <a href="#pricing">View pricing</a>
               </Button>
             </div>
-            <p className="mt-4 text-sm text-slate-500">No card needed. Signers don't pay anything.</p>
+            <p className="mt-4 text-sm text-slate-500">3 free documents · No card required · Free for signers</p>
           </div>
 
           {/* Product snapshot: what a workspace looks like once you've sent a few things */}
@@ -215,11 +217,11 @@ const Landing = () => {
                   {[
                     { label: "Sent", value: 14, tone: "text-slate-900 dark:text-white" },
                     { label: "Awaiting", value: 3, tone: "text-amber-600" },
-                    { label: "Signed", value: 11, tone: "text-emerald-600" },
+                    { label: "Signed", value: 11, tone: "text-emerald-700" },
                   ].map((s) => (
                     <div key={s.label} className="rounded-xl border border-slate-100 dark:border-slate-800 px-3 py-2">
                       <p className={`text-lg font-extrabold ${s.tone}`}>{s.value}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{s.label}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{s.label}</p>
                     </div>
                   ))}
                 </div>
@@ -231,7 +233,7 @@ const Landing = () => {
                   ].map((row) => (
                     <li key={row.doc} className="flex items-center justify-between gap-3 py-2.5">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                        <FileText className="h-4 w-4 shrink-0 text-slate-500" />
                         <div className="min-w-0">
                           <p className="truncate text-[13px] font-bold text-slate-800 dark:text-slate-100">{row.doc}</p>
                           <p className="truncate text-[11px] text-slate-500">{row.who} · {row.via}</p>
@@ -275,10 +277,10 @@ const Landing = () => {
           <div className="text-center max-w-2xl mx-auto mb-10 md:mb-20">
             <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2] mb-3">How it works</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">
-              From upload to signed copy in three steps
+              Every agreement follows the same clear steps
             </h2>
             <p className="text-slate-500 text-base md:text-lg leading-relaxed">
-              Your signer gets a link, signs on whatever device they have, and you get the signed PDF back by email.
+              Upload, prepare and send. Signers eSign from any device with no app to install, and the signed copy comes back to you with its audit trail.
             </p>
           </div>
 
@@ -291,27 +293,27 @@ const Landing = () => {
                 {
                   id: 0,
                   step: "01",
-                  title: "Upload Document",
+                  title: "Upload",
                   subtitle: "PDF or Word",
-                  desc: "Upload a PDF or Word file from your computer or phone, or start from one of your saved templates.",
+                  desc: "Bring in a PDF or Word file from your computer or phone, or start from one of your saved templates.",
                   icon: UploadCloud,
                   activeColor: "border-primary text-primary"
                 },
                 {
                   id: 1,
                   step: "02",
-                  title: "Add Signers & Prepare",
-                  subtitle: "Place the fields",
-                  desc: "Add each signer's name and email or WhatsApp number, then drag signature, initials, date and text fields to where they belong.",
+                  title: "Prepare",
+                  subtitle: "Place every field",
+                  desc: "Add each signer by email or WhatsApp number, then place signature, initials, date and text fields exactly where they belong.",
                   icon: MousePointerClick,
                   activeColor: "border-emerald-500 text-emerald-600"
                 },
                 {
                   id: 2,
                   step: "03",
-                  title: "Track & Complete",
-                  subtitle: "Know where it stands",
-                  desc: "Send secure signing links by email or WhatsApp. See each document move from awaiting signature to signed, and download the signed copy.",
+                  title: "Send & sign",
+                  subtitle: "Always know where it stands",
+                  desc: "Secure signing links go out by email or WhatsApp. Watch each document move from awaiting signature to signed, then download the completed copy.",
                   icon: ShieldCheck,
                   activeColor: "border-[#FFC83D] text-[#D89E24]"
                 }
@@ -323,7 +325,6 @@ const Landing = () => {
                     key={i}
                     role="button"
                     tabIndex={0}
-                    aria-label={`Step ${item.step}: ${item.title}`}
                     aria-expanded={isActive}
                     onClick={() => {
                       setActiveWorkflowStep(item.id);
@@ -349,7 +350,7 @@ const Landing = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground">{item.subtitle}</span>
-                        <span className={`shrink-0 whitespace-nowrap text-xs font-mono font-bold ${isActive ? 'text-primary' : 'text-slate-400'}`}>Step {item.step}</span>
+                        <span className={`shrink-0 whitespace-nowrap text-xs font-mono font-bold ${isActive ? 'text-primary' : 'text-slate-500'}`}>Step {item.step}</span>
                       </div>
                       <h3 className={`text-lg font-bold mt-1 mb-1.5 transition-colors ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>
                         {item.title}
@@ -387,7 +388,7 @@ const Landing = () => {
                   <div className="flex-1 flex justify-center">
                     <div className="bg-white border border-slate-200 rounded-md px-4 py-1.5 text-[11px] text-slate-500 font-medium flex items-center gap-2 w-full max-w-[280px] justify-center shadow-sm">
                       <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                      <span className="opacity-80 font-mono">endorse.com/app/sign</span>
+                      <span className="font-mono">e-ndorse.online/sign</span>
                     </div>
                   </div>
                 </div>
@@ -400,13 +401,13 @@ const Landing = () => {
                     <div className="w-full max-w-[420px] bg-white border border-slate-200 rounded-xl p-5 shadow-lg space-y-4 animate-in fade-in zoom-in-95 duration-300 text-left">
                       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Upload Documents</span>
-                        <span className="text-[10px] text-slate-400 font-medium">Step 1 of 3</span>
+                        <span className="text-[10px] text-slate-500 font-medium">Step 1 of 3</span>
                       </div>
 
                       <div className="border border-dashed border-slate-300 hover:border-slate-400 rounded-xl p-5 text-center bg-slate-50/50 transition-colors">
                         <UploadCloud className="w-8 h-8 text-primary mx-auto mb-2 animate-bounce" />
                         <p className="text-xs font-bold text-slate-700">Drag & drop files here</p>
-                        <p className="text-[10px] text-slate-400 mt-1">PDF, Word, or JPG up to 25MB</p>
+                        <p className="text-[10px] text-slate-500 mt-1">PDF, Word, or JPG up to 25MB</p>
                       </div>
 
                       <div className="space-y-3">
@@ -415,9 +416,9 @@ const Landing = () => {
                           <FileText className="w-5 h-5 text-emerald-600 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-slate-800 truncate">NDA_Corporate_Final.pdf</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">1.2 MB • Processing complete</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">1.2 MB • Processing complete</p>
                           </div>
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">Ready</span>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">Ready</span>
                         </div>
 
                         {/* File 2: Uploading */}
@@ -426,7 +427,7 @@ const Landing = () => {
                             <FileText className="w-5 h-5 text-primary shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-slate-800 truncate">Partnership_Agreement_Draft.pdf</p>
-                              <p className="text-[10px] text-slate-400 mt-0.5">3.8 MB • Uploading...</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">3.8 MB • Uploading...</p>
                             </div>
                             <span className="text-[10px] font-mono font-bold text-primary shrink-0">85%</span>
                           </div>
@@ -445,7 +446,7 @@ const Landing = () => {
                   {activeWorkflowStep === 1 && (
                     <div className="w-full max-w-[440px] bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-lg animate-in fade-in zoom-in-95 duration-300 flex flex-col gap-3 min-h-[260px] text-left">
                       {/* Editor Toolbar */}
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 text-[10px] text-slate-400 font-bold">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 text-[10px] text-slate-500 font-bold">
                         <span className="text-slate-500">DOCUMENT EDITOR</span>
                         <div className="flex gap-2">
                           <span className="bg-white border px-1.5 py-0.5 rounded text-slate-600">Page 1 of 2</span>
@@ -456,14 +457,14 @@ const Landing = () => {
                       <div className="flex gap-3 items-stretch flex-1">
                         {/* Left Sidebar of Mock Editor */}
                         <div className="w-24 shrink-0 flex flex-col gap-2 border-r border-slate-200 pr-2">
-                          <span className="text-[8px] uppercase tracking-wider font-extrabold text-slate-400 mb-0.5">Drag Fields</span>
+                          <span className="text-[8px] uppercase tracking-wider font-extrabold text-slate-500 mb-0.5">Drag Fields</span>
                           <div className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 p-2 rounded-md text-[10px] font-extrabold flex items-center gap-1.5 cursor-grab">
                             <PenTool className="w-3.5 h-3.5" /> Signature
                           </div>
-                          <div className="bg-white border border-slate-200 text-slate-400 p-2 rounded-md text-[10px] font-medium flex items-center gap-1.5 opacity-80">
+                          <div className="bg-white border border-slate-200 text-slate-600 p-2 rounded-md text-[10px] font-medium flex items-center gap-1.5">
                             <span className="w-3.5 h-3.5 font-bold flex items-center justify-center border rounded border-slate-300 text-[8px]">In</span> Initials
                           </div>
-                          <div className="bg-white border border-slate-200 text-slate-400 p-2 rounded-md text-[10px] font-medium flex items-center gap-1.5 opacity-80">
+                          <div className="bg-white border border-slate-200 text-slate-600 p-2 rounded-md text-[10px] font-medium flex items-center gap-1.5">
                             <span className="w-3.5 h-3.5 font-bold flex items-center justify-center border rounded border-slate-300 text-[8px]">Dt</span> Date Signed
                           </div>
                         </div>
@@ -481,14 +482,14 @@ const Landing = () => {
 
                           {/* Signature Drop Zone */}
                           <div className="border-2 border-dashed border-emerald-500 bg-emerald-50/30 p-2 rounded-md flex items-center justify-between relative mt-4">
-                            <span className="text-[8px] font-mono text-emerald-600 font-bold uppercase tracking-wider">eSign Block (Signer 1)</span>
-                            <span className="text-[7px] bg-emerald-500 text-white font-extrabold px-1 py-0.5 rounded shadow-sm">Placed</span>
+                            <span className="text-[8px] font-mono text-emerald-700 font-bold uppercase tracking-wider">eSign Block (Signer 1)</span>
+                            <span className="text-[7px] bg-emerald-700 text-white font-extrabold px-1 py-0.5 rounded shadow-sm">Placed</span>
                           </div>
 
                           {/* Animated Cursor Dragging Icon */}
                           <div className="absolute top-1/2 left-1/3 flex items-center gap-1 pointer-events-none animate-[float_4s_ease-in-out_infinite]">
                             <MousePointerClick className="w-4 h-4 text-primary shrink-0" />
-                            <span className="bg-emerald-500 text-white text-[8px] font-bold px-2 py-1 rounded shadow-md ring-2 ring-emerald-400 flex items-center gap-1">
+                            <span className="bg-emerald-700 text-white text-[8px] font-bold px-2 py-1 rounded shadow-md ring-2 ring-emerald-400 flex items-center gap-1">
                               <PenTool className="w-2.5 h-2.5" /> Signature
                             </span>
                           </div>
@@ -503,10 +504,10 @@ const Landing = () => {
                       {/* Header with status badge */}
                       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                         <div>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Document Overview</p>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Document Overview</p>
                           <h4 className="text-sm font-extrabold text-slate-800 mt-0.5">Rental_Agreement_2026.pdf</h4>
                         </div>
-                        <div className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1 shrink-0">
+                        <div className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1 shrink-0">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Completed
                         </div>
                       </div>
@@ -517,7 +518,7 @@ const Landing = () => {
                           <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold font-mono text-[10px] border border-blue-100 z-10">1</div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-slate-800 truncate">Document created by Dr. Williams</p>
-                            <p className="text-[10px] text-slate-400">Aug 25, 11:15 AM</p>
+                            <p className="text-[10px] text-slate-500">Aug 25, 11:15 AM</p>
                           </div>
                         </div>
 
@@ -525,15 +526,15 @@ const Landing = () => {
                           <div className="w-6 h-6 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 font-bold font-mono text-[10px] border border-amber-100 z-10">2</div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-slate-800 truncate">Sent to Sarah Okafor (sarah@company.com)</p>
-                            <p className="text-[10px] text-slate-400">Aug 25, 11:20 AM • Secure Signing Link</p>
+                            <p className="text-[10px] text-slate-500">Aug 25, 11:20 AM • Secure Signing Link</p>
                           </div>
                         </div>
 
                         <div className="flex items-start gap-3 text-xs relative">
-                          <div className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 font-bold font-mono text-[10px] border border-emerald-100 z-10">3</div>
+                          <div className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 font-bold font-mono text-[10px] border border-emerald-100 z-10">3</div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-slate-800 truncate">Sarah Okafor signed the contract</p>
-                            <p className="text-[10px] text-slate-400">Aug 25, 11:32 AM • Signed &amp; emailed to you</p>
+                            <p className="text-[10px] text-slate-500">Aug 25, 11:32 AM • Signed &amp; emailed to you</p>
                           </div>
                         </div>
                       </div>
@@ -558,24 +559,24 @@ const Landing = () => {
       <section id="features" className="scroll-mt-20 py-16 md:py-24 px-4 md:px-6 overflow-hidden">
         <div className="container mx-auto max-w-6xl px-0 sm:px-8">
           <div className="text-center mb-12 md:mb-16">
-            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">What's in Endorse</p>
+            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Built for digital agreements</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
-              More than a signature pad
+              Structure every agreement, from draft to signed record
             </h2>
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-              The paperwork around a deal or a hire, in one account.
+              Prepare, send, eSign, track and store your agreements, then invoice the client, without leaving Endorse.
             </p>
           </div>
 
           {/* Product tour: each card links to its product page */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16 md:mb-24">
             {[
-              { icon: PenTool, title: "Sign documents", text: "Sign a PDF or Word file yourself and download the signed copy.", to: "/product/esign" },
-              { icon: Send, title: "Send for signature", text: "Send to one or more people by email or WhatsApp and see who has signed.", to: "/product/send-for-signature" },
-              { icon: Layers, title: "Templates", text: "Save an agreement once and reuse it — each signer's details fill in for you.", to: "/product/templates" },
-              { icon: Receipt, title: "Invoices", text: "Itemised invoices with tax and discounts in 10 currencies, emailed as a PDF.", to: "/product/invoices" },
-              { icon: FileCode, title: "File conversion", text: "Word to PDF, PDF to Word, images to PDF and back, merging and password-protecting PDFs.", to: "/conversion" },
-              { icon: Users, title: "Teams", text: "Invite teammates on the Business plan and share templates.", to: "/#pricing" },
+              { icon: PenTool, title: "eSign documents", text: "Sign any PDF or Word file in seconds and keep a clean, signed copy.", to: "/product/esign" },
+              { icon: Send, title: "Send for signature", text: "Route a document to one or many signers by email or WhatsApp and see who has signed.", to: "/product/send-for-signature" },
+              { icon: Layers, title: "Templates", text: "Save an agreement once and reuse it. Each signer's details fill in automatically.", to: "/product/templates" },
+              { icon: Receipt, title: "Invoices", text: "Professional, itemised invoices with tax and discounts in 10 currencies, delivered as a PDF.", to: "/product/invoices" },
+              { icon: FileCode, title: "File conversion", text: "Convert between Word, PDF and images, merge files and password-protect PDFs.", to: "/conversion" },
+              { icon: Users, title: "Teams", text: "Bring your team onto the Business plan and share templates across the company.", to: "/#pricing" },
             ].map((p) => (
               <Link
                 key={p.title}
@@ -626,9 +627,9 @@ const Landing = () => {
               </div>
             </div>
             <div className="w-full md:w-1/2 order-1 md:order-2">
-              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Sign on a laptop or a phone.</h3>
+              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">eSign from anywhere, on any device.</h3>
               <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
-                Draw your signature with a finger, type it in a handwriting style, or upload a photo of it. Signers don't need to install anything.
+                Draw your signature, type it in a handwriting style, or upload an image of it. Endorse runs in the browser, so signers never need to install an app.
               </p>
               <ul className="space-y-3">
                 {["Draw, type, or upload a signature", "Initials, dates, names and text fields too", "No account needed for WhatsApp signers"].map((item, i) => (
@@ -644,9 +645,9 @@ const Landing = () => {
           {/* Feature 2: Tracking */}
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-16 md:mb-24">
             <div className="w-full md:w-1/2">
-              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">See who has signed and who hasn't.</h3>
+              <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Know where every agreement stands.</h3>
               <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
-                Each document you send shows when it went out and when it was signed. You're emailed the signed copy as soon as it's done, and you can resend the link to anyone who's slow.
+                Every document shows when it went out and when each person signed. The completed copy is emailed to you the moment it's done, and a gentle reminder is one click away.
               </p>
               <Link to="/product/send-for-signature" className="inline-flex">
                 <Button variant="outline" className="group h-11 px-5">
@@ -786,9 +787,9 @@ const Landing = () => {
           {/* Feature 3: Security */}
           <div className="py-12 border-t border-slate-100">
             <div className="max-w-3xl mx-auto text-center mb-10 md:mb-16">
-              <h3 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-slate-900 dark:text-white">The right person, on the record.</h3>
+              <h3 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-slate-900 dark:text-white">Legally binding, with a record to prove it.</h3>
               <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                What Endorse does to check who signed and keep your documents private.
+                Identity checks, a timestamped audit trail for every signature, a tamper-evident seal and encrypted storage.
               </p>
             </div>
 
@@ -818,7 +819,7 @@ const Landing = () => {
                 <div key={i} className="bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 sm:p-8 rounded-2xl flex flex-col justify-between text-left hover:shadow-md transition-all duration-300">
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs uppercase font-extrabold tracking-wider text-slate-500 bg-slate-200/60 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded">
+                      <span className="text-xs uppercase font-extrabold tracking-wider text-slate-700 bg-slate-200/60 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded">
                         {item.badge}
                       </span>
                     </div>
@@ -842,7 +843,7 @@ const Landing = () => {
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2]">Pricing</p>
             <h2 className="mt-3 font-display text-3xl font-bold text-gray-900 sm:text-5xl">
-              Choose the right plan for you
+              Plans for every stage of your business
             </h2>
           </div>
           <div className="isolate mx-auto mt-10 grid max-w-md grid-cols-1 gap-6 md:mt-14 lg:max-w-none lg:grid-cols-3 lg:gap-8">
@@ -931,10 +932,10 @@ const Landing = () => {
               <span>FAQ</span>
             </div>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
-              Questions people ask us
+              Frequently asked questions
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-              Whether signatures hold up, how your files are protected, and what you pay.
+              Legal standing, security and billing, answered plainly.
             </p>
           </div>
 
@@ -942,7 +943,7 @@ const Landing = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4 mb-6 md:mb-10">
             {/* Search Input */}
             <div className="relative w-full md:w-72">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 type="text"
                 placeholder="Search questions..."
@@ -1061,11 +1062,11 @@ const Landing = () => {
               </div>
             </div>
             <a
-              href="mailto:support@endorse.online"
+              href="mailto:support@e-ndorse.online"
               className="min-h-[44px] w-full sm:w-auto justify-center bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>support@endorse.online</span>
+              <span>support@e-ndorse.online</span>
             </a>
           </div>
         </div>
@@ -1083,10 +1084,10 @@ const Landing = () => {
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
             <div className="relative z-10">
               <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-                Send your next document today.
+                Put your next agreement on Endorse.
               </h2>
               <p className="text-white/85 text-lg md:text-xl mb-8 max-w-xl mx-auto">
-                Your first 3 documents are free. No card needed.
+                Send your first document in minutes. 3 documents free, no card required.
               </p>
               <Link to="/auth?mode=signup" className="inline-flex w-full sm:w-auto">
                 <Button size="lg" className="w-full sm:w-auto bg-[#FFC83D] text-black hover:bg-[#e6b435] font-semibold text-lg md:text-xl h-14 px-8">
@@ -1099,6 +1100,7 @@ const Landing = () => {
         </div>
       </section>
 
+      </main>
       <SiteFooter />
 
       {/* Cookie Consent Banner */}
