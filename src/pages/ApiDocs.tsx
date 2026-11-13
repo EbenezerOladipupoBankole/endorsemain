@@ -163,7 +163,7 @@ def handle_webhook():
             <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-10 mb-4">Support</h2>
             <nav className="space-y-1">
               <Link to="/help-center" className={sideLink}>Guides</Link>
-              <a href="mailto:api-support@endorse.online" className={sideLink}>Contact Support</a>
+              <a href="mailto:api-support@e-ndorse.online" className={sideLink}>Contact Support</a>
             </nav>
           </div>
         </aside>

@@ -2,41 +2,48 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
-import SignDocument from "./pages/SignDocument";
-import WhatsAppVerify from "./pages/WhatsAppVerify";
-import VerifyDocument from "./pages/VerifyDocument";
-import Blog from "./pages/Blog";
+const Auth = lazy(() => import("./pages/Auth"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const SignDocument = lazy(() => import("./pages/SignDocument"));
+const WhatsAppVerify = lazy(() => import("./pages/WhatsAppVerify"));
+const VerifyDocument = lazy(() => import("./pages/VerifyDocument"));
+const Blog = lazy(() => import("./pages/Blog"));
 // About page is hidden for now; uncomment this and the /about route to bring it back.
 // import About from "./pages/About";
-import Payment from "./Payment";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import CookiePolicy from "./pages/CookiePolicy";
-import Team from "./pages/Team";
-import Settings from "./pages/Settings";
-import FileConversion from "./pages/FileConversion";
-import AdminBlog from "./pages/AdminBlog";
-import BlogPost from "./pages/BlogPost";
-import HelpCenter from "./pages/HelpCenter";
-import AdminHelpCenter from "./pages/AdminHelpCenter";
-import ApiDocs from "./pages/ApiDocs";
-import Invoices from "./pages/Invoices";
-import SalesOperations from "./pages/SalesOperations";
-import HrRecruiting from "./pages/HrRecruiting";
-import LegalCompliance from "./pages/LegalCompliance";
-import ProductESign from "./pages/product/ESign";
-import ProductSendForSignature from "./pages/product/SendForSignature";
-import ProductInvoices from "./pages/product/Invoices";
-import ProductTemplates from "./pages/product/Templates";
-import { useAuth } from "./components/AuthContext";
+const Payment = lazy(() => import("./Payment"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const Team = lazy(() => import("./pages/Team"));
+const Settings = lazy(() => import("./pages/Settings"));
+const FileConversion = lazy(() => import("./pages/FileConversion"));
+const AdminBlog = lazy(() => import("./pages/AdminBlog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
+const HelpCenter = lazy(() => import("./pages/HelpCenter"));
+const AdminHelpCenter = lazy(() => import("./pages/AdminHelpCenter"));
+const ApiDocs = lazy(() => import("./pages/ApiDocs"));
+const Invoices = lazy(() => import("./pages/Invoices"));
+const SalesOperations = lazy(() => import("./pages/SalesOperations"));
+const HrRecruiting = lazy(() => import("./pages/HrRecruiting"));
+const LegalCompliance = lazy(() => import("./pages/LegalCompliance"));
+const ProductESign = lazy(() => import("./pages/product/ESign"));
+const ProductSendForSignature = lazy(() => import("./pages/product/SendForSignature"));
+const ProductInvoices = lazy(() => import("./pages/product/Invoices"));
+const ProductTemplates = lazy(() => import("./pages/product/Templates"));
 
 const queryClient = new QueryClient();
+
+// Shown briefly while a page other than the landing page downloads.
+const PageLoader = () => (
+  <div className="flex min-h-screen items-center justify-center" role="status" aria-label="Loading">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#0A66C2]" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -44,6 +51,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
@@ -79,6 +87,7 @@ const App = () => (
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

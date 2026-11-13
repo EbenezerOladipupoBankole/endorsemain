@@ -4,6 +4,7 @@ import 'react-quill-new/dist/quill.snow.css';
 import { storage } from "@/components/client";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
+import "@/lib/editorFonts";
 
 // Register custom fonts
 // Quill.import() is typed as `unknown` for format paths; 'formats/font' is a

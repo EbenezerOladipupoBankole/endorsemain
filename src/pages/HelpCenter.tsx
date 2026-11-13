@@ -150,7 +150,7 @@ const HelpCenter = () => {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
             <Button size="lg" asChild className="h-12 rounded-full bg-[#FFC83D] font-bold text-black hover:bg-[#e6b435]">
-              <a href="mailto:support@endorse.online">Contact Support</a>
+              <a href="mailto:support@e-ndorse.online">Contact Support</a>
             </Button>
             <Button size="lg" variant="outline" asChild className="h-12 rounded-full border-[#0A66C2]/30 font-bold text-[#0A66C2] hover:bg-[#0A66C2]/5 hover:text-[#08519c]">
               <Link to="/api-docs">Visit API Docs</Link>

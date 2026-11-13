@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { ArrowLeft, Calendar, FileText, Loader2, Share2, User } from "lucide-react";
 
 import { toast } from "sonner";
+import "@/lib/editorFonts";
 
 interface BlogPost {
   title: string;
