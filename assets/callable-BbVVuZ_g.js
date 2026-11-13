@@ -1,1 +1,0 @@
-import{x as r,y as p}from"./index-BHXHQjYw.js";const e="https://endorsemain-functions-u2j6.vercel.app".replace(/\/+$/,"");function o(t,l,a){return e?r(t,`${e}/${l}`,a):p(t,l,a)}export{o as httpsCallable};
