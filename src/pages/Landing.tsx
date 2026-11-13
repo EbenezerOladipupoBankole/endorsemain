@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
 import { useAuth } from "@/components/AuthContext";
+import { ChatWidget } from "@/components/ChatWidget";
 import {
   UploadCloud,
   ShieldCheck,
@@ -12,7 +13,6 @@ import {
   Search,
   PenTool,
   ArrowRight,
-  X,
   FileText,
   MousePointerClick,
   Download,
@@ -68,7 +68,6 @@ const Landing = () => {
     return () => clearTimeout(timer);
   }, [location.hash]);
   const [showCookieConsent, setShowCookieConsent] = useState(false);
-  const [showContact, setShowContact] = useState(false);
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
   const [isStepAutoplay, setIsStepAutoplay] = useState(true);
 
@@ -849,34 +848,7 @@ const Landing = () => {
         </div>
       )}
 
-      {/* Contact: a person answers, not a bot */}
-      <div className={`fixed right-4 md:right-6 z-50 flex flex-col items-end gap-3 transition-[bottom] duration-300 ${showCookieConsent ? "bottom-[84px] md:bottom-[88px]" : "bottom-4 md:bottom-6"}`}>
-        {showContact && (
-          <div id="contact-card" className="w-[calc(100vw-2rem)] sm:w-80 rounded-xl border border-border bg-card p-5 shadow-xl">
-            <div className="flex items-start justify-between gap-3">
-              <p className="font-bold text-foreground">Talk to us</p>
-              <button onClick={() => setShowContact(false)} className="-m-2 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="mt-1 text-base text-muted-foreground">Email us and a person from the Endorse team will reply, usually within a working day.</p>
-            <a href="mailto:support@e-ndorse.online" className="mt-4 flex min-h-[44px] items-center justify-center rounded-lg bg-[#0A66C2] px-4 text-base font-bold text-white hover:bg-[#08519c]">
-              support@e-ndorse.online
-            </a>
-            <Link to="/help-center" className="mt-2 flex min-h-[44px] items-center justify-center rounded-lg border border-border px-4 text-base font-semibold text-foreground hover:bg-secondary">
-              Browse the Help Center
-            </Link>
-          </div>
-        )}
-        <button
-          onClick={() => setShowContact((v) => !v)}
-          aria-expanded={showContact}
-          aria-controls="contact-card"
-          className="min-h-[44px] rounded-full bg-[#FFC83D] px-5 text-base font-bold text-black shadow-lg hover:bg-[#e6b435]"
-        >
-          {showContact ? "Close" : "Questions?"}
-        </button>
-      </div>
+      <ChatWidget raised={showCookieConsent} />
     </div>
   );
 };

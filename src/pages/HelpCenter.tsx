@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { CreditCard, ExternalLink, FileSignature, LifeBuoy, Loader2, PlayCircle, Rocket, Search, Settings2, Video } from "lucide-react";
+import { ExternalLink, Loader2, Search } from "lucide-react";
 import { db } from "@/components/client";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
@@ -39,10 +39,10 @@ const HelpCenter = () => {
   }, []);
 
   const categories = [
-    { name: "Getting Started", icon: Rocket, count: tutorials.filter(t => t.category === "Getting Started").length },
-    { name: "Signatures & Documents", icon: FileSignature, count: tutorials.filter(t => t.category === "Signatures & Documents").length },
-    { name: "Account & Billing", icon: CreditCard, count: tutorials.filter(t => t.category === "Account & Billing").length },
-    { name: "Advanced Features", icon: Settings2, count: tutorials.filter(t => t.category === "Advanced Features").length },
+    { name: "Getting Started", count: tutorials.filter(t => t.category === "Getting Started").length },
+    { name: "Signatures & Documents", count: tutorials.filter(t => t.category === "Signatures & Documents").length },
+    { name: "Account & Billing", count: tutorials.filter(t => t.category === "Account & Billing").length },
+    { name: "Advanced Features", count: tutorials.filter(t => t.category === "Advanced Features").length },
   ];
 
   const filteredTutorials = tutorials.filter(t => 
@@ -77,9 +77,6 @@ const HelpCenter = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-12 md:mb-20">
           {categories.map((cat, i) => (
             <div key={i} className="p-4 sm:p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
-                {cat.icon && <cat.icon className="w-6 h-6" />}
-              </div>
               <h3 className="font-bold mb-1">{cat.name}</h3>
               <p className="text-sm text-muted-foreground">{cat.count || 0} articles</p>
             </div>
@@ -89,8 +86,7 @@ const HelpCenter = () => {
         {/* Tutorials Section */}
         <div className="space-y-12">
           <div className="flex items-center justify-between border-b border-border pb-4">
-            <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              <PlayCircle className="w-6 h-6 text-primary" />
+            <h2 className="text-xl md:text-2xl font-bold">
               Featured Video Tutorials
             </h2>
           </div>
@@ -101,7 +97,6 @@ const HelpCenter = () => {
             </div>
           ) : tutorials.length === 0 ? (
             <div className="text-center py-20 bg-secondary/10 rounded-3xl border border-dashed border-border">
-              <Video className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
               <h3 className="text-lg font-medium text-muted-foreground">No tutorials found.</h3>
               <p className="text-sm text-muted-foreground mt-1">Check back later or contact support if you need help.</p>
             </div>
@@ -143,7 +138,6 @@ const HelpCenter = () => {
 
         {/* Help CTA */}
         <div className="mt-16 md:mt-24 rounded-3xl bg-primary/5 border border-primary/20 p-6 sm:p-8 md:p-12 text-center">
-          <LifeBuoy className="w-12 h-12 mx-auto mb-4 text-primary" />
           <h2 className="text-2xl md:text-3xl font-bold mb-4">Still need help?</h2>
           <p className="text-base md:text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
             Our support team is available 24/7 to answer your questions and help you get the most out of Endorse.

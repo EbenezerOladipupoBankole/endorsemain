@@ -5,7 +5,6 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useDocumentMeta } from "@/components/FeaturePage";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthContext";
-import { Bell, Check, FileText, Receipt, Send } from "lucide-react";
 
 const STAGES = ["Draft", "Sent", "Reminded", "Signed", "Invoiced"] as const;
 
@@ -243,8 +242,7 @@ export default function SalesOperations() {
                 {NEW_WAY.map((s, i) => (
                   <li key={s.at + s.label} className="flex gap-4 text-sm">
                     <span className="w-14 shrink-0 font-mono text-xs leading-5 text-white/60">{s.at}</span>
-                    <span className="flex items-center gap-2 font-medium">
-                      {i === NEW_WAY.length - 1 && <Check className="h-4 w-4 text-[#FFC83D]" />}
+                    <span className={`font-medium ${i === NEW_WAY.length - 1 ? "text-[#FFC83D]" : ""}`}>
                       {s.label}
                     </span>
                   </li>
@@ -263,24 +261,20 @@ export default function SalesOperations() {
         <div className="container mx-auto grid max-w-6xl gap-10 md:grid-cols-3">
           {[
             {
-              icon: FileText,
               title: "Templates that fill themselves",
               desc: "Keep your services agreement and renewal terms as templates. Client details drop in, legal language stays untouched.",
             },
             {
-              icon: Bell,
               title: "Reminders in one click",
               desc: "Still unsigned? Resend the signing link from your dashboard in one click — no awkward follow-up email to write.",
             },
             {
-              icon: Receipt,
               title: "Invoices in the same place",
               desc: "Once it's signed, create an itemized invoice in Endorse and email the PDF to your client in a minute.",
             },
           ].map((f) => (
             <div key={f.title} className="border-t-[3px] border-[#FFC83D] pt-5">
-              <f.icon className="h-5 w-5 text-[#0A66C2]" />
-              <h3 className="mt-4 font-display text-xl font-medium text-slate-900 dark:text-white">{f.title}</h3>
+              <h3 className="font-display text-xl font-medium text-slate-900 dark:text-white">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{f.desc}</p>
             </div>
           ))}
@@ -309,7 +303,7 @@ export default function SalesOperations() {
           </div>
           <Button asChild className="h-12 rounded-lg bg-[#FFC83D] px-7 font-bold text-slate-900 hover:bg-[#e6b435]">
             <Link to={ctaHref}>
-              <Send className="mr-2 h-4 w-4" /> Start sending
+              Start sending
             </Link>
           </Button>
         </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { httpsCallable } from '@/lib/callable';
+import { convertWordToPDF } from '@/lib/wordToPdf';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc, onSnapshot, writeBatch, updateDoc, increment, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -97,39 +98,6 @@ interface SignaturePosition {
   page: number;
   width: number;
 }
-
-// Helper to convert Word to PDF via Cloud Function
-const convertWordToPDF = async (file: File): Promise<Blob> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      try {
-        const base64 = (reader.result as string).split(',')[1];
-        const convertDocument = httpsCallable(functions, 'convertDocument');
-
-        // Same payload shape the File Conversion page uses; the function expects a `files` array.
-        const result = await convertDocument({
-          files: [{ base64, name: file.name, type: file.type }],
-          targetFormat: 'pdf',
-          toolId: 'word-to-pdf',
-        });
-
-        const data = result.data as { pdfBase64: string };
-        const byteCharacters = atob(data.pdfBase64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        resolve(new Blob([byteArray], { type: 'application/pdf' }));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
 
 const Dashboard = () => {
   const navigate = useNavigate();

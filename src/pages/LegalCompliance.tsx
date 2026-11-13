@@ -4,7 +4,6 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useDocumentMeta } from "@/components/FeaturePage";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthContext";
-import { CheckCircle2, Mail, MessageCircle } from "lucide-react";
 import type { ReactNode } from "react";
 
 const serif = { fontFamily: "Gilroy, Inter, system-ui, sans-serif" };
@@ -91,8 +90,8 @@ function RecordCard() {
 
       <div className="mt-6 flex items-center justify-between gap-4">
         <span className="text-2xl italic text-[#0A66C2]" style={serif}>A. Mensah</span>
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-          <CheckCircle2 className="h-4 w-4" /> Signed
+        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+          Signed
         </span>
       </div>
     </div>
@@ -143,16 +142,14 @@ export default function LegalCompliance() {
       >
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="bg-white p-6 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
-            <Mail className="h-5 w-5 text-[#0A66C2]" />
-            <p className="mt-4 text-xl text-slate-900 dark:text-white" style={serif}>By email</p>
+            <p className="text-xl text-slate-900 dark:text-white" style={serif}>By email</p>
             <p className="mt-2 text-[15px] leading-relaxed text-slate-600 dark:text-slate-400">
               The signer signs in with the exact, verified email address you sent the document to. Anyone else who
               opens the link can't see the document.
             </p>
           </div>
           <div className="bg-white p-6 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
-            <MessageCircle className="h-5 w-5 text-[#0A66C2]" />
-            <p className="mt-4 text-xl text-slate-900 dark:text-white" style={serif}>By WhatsApp</p>
+            <p className="text-xl text-slate-900 dark:text-white" style={serif}>By WhatsApp</p>
             <p className="mt-2 text-[15px] leading-relaxed text-slate-600 dark:text-slate-400">
               The signer enters a 6-digit code sent to the WhatsApp number you entered. Codes expire after 5 minutes
               and lock after 5 wrong attempts.

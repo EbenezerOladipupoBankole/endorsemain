@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { Activity, Check, CheckCircle2, Code2, Copy, ExternalLink, Github, Key, Send, Tag, Webhook } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
 
 import { toast } from "sonner";
 
@@ -22,7 +22,6 @@ const ApiDocs = () => {
       id: "auth",
       title: "Authentication",
       description: "To use the Endorse API, you need an API key. You can generate yours from the settings dashboard. All API requests must be made over HTTPS and include your key in the header.",
-      icon: Key,
       code: `import requests
 
 # Set your API Key
@@ -42,7 +41,6 @@ print(response.json())`
       id: "send",
       title: "Send Document",
       description: "Send a document for signature by providing a base64 encoded PDF and a list of signers. Each signer will receive an email with a unique signing link.",
-      icon: Send,
       code: `import requests
 import base64
 
@@ -72,7 +70,6 @@ print(f"Document sent! ID: {document_id}")`
       id: "status",
       title: "Retrieve Status",
       description: "Check the current status of a document. Statuses include 'pending', 'viewed', 'signed', and 'expired'.",
-      icon: Activity,
       code: `import requests
 
 document_id = "doc_12345abc"
@@ -89,7 +86,6 @@ print(f"Document Status: {status}")`
       id: "webhooks",
       title: "Webhooks",
       description: "Receive real-time notifications when a document is viewed or signed. Configure your webhook URL in the developer dashboard to start receiving JSON payloads.",
-      icon: Webhook,
       code: `# Example Webhook Payload (POST)
 # {
 #   "event": "document.signed",
@@ -132,9 +128,8 @@ def handle_webhook():
             <a
               key={s.id}
               href={`#${s.id}`}
-              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground hover:border-[#0A66C2]/40 hover:text-[#0A66C2]"
+              className="inline-flex h-10 shrink-0 items-center rounded-full border border-border px-4 text-sm font-medium text-muted-foreground hover:border-[#0A66C2]/40 hover:text-[#0A66C2]"
             >
-              {s.icon && <s.icon className="w-4 h-4" />}
               {s.title}
             </a>
           ))}
@@ -154,7 +149,6 @@ def handle_webhook():
             <nav className="space-y-1">
               {sections.map(s => (
                 <a key={s.id} href={`#${s.id}`} className={sideLink}>
-                  {s.icon && <s.icon className="w-4 h-4" />}
                   {s.title}
                 </a>
               ))}
@@ -172,8 +166,7 @@ def handle_webhook():
         <main className="min-w-0 flex-1">
           <div className="max-w-5xl mx-auto py-8 md:py-12 px-4 sm:px-6 lg:px-12">
             <header id="overview" className="scroll-mt-36 mb-12 md:mb-16 border-b border-border pb-10 md:pb-12">
-              <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-[#0A66C2]">
-                <Code2 className="w-4 h-4" />
+              <div className="mb-3 text-sm font-semibold text-[#0A66C2]">
                 API Documentation
               </div>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">API Overview</h1>
@@ -181,12 +174,10 @@ def handle_webhook():
                 The Endorse API allows you to automate your document workflows, send signing requests, and receive real-time status updates via webhooks.
               </p>
               <div className="flex flex-wrap gap-3 mt-6 md:mt-8">
-                <div className="px-4 py-2 bg-green-500/10 text-green-700 rounded-lg text-sm font-bold border border-green-500/20 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
+                <div className="px-4 py-2 bg-green-500/10 text-green-700 rounded-lg text-sm font-bold border border-green-500/20">
                   Production Ready
                 </div>
-                <div className="px-4 py-2 bg-[#0A66C2]/10 text-[#0A66C2] rounded-lg text-sm font-bold border border-[#0A66C2]/20 flex items-center gap-2">
-                  <Tag className="w-4 h-4" />
+                <div className="px-4 py-2 bg-[#0A66C2]/10 text-[#0A66C2] rounded-lg text-sm font-bold border border-[#0A66C2]/20">
                   v1.2.0
                 </div>
               </div>
@@ -197,12 +188,7 @@ def handle_webhook():
                 <section key={section.id} id={section.id} className="scroll-mt-36 lg:scroll-mt-28 grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-12 items-start">
                   {/* Left: Documentation */}
                   <div className="min-w-0 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                        {section.icon && <section.icon className="w-5 h-5" />}
-                      </div>
-                      <h2 className="text-xl md:text-2xl font-bold">{section.title}</h2>
-                    </div>
+                    <h2 className="text-xl md:text-2xl font-bold">{section.title}</h2>
                     <p className="text-muted-foreground leading-relaxed text-base md:text-lg break-words">
                       {section.description}
                     </p>
@@ -233,8 +219,7 @@ def handle_webhook():
             <section className="mt-16 md:mt-20 p-6 md:p-8 rounded-2xl bg-[#0A66C2]/5 border border-[#0A66C2]/20">
               <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
                 <div className="flex-1 text-center md:text-left">
-                  <h2 className="text-xl md:text-2xl font-bold mb-3 flex items-center justify-center md:justify-start gap-2">
-                    <Github className="w-6 h-6 shrink-0" />
+                  <h2 className="text-xl md:text-2xl font-bold mb-3">
                     Help us improve these docs
                   </h2>
                   <p className="text-muted-foreground">
@@ -243,7 +228,7 @@ def handle_webhook():
                 </div>
                 <Button variant="outline" className="h-12 w-full sm:w-auto shrink-0 rounded-full font-bold" asChild>
                   <a href="https://github.com/endorse/docs-and-blog" target="_blank" rel="noopener noreferrer">
-                    <Github className="w-4 h-4 mr-2" /> View on GitHub <ExternalLink className="w-4 h-4 ml-2" />
+                    View on GitHub <ExternalLink className="w-4 h-4 ml-2" />
                   </a>
                 </Button>
               </div>

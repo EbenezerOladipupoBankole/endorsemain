@@ -1,4 +1,3 @@
-import { Calendar, Download, MessageSquare, PenTool, Search, Sparkles, Type } from "lucide-react";
 import { FeaturePage, serif } from "@/components/FeaturePage";
 
 function SignMockup() {
@@ -22,8 +21,7 @@ function SignMockup() {
           </div>
         </div>
       </div>
-      <div className="relative z-10 mx-auto -mt-4 flex max-w-[280px] items-start gap-2 rounded-xl bg-[#FFC83D] px-3 py-2.5 text-[12px] font-medium text-[#0F172A] shadow-lg sm:ml-auto sm:mr-[-12px]">
-        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <div className="relative z-10 mx-auto -mt-4 max-w-[280px] rounded-xl bg-[#FFC83D] px-3 py-2.5 text-[12px] font-medium text-[#0F172A] shadow-lg sm:ml-auto sm:mr-[-12px]">
         <span>Summary: 12-month term, KSh 85,000 monthly fee, 30 days' notice to cancel.</span>
       </div>
     </div>
@@ -48,12 +46,12 @@ export default function ProductESign() {
       ]}
       highlightsTitle="Everything you need on the page"
       highlights={[
-        { icon: PenTool, title: "Three ways to sign", text: "Draw with a mouse or finger, choose from five handwriting styles, or upload an image of your signature." },
-        { icon: Type, title: "All the usual fields", text: "Initials, date signed, full name, email, company, job title and free text — drag them anywhere and resize." },
-        { icon: Sparkles, title: "AI summary", text: "Get the key points, parties, dates, amounts and anything to watch out for before you sign. Not legal advice — just a faster read." },
-        { icon: Search, title: "Search the document", text: "Find a clause or a figure instantly instead of scrolling page by page." },
-        { icon: MessageSquare, title: "Comments", text: "Pin notes to any spot on a page, and see them on the page thumbnails." },
-        { icon: Download, title: "Print or download", text: "Save the signed PDF or print it straight from your browser." },
+        { title: "Three ways to sign", text: "Draw with a mouse or finger, choose from five handwriting styles, or upload an image of your signature." },
+        { title: "All the usual fields", text: "Initials, date signed, full name, email, company, job title and free text — drag them anywhere and resize." },
+        { title: "AI summary", text: "Get the key points, parties, dates, amounts and anything to watch out for before you sign. Not legal advice — just a faster read." },
+        { title: "Search the document", text: "Find a clause or a figure instantly instead of scrolling page by page." },
+        { title: "Comments", text: "Pin notes to any spot on a page, and see them on the page thumbnails." },
+        { title: "Print or download", text: "Save the signed PDF or print it straight from your browser." },
       ]}
       faqs={[
         { q: "What files can I sign?", a: "PDF and Word documents (.doc and .docx). Word files are converted to PDF so you can sign them; the conversion keeps the text but not the original layout, so for exact formatting save your document as a PDF first." },

@@ -5,7 +5,7 @@ import { doc, getDocFromServer, collection, query, where, getDocs } from "fireba
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { ArrowLeft, Calendar, FileText, Loader2, Share2, User } from "lucide-react";
+import { ArrowLeft, Loader2, Share2 } from "lucide-react";
 
 import { toast } from "sonner";
 import "@/lib/editorFonts";
@@ -116,21 +116,17 @@ const BlogPost = () => {
                     className="w-full h-full object-cover" 
                   />
                 ) : (
-                  <div className={`w-full h-full ${post.image} flex items-center justify-center text-muted-foreground/10`}>
-                    <FileText className="w-32 h-32" />
-                  </div>
+                  <div className={`w-full h-full ${post.image}`} />
                 )}
               </div>
             )}
             
             <div className="flex flex-wrap items-center justify-between gap-4 py-4 md:py-6 border-y border-border/50">
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="w-4 h-4" />
+                <div className="text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{post.author}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
+                <div className="text-sm text-muted-foreground">
                   {post.createdAt?.seconds ? new Date(post.createdAt.seconds * 1000).toLocaleDateString() : 'Recent'}
                 </div>
               </div>

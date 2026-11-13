@@ -78,7 +78,10 @@ service cloud.firestore {
           .hasOnly(['status', 'signature_data', 'signature_positions', 'signedAt']);
       allow create: if isSignedIn() &&
         request.auth.token.email == request.resource.data.ownerEmail &&
-        request.resource.data.get('creditOk', null) == false;
+        // creditOk may be left out while FREE_LIMIT_ENFORCED (src/lib/plan.ts) is false; a client can
+        // never mark its own document as counted. Once the limit is on, tighten this back to
+        // request.resource.data.get('creditOk', null) == false.
+        request.resource.data.get('creditOk', false) == false;
       allow delete: if isSignedIn() &&
         (isAdmin() || request.auth.token.email == resource.data.ownerEmail);
 
