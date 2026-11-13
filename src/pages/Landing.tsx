@@ -112,25 +112,25 @@ const Landing = () => {
       {/* Hero: words only, no product graphic */}
       <section className="bg-[#F4F7FB] dark:bg-slate-950 px-4 md:px-6 pt-16 pb-16 sm:pt-24 md:pt-32 md:pb-28">
         <div className="mx-auto max-w-4xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2] dark:text-[#7cb7f0]">
+          <p className="text-base font-semibold uppercase tracking-wider text-[#0A66C2] dark:text-[#7cb7f0]">
             eSignature for digital agreements
           </p>
           <h1 className="mt-5 font-display text-[2.4rem] sm:text-6xl md:text-7xl font-extrabold leading-[1.04] tracking-tight text-slate-900 dark:text-white">
             eSign your agreements on one structured platform.
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base md:text-xl leading-relaxed text-slate-600 dark:text-slate-400">
+          <p className="mx-auto mt-6 max-w-2xl text-lg md:text-2xl leading-relaxed text-slate-600 dark:text-slate-400">
             Take every agreement from upload to signed record. Send it by email or WhatsApp, follow each
             step as it happens, and keep an audit trail anyone can verify.
           </p>
           <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button asChild size="lg" className="h-12 rounded-full px-8 text-base font-extrabold bg-[#FFC83D] text-black hover:bg-[#e6b435]">
+            <Button asChild size="lg" className="h-14 rounded-full px-8 text-lg font-extrabold bg-[#FFC83D] text-black hover:bg-[#e6b435]">
               <Link to="/auth?mode=signup">Start signing free</Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 rounded-full px-8 text-base font-bold border-slate-400 bg-transparent dark:border-slate-600">
+            <Button asChild size="lg" variant="outline" className="h-14 rounded-full px-8 text-lg font-bold border-slate-400 bg-transparent dark:border-slate-600">
               <a href="#pricing">View pricing</a>
             </Button>
           </div>
-          <p className="mt-5 text-sm text-slate-600 dark:text-slate-400">3 free documents · No card required · Free for signers</p>
+          <p className="mt-5 text-base text-slate-600 dark:text-slate-400">3 free documents · No card required · Free for signers</p>
         </div>
       </section>
 
@@ -140,11 +140,11 @@ const Landing = () => {
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 relative z-10">
           {/* Section Header */}
           <div className="text-center max-w-2xl mx-auto mb-10 md:mb-20">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2] mb-3">How it works</p>
+            <p className="text-base font-semibold uppercase tracking-wider text-[#0A66C2] mb-3">How it works</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">
               Every agreement follows the same clear steps
             </h2>
-            <p className="text-slate-500 text-base md:text-lg leading-relaxed">
+            <p className="text-slate-500 text-lg md:text-xl leading-relaxed">
               Upload, prepare and send. Signers eSign from any device with no app to install, and the signed copy comes back to you with its audit trail.
             </p>
           </div>
@@ -206,14 +206,14 @@ const Landing = () => {
 
                     {/* Stepper Details */}
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground">{item.subtitle}</span>
-                      <h3 className={`text-lg font-bold mt-1 mb-1.5 transition-colors ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>
+                      <span className="text-sm uppercase tracking-wider font-extrabold text-muted-foreground">{item.subtitle}</span>
+                      <h3 className={`text-xl font-bold mt-1 mb-1.5 transition-colors ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>
                         {item.title}
                       </h3>
 
                       {/* Smooth collapsible description */}
                       <div className={`overflow-hidden transition-all duration-350 ${isActive ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-                        <p className="text-sm text-slate-500 leading-relaxed">
+                        <p className="text-base text-slate-500 leading-relaxed">
                           {item.desc}
                         </p>
 
@@ -414,11 +414,11 @@ const Landing = () => {
       <section id="features" className="scroll-mt-20 py-16 md:py-24 px-4 md:px-6 overflow-hidden">
         <div className="container mx-auto max-w-6xl px-0 sm:px-8">
           <div className="text-center mb-12 md:mb-16">
-            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Built for digital agreements</p>
+            <p className="text-base font-semibold text-primary uppercase tracking-wider mb-3">Built for digital agreements</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
               Structure every agreement, from draft to signed record
             </h2>
-            <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Prepare, send, eSign, track and store your agreements, then invoice the client, without leaving Endorse.
             </p>
           </div>
@@ -438,9 +438,9 @@ const Landing = () => {
                 to={p.to}
                 className="group rounded-2xl border border-border bg-card p-5 sm:p-6 transition-colors hover:border-[#0A66C2]/40"
               >
-                <h3 className="text-lg font-bold text-foreground">{p.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{p.text}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#0A66C2]">
+                <h3 className="text-xl font-bold text-foreground">{p.title}</h3>
+                <p className="mt-1.5 text-base leading-relaxed text-muted-foreground">{p.text}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-base font-semibold text-[#0A66C2]">
                   Learn more <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Link>
@@ -482,14 +482,14 @@ const Landing = () => {
             </div>
             <div className="w-full md:w-1/2 order-1 md:order-2">
               <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">eSign from anywhere, on any device.</h3>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
                 Draw your signature, type it in a handwriting style, or upload an image of it. Endorse runs in the browser, so signers never need to install an app.
               </p>
               <ul className="space-y-3">
                 {["Draw, type, or upload a signature", "Initials, dates, names and text fields too", "No account needed for WhatsApp signers"].map((item, i) => (
                   <li key={i} className="flex items-center gap-3">
                     <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#0A66C2] shrink-0" />
-                    <span className="text-foreground text-sm font-medium">{item}</span>
+                    <span className="text-foreground text-base font-medium">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -500,7 +500,7 @@ const Landing = () => {
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-16 md:mb-24">
             <div className="w-full md:w-1/2">
               <h3 className="font-display text-3xl md:text-4xl font-bold mb-4">Know where every agreement stands.</h3>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
                 Every document shows when it went out and when each person signed. The completed copy is emailed to you the moment it's done, and a gentle reminder is one click away.
               </p>
               <Link to="/product/send-for-signature" className="inline-flex">
@@ -548,7 +548,7 @@ const Landing = () => {
           <div className="py-12 border-t border-slate-100">
             <div className="max-w-3xl mx-auto text-center mb-10 md:mb-16">
               <h3 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-slate-900 dark:text-white">Legally binding, with a record to prove it.</h3>
-              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
                 Identity checks, a timestamped audit trail for every signature, a tamper-evident seal and encrypted storage.
               </p>
             </div>
@@ -579,14 +579,14 @@ const Landing = () => {
                 <div key={i} className="bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-5 sm:p-8 rounded-2xl flex flex-col justify-between text-left hover:shadow-md transition-all duration-300">
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs uppercase font-extrabold tracking-wider text-slate-700 bg-slate-200/60 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded">
+                      <span className="text-sm uppercase font-extrabold tracking-wider text-slate-700 bg-slate-200/60 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded">
                         {item.badge}
                       </span>
                     </div>
-                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                       {item.title}
                     </h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed">
                       {item.desc}
                     </p>
                   </div>
@@ -601,7 +601,7 @@ const Landing = () => {
       <section id="pricing" className="scroll-mt-20 bg-white px-4 py-16 md:px-6 md:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2]">Pricing</p>
+            <p className="text-base font-semibold uppercase tracking-wider text-[#0A66C2]">Pricing</p>
             <h2 className="mt-3 font-display text-3xl font-bold text-gray-900 sm:text-5xl">
               Plans for every stage of your business
             </h2>
@@ -627,9 +627,9 @@ const Landing = () => {
                   </div>
                   <p className="mt-4 flex items-baseline gap-x-1">
                     <span className="text-4xl font-bold tracking-tight text-gray-900">{tier.price}</span>
-                    {tier.frequency && <span className="text-sm font-semibold leading-6 text-gray-600">{tier.frequency}</span>}
+                    {tier.frequency && <span className="text-base font-semibold leading-6 text-gray-600">{tier.frequency}</span>}
                   </p>
-                  <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-gray-600">
+                  <ul role="list" className="mt-8 space-y-3 text-base leading-6 text-gray-600">
                     {tier.features.map((feature) => (
                       <li key={feature} className="flex gap-x-3">
                         <svg className={`h-6 w-5 flex-none ${tier.color}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -643,7 +643,7 @@ const Landing = () => {
                 <button
                   onClick={() => tier.name === 'Free' ? navigate('/auth?mode=signup') : handleUpgrade(tier.name)}
                   aria-describedby={tier.name}
-                  className={`mt-8 block min-h-[44px] w-full rounded-full px-4 text-center text-sm font-bold shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${tier.buttonColor}`}
+                  className={`mt-8 block min-h-[44px] w-full rounded-full px-4 text-center text-base font-bold shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${tier.buttonColor}`}
                 >
                   Get started
                 </button>
@@ -658,11 +658,11 @@ const Landing = () => {
         <div className="container mx-auto max-w-4xl px-0 sm:px-4">
           {/* Header */}
           <div className="text-center mb-10 md:mb-12">
-            <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2] dark:text-[#FFC83D] mb-3">FAQ</p>
+            <p className="text-base font-semibold uppercase tracking-wider text-[#0A66C2] dark:text-[#FFC83D] mb-3">FAQ</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
               Frequently asked questions
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
               Legal standing, security and billing, answered plainly.
             </p>
           </div>
@@ -687,7 +687,7 @@ const Landing = () => {
                 <button
                   key={cat}
                   onClick={() => setFaqCategory(cat)}
-                  className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap shrink-0 transition-all duration-200 ${faqCategory === cat
+                  className={`min-h-[44px] px-4 py-2 rounded-xl text-base font-bold whitespace-nowrap shrink-0 transition-all duration-200 ${faqCategory === cat
                     ? "bg-[#0A66C2] text-white shadow-md shadow-[#0A66C2]/20 dark:bg-[#FFC83D] dark:text-black"
                     : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                     }`}
@@ -764,13 +764,13 @@ const Landing = () => {
                     value={faq.id}
                     className="border-slate-100 dark:border-slate-800 last:border-b-0 px-3 sm:px-4 py-0.5 sm:py-2 rounded-xl transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
                   >
-                    <AccordionTrigger className="min-h-[52px] text-left font-display font-semibold text-base md:text-lg text-slate-900 dark:text-white hover:no-underline py-3 gap-3">
+                    <AccordionTrigger className="min-h-[52px] text-left font-display font-semibold text-lg md:text-xl text-slate-900 dark:text-white hover:no-underline py-3 gap-3">
                       <span className="flex items-center gap-2.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0A66C2] dark:bg-[#FFC83D] shrink-0 opacity-75" />
                         {faq.q}
                       </span>
                     </AccordionTrigger>
-                    <AccordionContent className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed pl-4 sm:pl-5 pb-3">
+                    <AccordionContent className="text-slate-600 dark:text-slate-300 text-base sm:text-lg leading-relaxed pl-4 sm:pl-5 pb-3">
                       {faq.a}
                     </AccordionContent>
                   </AccordionItem>
@@ -782,13 +782,13 @@ const Landing = () => {
           <div className="mt-8 md:mt-12 p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-6 shadow-sm">
             <div className="text-center md:text-left">
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">Still have questions?</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">Email us and a person will reply.</p>
+                <h3 className="font-bold text-slate-900 dark:text-white text-lg">Still have questions?</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-base">Email us and a person will reply.</p>
               </div>
             </div>
             <a
               href="mailto:support@e-ndorse.online"
-              className="min-h-[44px] w-full sm:w-auto justify-center bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
+              className="min-h-[44px] w-full sm:w-auto justify-center bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-base px-6 py-3 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
             >
               <span>support@e-ndorse.online</span>
             </a>
@@ -832,7 +832,7 @@ const Landing = () => {
         <div role="region" aria-label="Cookie consent" className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border px-3 py-3 sm:px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-full duration-500">
           <div className="container mx-auto max-w-6xl px-0 sm:px-4 flex items-center justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
-              <p className="text-sm leading-snug text-muted-foreground">
+              <p className="text-base leading-snug text-muted-foreground">
                 <span className="sm:hidden">We use cookies to improve your experience.</span>
                 <span className="hidden sm:inline">We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies.</span>
               </p>
@@ -859,11 +859,11 @@ const Landing = () => {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">Email us and a person from the Endorse team will reply, usually within a working day.</p>
-            <a href="mailto:support@e-ndorse.online" className="mt-4 flex min-h-[44px] items-center justify-center rounded-lg bg-[#0A66C2] px-4 text-sm font-bold text-white hover:bg-[#08519c]">
+            <p className="mt-1 text-base text-muted-foreground">Email us and a person from the Endorse team will reply, usually within a working day.</p>
+            <a href="mailto:support@e-ndorse.online" className="mt-4 flex min-h-[44px] items-center justify-center rounded-lg bg-[#0A66C2] px-4 text-base font-bold text-white hover:bg-[#08519c]">
               support@e-ndorse.online
             </a>
-            <Link to="/help-center" className="mt-2 flex min-h-[44px] items-center justify-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground hover:bg-secondary">
+            <Link to="/help-center" className="mt-2 flex min-h-[44px] items-center justify-center rounded-lg border border-border px-4 text-base font-semibold text-foreground hover:bg-secondary">
               Browse the Help Center
             </Link>
           </div>
@@ -872,7 +872,7 @@ const Landing = () => {
           onClick={() => setShowContact((v) => !v)}
           aria-expanded={showContact}
           aria-controls="contact-card"
-          className="min-h-[44px] rounded-full bg-[#FFC83D] px-5 text-sm font-bold text-black shadow-lg hover:bg-[#e6b435]"
+          className="min-h-[44px] rounded-full bg-[#FFC83D] px-5 text-base font-bold text-black shadow-lg hover:bg-[#e6b435]"
         >
           {showContact ? "Close" : "Questions?"}
         </button>
