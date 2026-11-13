@@ -54,16 +54,6 @@ const tiers = [
   },
 ];
 
-const CUSTOMERS = [
-  "Pioneer Artificial Intelligence Academy",
-  "Dera Everight Ltd",
-  "Macddy Tech Solution",
-  "Ike Ake & Associates",
-  "BlaqLink",
-  "ViteHire",
-  "CC Tech Solutions",
-];
-
 const Landing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -144,22 +134,8 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Who uses it */}
-      <section className="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 md:px-6 py-10 md:py-12">
-        <div className="mx-auto max-w-5xl text-center">
-          <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">Already using Endorse</p>
-          <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-            {CUSTOMERS.map((name) => (
-              <li key={name} className="font-display text-lg md:text-xl font-bold tracking-tight text-slate-500 dark:text-slate-400">
-                {name}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
       {/* How It Works */}
-      <section className="py-20 md:py-28 bg-white border-b border-slate-100 relative overflow-hidden">
+      <section className="py-20 md:py-28 bg-white border-y border-slate-100 relative overflow-hidden">
 
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 relative z-10">
           {/* Section Header */}
