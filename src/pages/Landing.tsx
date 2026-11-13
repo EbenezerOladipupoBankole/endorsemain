@@ -1,34 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
 import { useAuth } from "@/components/AuthContext";
 import {
   UploadCloud,
-  Send,
   ShieldCheck,
   CheckCircle2,
-  Cpu,
-  HelpCircle,
   Search,
-  MessageCircle,
   PenTool,
   Receipt,
-  Layers,
-  FileCode,
-  Users,
   ArrowRight,
-  Bot,
   X,
-  Eye,
-  Check,
   FileText,
   MousePointerClick,
   Download,
-  Cookie,
 } from "lucide-react";
 import {
   Accordion,
@@ -91,12 +79,7 @@ const Landing = () => {
     return () => clearTimeout(timer);
   }, [location.hash]);
   const [showCookieConsent, setShowCookieConsent] = useState(false);
-  const [showChat, setShowChat] = useState(false);
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState([
-    { text: "Hi! I can answer quick questions about pricing, signing and security. For anything else, email support@e-ndorse.online.", isUser: false, time: "Just now" }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
   const [isStepAutoplay, setIsStepAutoplay] = useState(true);
 
@@ -131,45 +114,6 @@ const Landing = () => {
     }
     navigate(`/payment?plan=${plan.toLowerCase()}`);
   };
-
-  const getBotResponse = (text: string) => {
-    const lower = text.toLowerCase();
-    if (lower.includes("price") || lower.includes("cost") || lower.includes("plan") || lower.includes("free")) {
-      return "Your first 3 documents are free. After that, Pro is $8 and Business is $15 for 30 days of unlimited signing and sending. Each payment covers 30 days and nothing renews automatically.";
-    }
-    if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
-      return "Hi there! Ready to sign some documents? 📄 How can I help you today?";
-    }
-    if (lower.includes("security") || lower.includes("safe") || lower.includes("legal") || lower.includes("binding")) {
-      return "Endorse provides simple electronic signatures of the kind recognised under the US ESIGN Act and the EU's eIDAS regulation. Files are encrypted in transit and at rest.";
-    }
-    if (lower.includes("support") || lower.includes("help")) {
-      return "Email us at support@e-ndorse.online, or have a look at the Help Center.";
-    }
-    return "I can only answer a few common questions here. For anything else, email support@e-ndorse.online and we'll get back to you.";
-  };
-
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
-
-    const newMessage = { text, isUser: true, time: "Just now" };
-    setChatMessages((prev) => [...prev, newMessage]);
-    setChatInput("");
-    setIsTyping(true);
-
-    setTimeout(() => {
-      setIsTyping(false);
-      const response = getBotResponse(text);
-      setChatMessages((prev) => [...prev, { text: response, isUser: false, time: "Just now" }]);
-    }, 600);
-  };
-
-  const handleChatSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sendMessage(chatInput);
-  };
-
-
 
   return (
     <div className="min-h-screen bg-background">
@@ -295,30 +239,23 @@ const Landing = () => {
                   step: "01",
                   title: "Upload",
                   subtitle: "PDF or Word",
-                  desc: "Bring in a PDF or Word file from your computer or phone, or start from one of your saved templates.",
-                  icon: UploadCloud,
-                  activeColor: "border-primary text-primary"
+                  desc: "Bring in a PDF or Word file from your computer or phone, or start from one of your saved templates."
                 },
                 {
                   id: 1,
                   step: "02",
                   title: "Prepare",
                   subtitle: "Place every field",
-                  desc: "Add each signer by email or WhatsApp number, then place signature, initials, date and text fields exactly where they belong.",
-                  icon: MousePointerClick,
-                  activeColor: "border-emerald-500 text-emerald-600"
+                  desc: "Add each signer by email or WhatsApp number, then place signature, initials, date and text fields exactly where they belong."
                 },
                 {
                   id: 2,
                   step: "03",
                   title: "Send & sign",
                   subtitle: "Always know where it stands",
-                  desc: "Secure signing links go out by email or WhatsApp. Watch each document move from awaiting signature to signed, then download the completed copy.",
-                  icon: ShieldCheck,
-                  activeColor: "border-[#FFC83D] text-[#D89E24]"
+                  desc: "Secure signing links go out by email or WhatsApp. Watch each document move from awaiting signature to signed, then download the completed copy."
                 }
               ].map((item, i) => {
-                const IconComp = item.icon;
                 const isActive = activeWorkflowStep === item.id;
                 return (
                   <div
@@ -341,17 +278,14 @@ const Landing = () => {
                     onMouseLeave={() => setIsStepAutoplay(true)}  // Resume on leave
                     className={`group flex items-start gap-4 sm:gap-5 p-4 sm:p-6 rounded-2xl border transition-all duration-350 cursor-pointer text-left ${isActive ? 'bg-slate-50/80 border-slate-200 shadow-sm' : 'bg-transparent border-transparent hover:bg-slate-50/40'}`}
                   >
-                    {/* Stepper Icon */}
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 ${isActive ? 'bg-primary text-white scale-105' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>
-                      <IconComp className="w-5.5 h-5.5" />
-                    </div>
+                    {/* Step number */}
+                    <span className={`w-10 shrink-0 font-display text-3xl font-extrabold leading-none tabular-nums transition-colors ${isActive ? 'text-[#0A66C2]' : 'text-slate-400'}`}>
+                      {item.step}
+                    </span>
 
                     {/* Stepper Details */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground">{item.subtitle}</span>
-                        <span className={`shrink-0 whitespace-nowrap text-xs font-mono font-bold ${isActive ? 'text-primary' : 'text-slate-500'}`}>Step {item.step}</span>
-                      </div>
+                      <span className="text-xs uppercase tracking-wider font-extrabold text-muted-foreground">{item.subtitle}</span>
                       <h3 className={`text-lg font-bold mt-1 mb-1.5 transition-colors ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>
                         {item.title}
                       </h3>
@@ -405,7 +339,7 @@ const Landing = () => {
                       </div>
 
                       <div className="border border-dashed border-slate-300 hover:border-slate-400 rounded-xl p-5 text-center bg-slate-50/50 transition-colors">
-                        <UploadCloud className="w-8 h-8 text-primary mx-auto mb-2 animate-bounce" />
+                        <UploadCloud className="w-8 h-8 text-primary mx-auto mb-2" />
                         <p className="text-xs font-bold text-slate-700">Drag & drop files here</p>
                         <p className="text-[10px] text-slate-500 mt-1">PDF, Word, or JPG up to 25MB</p>
                       </div>
@@ -571,20 +505,19 @@ const Landing = () => {
           {/* Product tour: each card links to its product page */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16 md:mb-24">
             {[
-              { icon: PenTool, title: "eSign documents", text: "Sign any PDF or Word file in seconds and keep a clean, signed copy.", to: "/product/esign" },
-              { icon: Send, title: "Send for signature", text: "Route a document to one or many signers by email or WhatsApp and see who has signed.", to: "/product/send-for-signature" },
-              { icon: Layers, title: "Templates", text: "Save an agreement once and reuse it. Each signer's details fill in automatically.", to: "/product/templates" },
-              { icon: Receipt, title: "Invoices", text: "Professional, itemised invoices with tax and discounts in 10 currencies, delivered as a PDF.", to: "/product/invoices" },
-              { icon: FileCode, title: "File conversion", text: "Convert between Word, PDF and images, merge files and password-protect PDFs.", to: "/conversion" },
-              { icon: Users, title: "Teams", text: "Bring your team onto the Business plan and share templates across the company.", to: "/#pricing" },
+              { title: "eSign documents", text: "Sign any PDF or Word file in seconds and keep a clean, signed copy.", to: "/product/esign" },
+              { title: "Send for signature", text: "Route a document to one or many signers by email or WhatsApp and see who has signed.", to: "/product/send-for-signature" },
+              { title: "Templates", text: "Save an agreement once and reuse it. Each signer's details fill in automatically.", to: "/product/templates" },
+              { title: "Invoices", text: "Professional, itemised invoices with tax and discounts in 10 currencies, delivered as a PDF.", to: "/product/invoices" },
+              { title: "File conversion", text: "Convert between Word, PDF and images, merge files and password-protect PDFs.", to: "/conversion" },
+              { title: "Teams", text: "Bring your team onto the Business plan and share templates across the company.", to: "/#pricing" },
             ].map((p) => (
               <Link
                 key={p.title}
                 to={p.to}
                 className="group rounded-2xl border border-border bg-card p-5 sm:p-6 transition-colors hover:border-[#0A66C2]/40"
               >
-                <p.icon className="h-6 w-6 text-[#0A66C2]" />
-                <h3 className="mt-4 text-lg font-bold text-foreground">{p.title}</h3>
+                <h3 className="text-lg font-bold text-foreground">{p.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{p.text}</p>
                 <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#0A66C2]">
                   Learn more <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -633,8 +566,8 @@ const Landing = () => {
               </p>
               <ul className="space-y-3">
                 {["Draw, type, or upload a signature", "Initials, dates, names and text fields too", "No account needed for WhatsApp signers"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-[#0A66C2] shrink-0" />
+                  <li key={i} className="flex items-center gap-3">
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#0A66C2] shrink-0" />
                     <span className="text-foreground text-sm font-medium">{item}</span>
                   </li>
                 ))}
@@ -657,129 +590,35 @@ const Landing = () => {
             </div>
             <div className="w-full md:w-1/2">
               <div className="relative rounded-2xl bg-card border border-border p-4 sm:p-6 shadow-xl overflow-hidden">
-                <div className="absolute top-0 right-0 p-16 bg-primary/5 blur-[50px] rounded-full pointer-events-none"></div>
-
-                {/* Live Feed Header */}
-                <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6 pb-4 border-b border-border/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Activity Feed</span>
-                  </div>
-                  <span className="shrink-0 whitespace-nowrap text-xs bg-secondary px-2.5 py-1 rounded-md text-muted-foreground font-semibold">Doc #394-02</span>
+                <div className="flex items-center justify-between gap-3 mb-5 pb-4 border-b border-border/60">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Activity</span>
+                  <span className="truncate text-xs font-medium text-muted-foreground">Tenancy_Agreement.pdf</span>
                 </div>
 
-                <div className="relative space-y-4 sm:space-y-6 pl-3 sm:pl-4 border-l-2 border-dashed border-border/80 ml-1.5 sm:ml-5">
+                <ol className="space-y-5">
                   {[
-                    {
-                      user: "Sarah Okafor",
-                      action: "viewed the document",
-                      time: "2 mins ago",
-                      avatar: "https://images.unsplash.com/photo-1523824921871-d6f1a15151f1?auto=format&fit=crop&crop=focalpoint&fp-x=0.5&fp-y=0.18&fp-z=2.5&q=80&w=150&h=150",
-                      initials: "SO",
-                      bgGradient: "from-blue-500/10 to-sky-500/10",
-                      ringColor: "ring-blue-100 dark:ring-blue-950",
-                      badgeBg: "bg-blue-500",
-                      badgeIcon: Eye,
-                      textColor: "text-blue-600 dark:text-blue-400"
-                    },
-                    {
-                      user: "Mike Ross",
-                      action: "signed the contract",
-                      time: "Just now",
-                      avatar: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?auto=format&fit=crop&crop=faces&q=80&w=150&h=150",
-                      initials: "MR",
-                      bgGradient: "from-emerald-500/10 to-teal-500/10",
-                      ringColor: "ring-emerald-100 dark:ring-emerald-950",
-                      badgeBg: "bg-emerald-500",
-                      badgeIcon: Check,
-                      textColor: "text-emerald-600 dark:text-emerald-400",
-                      isPulse: true
-                    },
-                    {
-                      user: "System",
-                      action: "sent copy to all parties",
-                      time: "Just now",
-                      avatar: null,
-                      initials: "SYS",
-                      bgGradient: "from-amber-400/15 to-yellow-300/15",
-                      ringColor: "ring-amber-100 dark:ring-amber-950",
-                      badgeBg: "bg-amber-500",
-                      badgeIcon: Send,
-                      textColor: "text-amber-600 dark:text-amber-400",
-                      isPulse: true
-                    }
-                  ].map((notif, i) => (
-                    <div
-                      key={i}
-                      className={`relative flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border border-border/40 bg-background/60 backdrop-blur-sm shadow-sm transition-all duration-300 hover:shadow-md hover:scale-[1.01] ${notif.isPulse ? 'ring-1 ring-primary/20 bg-primary/[0.01]' : ''}`}
-                    >
-                      {/* Timeline dot connector */}
-                      <div className="absolute -left-[21px] sm:-left-[27px] top-6 sm:top-7 w-3.5 h-3.5 rounded-full border-2 border-card bg-border" />
-
-                      {/* Avatar / Icon Container */}
-                      <div className="relative shrink-0">
-                        {notif.avatar ? (
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden ring-2 sm:ring-4 ${notif.ringColor} shadow-inner`}>
-                            <img
-                              src={notif.avatar}
-                              alt={notif.user}
-                              width={48}
-                              height={48}
-                              loading="lazy"
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                // Fallback if image fails to load
-                                e.currentTarget.style.display = 'none';
-                                const parent = e.currentTarget.parentElement;
-                                if (parent) {
-                                  const fallback = parent.nextElementSibling;
-                                  if (fallback) fallback.classList.remove('hidden');
-                                }
-                              }}
-                            />
-                            {/* Fallback Initials */}
-                            <div className="hidden absolute inset-0 flex items-center justify-center bg-muted text-foreground font-bold text-sm">
-                              {notif.initials}
-                            </div>
-                          </div>
-                        ) : (
-                          // System Icon
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center bg-gradient-to-br ${notif.bgGradient} ring-2 sm:ring-4 ${notif.ringColor} shadow-inner`}>
-                            <Cpu className={`w-5 h-5 sm:w-6 sm:h-6 ${notif.textColor}`} />
-                          </div>
-                        )}
-
-                        {/* Status action badge */}
-                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${notif.badgeBg} text-white border-2 border-background shadow-sm`}>
-                          <notif.badgeIcon className="w-2.5 h-2.5" />
+                    { initials: "SO", name: "Sarah Okafor", action: "Opened the document", time: "10:42 AM" },
+                    { initials: "KM", name: "Kwame Mensah", action: "Signed", time: "10:47 AM" },
+                    { initials: "", name: "Endorse", action: "Signed copy and audit trail emailed to both parties", time: "10:47 AM" },
+                  ].map((row) => (
+                    <li key={row.name} className="flex items-start gap-3">
+                      {row.initials ? (
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          {row.initials}
+                        </span>
+                      ) : (
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0A66C2] text-xs font-bold text-white">E</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="text-sm font-bold text-foreground">{row.name}</p>
+                          <p className="shrink-0 text-xs text-muted-foreground">{row.time}</p>
                         </div>
+                        <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{row.action}</p>
                       </div>
-
-                      {/* Content Area */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col min-[400px]:flex-row min-[400px]:items-center min-[400px]:justify-between gap-0.5 min-[400px]:gap-2">
-                          <p className="text-sm font-bold text-foreground">
-                            {notif.user}
-                          </p>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {notif.isPulse && (
-                              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                            )}
-                            <p className="text-xs text-muted-foreground font-medium">{notif.time}</p>
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-0.5 leading-snug">
-                          {notif.action}
-                        </p>
-                      </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
-                {/* Decorative Background Card Shadow Offset */}
-                <div className="absolute -z-10 -bottom-4 -right-4 w-full h-full bg-secondary/30 rounded-2xl border border-border/20"></div>
+                </ol>
               </div>
             </div>
           </div>
@@ -922,15 +761,12 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Enhanced Interactive FAQ Section */}
+      {/* FAQ */}
       <section className="py-16 md:py-28 px-4 md:px-6 bg-slate-50/50 dark:bg-slate-900/20 border-t border-border/40">
         <div className="container mx-auto max-w-4xl px-0 sm:px-4">
           {/* Header */}
           <div className="text-center mb-10 md:mb-12">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] dark:text-[#FFC83D] text-xs font-bold uppercase tracking-wider mb-4 border border-[#0A66C2]/20 dark:border-white/10">
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>FAQ</span>
-            </div>
+            <p className="text-sm font-semibold uppercase tracking-wider text-[#0A66C2] dark:text-[#FFC83D] mb-3">FAQ</p>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
               Frequently asked questions
             </h2>
@@ -1052,10 +888,7 @@ const Landing = () => {
 
           {/* Still Have Questions Support Box */}
           <div className="mt-8 md:mt-12 p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-6 shadow-sm">
-            <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 text-center md:text-left">
-              <div className="w-12 h-12 rounded-2xl bg-[#0A66C2]/10 dark:bg-[#FFC83D]/20 text-[#0A66C2] dark:text-[#FFC83D] flex items-center justify-center shrink-0 mx-auto md:mx-0">
-                <MessageCircle className="w-6 h-6" />
-              </div>
+            <div className="text-center md:text-left">
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-base">Still have questions?</h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm">Email us and a person will reply.</p>
@@ -1065,7 +898,6 @@ const Landing = () => {
               href="mailto:support@e-ndorse.online"
               className="min-h-[44px] w-full sm:w-auto justify-center bg-[#0A66C2] hover:bg-[#08519c] text-white font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
             >
-              <MessageCircle className="w-4 h-4" />
               <span>support@e-ndorse.online</span>
             </a>
           </div>
@@ -1107,10 +939,7 @@ const Landing = () => {
       {showCookieConsent && (
         <div role="region" aria-label="Cookie consent" className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border px-3 py-3 sm:px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-full duration-500">
           <div className="container mx-auto max-w-6xl px-0 sm:px-4 flex items-center justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-primary/10 rounded-full hidden sm:block shrink-0">
-                <Cookie className="w-5 h-5 text-primary" />
-              </div>
+            <div className="min-w-0">
               <p className="text-sm leading-snug text-muted-foreground">
                 <span className="sm:hidden">We use cookies to improve your experience.</span>
                 <span className="hidden sm:inline">We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies.</span>
@@ -1128,72 +957,33 @@ const Landing = () => {
         </div>
       )}
 
-      {/* Live Chat Widget */}
-      <div className={`fixed right-4 md:right-6 z-50 flex flex-col items-end gap-4 transition-[bottom] duration-300 ${showCookieConsent ? "bottom-[84px] md:bottom-[88px]" : "bottom-4 md:bottom-6"}`}>
-        {showChat && (
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-[calc(100vw-2rem)] sm:w-96 overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-            <div className="bg-[#FFC83D] p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-black">Quick answers</span>
-              </div>
-              <button onClick={() => setShowChat(false)} className="-m-2 w-10 h-10 flex items-center justify-center rounded-full text-black/80 hover:text-black hover:bg-black/5 transition-colors" aria-label="Close chat">
-                <X className="w-5 h-5" />
+      {/* Contact: a person answers, not a bot */}
+      <div className={`fixed right-4 md:right-6 z-50 flex flex-col items-end gap-3 transition-[bottom] duration-300 ${showCookieConsent ? "bottom-[84px] md:bottom-[88px]" : "bottom-4 md:bottom-6"}`}>
+        {showContact && (
+          <div id="contact-card" className="w-[calc(100vw-2rem)] sm:w-80 rounded-xl border border-border bg-card p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-bold text-foreground">Talk to us</p>
+              <button onClick={() => setShowContact(false)} className="-m-2 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close">
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="h-80 bg-background p-4 overflow-y-auto flex flex-col gap-4">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`p-3 rounded-lg max-w-[85%] border border-border ${msg.isUser ? 'bg-primary/10 self-end rounded-tr-none' : 'bg-secondary self-start rounded-tl-none'}`}>
-                  <p className="text-sm">{msg.text}</p>
-                  <span className="text-xs text-muted-foreground mt-1 block">{msg.time}</span>
-                </div>
-              ))}
-              {chatMessages.length < 4 && (
-                <div className="flex flex-wrap gap-2 mt-2 px-1">
-                  {["Are there any plans?", "Is it legal?", "Contact Support", "Features"].map((reply) => (
-                    <button
-                      key={reply}
-                      onClick={() => sendMessage(reply)}
-                      className="min-h-[40px] text-sm bg-secondary hover:bg-secondary/80 border border-border rounded-full px-3.5 py-2 transition-colors text-foreground/80"
-                    >
-                      {reply}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {isTyping && (
-                <div className="bg-secondary p-4 rounded-lg rounded-tl-none max-w-[85%] self-start border border-border">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"></span>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t border-border bg-background">
-              <form className="flex gap-2" onSubmit={handleChatSubmit}>
-                <Input
-                  placeholder="Type a message..."
-                  className="flex-1"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  aria-label="Type a message"
-                />
-                <Button size="icon" type="submit" className="bg-[#FFC83D] text-black hover:bg-[#FFC83D]/90" aria-label="Send message">
-                  <Send className="w-4 h-4" />
-                </Button>
-              </form>
-            </div>
+            <p className="mt-1 text-sm text-muted-foreground">Email us and a person from the Endorse team will reply, usually within a working day.</p>
+            <a href="mailto:support@e-ndorse.online" className="mt-4 flex min-h-[44px] items-center justify-center rounded-lg bg-[#0A66C2] px-4 text-sm font-bold text-white hover:bg-[#08519c]">
+              support@e-ndorse.online
+            </a>
+            <Link to="/help-center" className="mt-2 flex min-h-[44px] items-center justify-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground hover:bg-secondary">
+              Browse the Help Center
+            </Link>
           </div>
         )}
-        <Button
-          size="lg"
-          className="h-14 w-14 rounded-full shadow-lg bg-[#FFC83D] text-black hover:bg-[#e6b435] transition-transform hover:scale-105 flex items-center justify-center"
-          onClick={() => setShowChat(!showChat)}
-          aria-label={showChat ? "Close chat" : "Open chat"}
+        <button
+          onClick={() => setShowContact((v) => !v)}
+          aria-expanded={showContact}
+          aria-controls="contact-card"
+          className="min-h-[44px] rounded-full bg-[#FFC83D] px-5 text-sm font-bold text-black shadow-lg hover:bg-[#e6b435]"
         >
-          {showChat ? <X className="w-6 h-6" /> : <Bot className="w-6 h-6" />}
-        </Button>
+          {showContact ? "Close" : "Questions?"}
+        </button>
       </div>
     </div>
   );
