@@ -1,0 +1,1 @@
+const t="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap";if(typeof document<"u"&&!document.querySelector(`link[href="${t}"]`)){const e=document.createElement("link");e.rel="stylesheet",e.href=t,document.head.appendChild(e)}
