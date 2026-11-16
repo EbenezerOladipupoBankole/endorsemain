@@ -51,3 +51,6 @@ vite.config.ts.timestamp-*.mjs
 
 # Copied from pdfjs-dist by `npm run copy-pdfjs-assets`
 public/pdfjs
+
+# Public browser config for production builds (Vercel); these values ship in the site bundle anyway.
+!.env.production
