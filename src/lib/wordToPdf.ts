@@ -61,6 +61,60 @@ const pageSlices = (page: HTMLElement, paperHeight: number): [number, number][] 
   return slices;
 };
 
+/** A line of text on the rendered page, positioned in px relative to the page's top-left. */
+type TextRun = { text: string; x: number; top: number; width: number; height: number; fontSize: number };
+
+/**
+ * Collects every line of text on the page with its position, so it can be written into the
+ * PDF as an invisible layer over the page image. That makes the text selectable, copyable
+ * and searchable while the page still looks exactly like the Word document.
+ */
+const collectTextRuns = (page: HTMLElement): TextRun[] => {
+  const origin = page.getBoundingClientRect();
+  const runs: TextRun[] = [];
+  const range = document.createRange();
+  const walker = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    const content = node.data;
+    if (!content.trim() || !node.parentElement) continue;
+    const fontSize = parseFloat(getComputedStyle(node.parentElement).fontSize) || 14;
+
+    // Group the node's words into lines: words that share a top edge are on the same line.
+    let line: { words: string[]; left: number; right: number; top: number; bottom: number } | null = null;
+    const flush = () => {
+      if (!line) return;
+      runs.push({
+        text: line.words.join(' '),
+        x: line.left - origin.left,
+        top: line.top - origin.top,
+        width: line.right - line.left,
+        height: line.bottom - line.top,
+        fontSize,
+      });
+      line = null;
+    };
+
+    for (const match of content.matchAll(/\S+/g)) {
+      range.setStart(node, match.index!);
+      range.setEnd(node, match.index! + match[0].length);
+      const r = range.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue; // hidden text
+      if (line && Math.abs(r.top - line.top) < r.height / 2) {
+        line.words.push(match[0]);
+        line.right = Math.max(line.right, r.right);
+        line.bottom = Math.max(line.bottom, r.bottom);
+      } else {
+        flush();
+        line = { words: [match[0]], left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      }
+    }
+    flush();
+  }
+  return runs;
+};
+
 /**
  * Renders a .docx in the browser with docx-preview, so it keeps the Word layout: page size,
  * margins, fonts, headings, alignment, lists, tables, images, headers and footers. Each
@@ -111,6 +165,7 @@ const convertDocxInBrowser = async (file: File): Promise<Blob> => {
       const paperHeight = declared > 0 ? declared / PX_TO_PT : page.offsetHeight;
       const padTop = parseFloat(getComputedStyle(page).paddingTop) || 0;
       const slices = pageSlices(page, paperHeight);
+      const runs = collectTextRuns(page);
 
       // html-to-image has the browser draw the page itself (SVG foreignObject), so text,
       // justification and tables look exactly as they do on screen.
@@ -139,6 +194,23 @@ const convertDocxInBrowser = async (file: File): Promise<Blob> => {
         if (!pdf) pdf = new jsPDF({ unit: 'pt', format: [w, ph], orientation, compress: true });
         else pdf.addPage([w, ph], orientation);
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, w, ph);
+
+        // Invisible text layer: each line sits exactly over its picture, stretched to the same
+        // width, so selecting, copying and Ctrl+F work on the PDF.
+        pdf.setFont('helvetica', 'normal');
+        for (const run of runs) {
+          const middle = run.top + run.height / 2;
+          if (middle < start || middle >= end) continue; // line belongs to another slice
+          const size = run.fontSize * PX_TO_PT;
+          pdf.setFontSize(size);
+          const natural = pdf.getTextWidth(run.text);
+          if (!natural) continue;
+          pdf.text(run.text, run.x * PX_TO_PT, (run.top - start + offset + (run.height - run.fontSize) / 2) * PX_TO_PT, {
+            baseline: 'top',
+            renderingMode: 'invisible',
+            horizontalScale: (run.width * PX_TO_PT) / natural,
+          });
+        }
       });
     }
 
