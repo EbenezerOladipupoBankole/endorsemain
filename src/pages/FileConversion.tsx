@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { httpsCallable } from "@/lib/callable";
 import { functions } from "@/components/client";
 import { mergePdfs, pdfToDocx } from "@/lib/pdfTools";
+import { convertWordToPDF } from "@/lib/wordToPdf";
 
 const tools = [
   {
@@ -159,6 +160,14 @@ const FileConversion = () => {
         setConvertedBlob(blob);
         setIsSuccess(true);
         toast.success(selectedTool.id === "merge-pdf" ? `Merged ${files.length} PDFs` : "Converted to Word");
+        return;
+      }
+
+      // Word to PDF renders in the browser so the PDF keeps the document's layout.
+      if (selectedTool.id === "word-to-pdf") {
+        setConvertedBlob(await convertWordToPDF(files[0]));
+        setIsSuccess(true);
+        toast.success("Successfully converted to PDF");
         return;
       }
 
