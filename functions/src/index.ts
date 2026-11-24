@@ -199,7 +199,7 @@ export const inviteToSign = onCall({ secrets: [gmailEmail, gmailPassword], cors:
 
     // Set a timeout for the mail sending to avoid hanging forever
     const mailOptions = {
-      from: `"Endorse App" <${gmailEmail.value()}>`,
+      from: `"Endorse" <${gmailEmail.value()}>`,
       to: recipientEmail,
       subject: "You have been invited to sign a document",
       text: `You have been invited to sign "${originalData?.name}".\n\nPlease click the link below to access your dashboard and sign the document:\n${documentLink}\n\nBest,\nEndorse Team`,
@@ -1492,7 +1492,7 @@ export const inviteTeamMember = onCall({
     }
 
     await transporter.sendMail({
-      from: `"Endorse Team" <${fromAddress}>`,
+      from: `"Endorse" <${fromAddress}>`,
       to: inviteEmail,
       subject: "You've been invited to join a team on Endorse",
       html: `<p>You have been invited to join a team on Endorse.</p><p>Click the link below to accept the invitation:</p><a href="${inviteLink}">Join Team</a>`
