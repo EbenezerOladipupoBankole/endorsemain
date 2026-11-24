@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <title>Endorse</title>
   <rect width="32" height="32" rx="5" fill="#fff"/>
-  <ellipse cx="16" cy="16" rx="13" ry="9.8" fill="none" stroke="#FFBB00" stroke-width="1.6"/>
-  <path fill="#0066CC" d="M12 10h9v2.5h-6v2.3h5.5v2.4H15v2.3h6.1V22H12z"/>
+  <ellipse cx="16" cy="16" rx="13" ry="10" fill="none" stroke="#FFBB00" stroke-width="2.6"/>
+  <path fill="#0066CC" d="M13.2 11.8h6.4v1.9h-4.3v1.4h3.9v1.8h-3.9v1.4h4.4v1.9h-6.5z"/>
 </svg>
