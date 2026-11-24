@@ -42,6 +42,21 @@ const SignDocument = () => {
   const [showSignatureModal, setShowSignatureModal] = useState<"signature" | "initials" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  // Phones: hide the bottom bar while typing, so it never sits over the field being edited.
+  const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    const isTextField = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.matches('input:not([type=checkbox]):not([type=radio]), textarea, select') || el.isContentEditable);
+    const onFocusIn = (e: FocusEvent) => setIsTyping(isTextField(e.target));
+    const onFocusOut = () => setIsTyping(false);
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, []);
 
   // Summarize / search / pages / comments / zoom. Comments are shared with the sender in Firestore.
   const viewer = useViewerState();
@@ -221,6 +236,8 @@ const SignDocument = () => {
     }
   };
 
+  const hasSigned = placedItems.length > 0 || !!signature || !!initials;
+
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#0A66C2]" /></div>;
 
   if (isSuccess) {
@@ -302,10 +319,10 @@ const SignDocument = () => {
           </span>
           <span className="truncate text-sm font-medium text-white/85">{documentData?.name}</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 md:flex">
           <button 
             onClick={handleCompleteSigning} 
-            disabled={(placedItems.length === 0 && !signature && !initials) || isSubmitting} 
+            disabled={!hasSigned || isSubmitting} 
             className="min-h-[40px] shrink-0 whitespace-nowrap px-4 sm:px-6 text-slate-950 bg-[#FFC83D] hover:bg-[#e6b435] disabled:opacity-50 text-sm font-extrabold rounded-full transition-all shadow-md flex items-center gap-2 cursor-pointer"
           >
             {isSubmitting ? "Submitting…" : "Finish & submit"}
@@ -346,7 +363,7 @@ const SignDocument = () => {
 
         {/* Main Document Area */}
         <main className="flex-1 relative bg-[#f4f4f4] overflow-hidden flex flex-col">
-          <div className={`flex-1 overflow-auto p-2 sm:p-8 flex justify-center custom-scrollbar ${pdfFile ? 'pb-24 md:pb-8' : ''}`}>
+          <div className={`flex-1 overflow-auto p-2 sm:p-8 flex justify-center custom-scrollbar ${pdfFile ? 'pb-44' : 'pb-28'} md:pb-8`}>
             {/* Document Container with realistic paper shadow */}
             <div className="bg-white mx-auto shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1),0_10px_20px_-2px_rgba(0,0,0,0.05)] rounded-sm md:min-h-[800px] w-full max-w-4xl relative p-3 sm:p-8 md:p-12 border border-gray-200">
               {documentData?.message && (
@@ -416,7 +433,7 @@ const SignDocument = () => {
                           <img src={signature || initials || ''} alt="Your signature" className="h-12 object-contain" />
                           <div>
                             <p className="text-xs font-bold text-green-900">Digital Signature Applied</p>
-                            <p className="text-xs text-green-700">Tap "Finish &amp; submit" at the top to send it back.</p>
+                            <p className="text-xs text-green-700">Tap "Finish &amp; submit" to send it back.</p>
                           </div>
                         </div>
                         <Button
@@ -485,10 +502,14 @@ const SignDocument = () => {
         </DocumentTools>
       </div>
 
-      {/* Phones: available fields as a bar along the bottom (PDF documents only) */}
-      {pdfFile && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur md:hidden" aria-label="Fields">
-          <div className="flex justify-center gap-1.5 overflow-x-auto px-3 py-2">
+      {/* Phones: a bar fixed to the bottom with the fields (PDF documents) and the finish button,
+          so signers never have to scroll to find how to submit. Hidden while typing. */}
+      <div
+        className={`fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur md:hidden ${isTyping ? 'hidden' : ''}`}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {pdfFile && (
+          <nav className="flex justify-center gap-1.5 overflow-x-auto px-3 pt-2" aria-label="Fields">
             {([
               { id: 'signature', label: 'Signature', icon: PenTool, done: !!signature },
               { id: 'initials', label: 'Initial', icon: Type, done: !!initials },
@@ -501,7 +522,7 @@ const SignDocument = () => {
                 <button
                   key={f.id}
                   onClick={() => handleToolClick(f.id)}
-                  className={`relative flex min-h-[48px] min-w-[64px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-xs font-semibold transition-colors ${
+                  className={`relative flex min-h-[44px] min-w-[60px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-xs font-semibold transition-colors ${
                     active ? 'bg-[#0A66C2] text-white' : 'bg-slate-100 text-slate-700'
                   }`}
                 >
@@ -511,9 +532,36 @@ const SignDocument = () => {
                 </button>
               );
             })}
-          </div>
-        </nav>
-      )}
+          </nav>
+        )}
+
+        <div className="flex items-center gap-3 px-3 py-2">
+          <p className="min-w-0 flex-1 text-xs leading-tight text-slate-600" aria-live="polite">
+            {hasSigned ? (
+              <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
+                <CheckCircle2 className="h-4 w-4 shrink-0" /> Signature added — ready to submit
+              </span>
+            ) : (
+              'Add your signature to finish'
+            )}
+          </p>
+          <button
+            onClick={() => (hasSigned ? handleCompleteSigning() : setShowSignatureModal('signature'))}
+            disabled={isSubmitting}
+            className={`flex min-h-[48px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-5 text-sm font-extrabold shadow-md transition-all disabled:opacity-60 ${
+              hasSigned ? 'bg-[#FFC83D] text-slate-950 hover:bg-[#e6b435]' : 'bg-[#0A66C2] text-white hover:bg-[#08519c]'
+            }`}
+          >
+            {isSubmitting ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
+            ) : hasSigned ? (
+              'Finish & submit'
+            ) : (
+              <><PenTool className="h-4 w-4" /> Add signature</>
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* Minimal Footer */}
       <footer className="hidden h-8 bg-white border-t border-gray-200 md:flex items-center justify-between px-6 text-[10px] text-gray-500 shrink-0 z-50">
