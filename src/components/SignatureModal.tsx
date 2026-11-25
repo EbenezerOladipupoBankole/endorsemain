@@ -379,6 +379,8 @@ const SignatureModal = ({ document, onClose, onSave, kind = "signature" }: Signa
       reader.onload = (event) => {
         if (event.target?.result) {
           setUploadSource(event.target.result as string);
+          setCrop({ x: 0, y: 0 });
+          setZoom(1);
           setIsCropping(true);
         }
       };
@@ -390,6 +392,8 @@ const SignatureModal = ({ document, onClose, onSave, kind = "signature" }: Signa
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Reset so choosing the same file again still fires onChange.
+    e.target.value = "";
     if (file) {
       processFile(file);
     }
@@ -708,20 +712,81 @@ const SignatureModal = ({ document, onClose, onSave, kind = "signature" }: Signa
                 </div>
               )}
 
-              {mode === "upload" && (
-                <div className="mb-6 text-center border-2 border-dashed border-gray-300 p-8 rounded">
+              {(mode === "upload" || isCropping) && (
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              )}
+
+              {isCropping && uploadSource ? (
+                <div className="mb-6">
+                  <div className="relative w-full h-56 bg-gray-100 rounded overflow-hidden">
+                    <Cropper
+                      image={uploadSource}
+                      crop={crop}
+                      zoom={zoom}
+                      aspect={3}
+                      minZoom={0.5}
+                      restrictPosition={false}
+                      onCropChange={setCrop}
+                      onZoomChange={setZoom}
+                      onCropComplete={onCropComplete}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 mt-3">
+                    <span className="text-[11px] font-bold text-gray-600 tracking-wider uppercase">Zoom</span>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={3}
+                      step={0.05}
+                      value={zoom}
+                      onChange={(e) => setZoom(Number(e.target.value))}
+                      className="flex-1 accent-blue-600"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsCropping(false);
+                        setUploadSource(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleCropConfirm}>
+                      Use this signature
+                    </Button>
+                  </div>
+                </div>
+              ) : mode === "upload" && (
+                <div
+                  className={`mb-6 text-center border-2 border-dashed p-8 rounded transition-colors ${isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   {uploadedSignature ? (
-                    <img src={uploadedSignature} alt="Uploaded signature" className="max-h-32 object-contain mx-auto mb-4" />
+                    <>
+                      <img src={uploadedSignature} alt="Uploaded signature" className="max-h-32 object-contain mx-auto mb-4" />
+                      <div className="flex justify-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                          Change Image
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={clearSignature}>
+                          Remove
+                        </Button>
+                      </div>
+                    </>
                   ) : (
                     <>
-                      <p className="text-sm text-gray-500 mb-2">Click to select an image</p>
-                      <Input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                      />
+                      <p className="text-sm text-gray-500 mb-2">Drag an image here, or click to select one</p>
                       <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                         Select Image
                       </Button>
